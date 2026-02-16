@@ -9,7 +9,9 @@ docs/
 ├── project-management/     # Project tracking and management documents
 │   ├── project-follow-up.md
 │   ├── schedule.md
-│   └── sprint1-review-checklist.md
+│   ├── sprint1-review-checklist.md
+│   ├── sprint1-review-summary.md
+│   └── sprint1-status.md
 ├── personal/               # Individual team member journals
 │   └── personal-journal-jj.md
 └── README.md               # This file
@@ -22,6 +24,8 @@ Documents in `project-management/` track project status, schedules, and review p
 - **project-follow-up.md** - Sprint review document containing current status, completed milestones, red flags, and review notes
 - **schedule.md** - Overall project timeline, sprint schedules, and milestone tracking
 - **sprint1-review-checklist.md** - Checklist for Sprint 1 review preparation
+- **sprint1-review-summary.md** - Complete Sprint 1 review summary with demo script and code examples
+- **sprint1-status.md** - Sprint 1 status summary and completion tracking
 
 ## Personal Journals
 

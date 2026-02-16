@@ -4,6 +4,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
+import { BackendTestPage } from "./pages/BackendTestPage";
 import { Role, allRoles, canAccessUpload, canReview } from "./utils/permissions";
 import { useMemo, useState } from "react";
 
@@ -76,6 +77,13 @@ function AppLayout({
           >
             Admin
           </button>
+          <button
+            type="button"
+            onClick={() => navigate("/backend-test")}
+            className={location.pathname === "/backend-test" ? "active" : ""}
+          >
+            Backend Test
+          </button>
         </nav>
         <div className="header-actions">
           <label>
@@ -122,6 +130,7 @@ export default function App() {
         <Route path="/assets/:id" element={<AssetDetailPage role={auth.role} />} />
         <Route path="/upload" element={<UploadPage role={auth.role} />} />
         <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/backend-test" element={<BackendTestPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>

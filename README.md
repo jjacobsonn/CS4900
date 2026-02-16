@@ -20,6 +20,7 @@
 ## Table of Contents
 - [About](#about)
 - [Key Features](#key-features)
+- [Screenshots](#screenshots)
 - [Documentation](#documentation)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
@@ -70,6 +71,28 @@ Vellum provides lightweight, role-aware creative reviews optimized for real-worl
 - Comment on files with approval context
 - Version history tracking
 - Clear visual approval indicators
+
+---
+
+## Screenshots
+
+### Login Page with Backend Integration
+
+The login page demonstrates the full-stack connection, with roles dynamically loaded from the PostgreSQL database:
+
+<div align="center">
+
+<img src="assets/images/ss-02-16.png" alt="Vellum Login Page - Roles loaded from database" width="600"/>
+
+*Login page showing roles (Designer, Reviewer, Admin) fetched from backend database*
+
+</div>
+
+This screenshot shows:
+- Frontend React application running
+- Role dropdown populated from backend API
+- Backend connected to PostgreSQL database
+- Complete data flow: Database → Backend → Frontend → UI
 
 ---
 
@@ -156,11 +179,11 @@ cd CS4900
 ### Step 2: Install Dependencies
 
 ```bash
-# Install backend dependencies (when backend is initialized)
+# Install backend dependencies
 cd backend
 npm install
 
-# Install frontend dependencies (when frontend is initialized)
+# Install frontend dependencies
 cd ../frontend
 npm install
 ```
@@ -286,11 +309,11 @@ Backend API will be available at: **http://localhost:3000/api**
 # Navigate to frontend directory (in a new terminal)
 cd frontend
 
-# Start React development server
-npm start
+# Start React development server (Vite)
+npm run dev
 ```
 
-Frontend GUI will be available at: **http://localhost:3001**
+Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 
 ### Step 6: Verify Installation
 
@@ -302,8 +325,9 @@ Frontend GUI will be available at: **http://localhost:3001**
 ### Default URLs
 
 - **Backend API:** http://localhost:3000/api
-- **Frontend GUI:** http://localhost:3001
-- **API Documentation:** http://localhost:3000/api/docs (when implemented)
+- **Backend Health Check:** http://localhost:3000/health
+- **User Roles API:** http://localhost:3000/api/user-roles
+- **Frontend GUI:** http://localhost:5173 (Vite dev server)
 
 ### Troubleshooting
 
@@ -317,7 +341,7 @@ Frontend GUI will be available at: **http://localhost:3001**
 - Or stop the process using the port: `lsof -ti:3000 | xargs kill`
 
 **Module Not Found Errors:**
-- Run `npm install` in both backend and frontend directories
+- Run `npm install` in both `backend/` and `frontend/` directories
 - Delete `node_modules` and `package-lock.json`, then reinstall
 
 For detailed architecture information, see the [Architecture documentation](assets/documentation/achitecture.md).

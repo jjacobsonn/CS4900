@@ -1,0 +1,132 @@
+# Project Schedule — Vellum
+
+**Project:** Vellum - Digital Asset Review & Approval Platform  
+**Course:** CS 4900 - Senior Capstone Project  
+**Term:** Spring 2026
+
+---
+
+## Overall Timeline
+
+| Sprint | Dates | Focus | Status |
+|--------|-------|-------|--------|
+| Sprint 0 | Jan 27 - Feb 9 | Documentation & Planning | Completed |
+| Sprint 1 | Feb 10 - Feb 23 | Database Setup & Initial Implementation | In Progress |
+| Sprint 2 | Feb 24 - Mar 9 | Core API & Authentication | Planned |
+| Sprint 3 | Mar 10 - Mar 23 | Frontend Implementation | Planned |
+| Sprint 4 | Mar 24 - Apr 6 | Testing & Refinement | Planned |
+| Sprint 5 | Apr 7 - Apr 20 | Advanced Features | Planned |
+| Sprint 6 | Apr 21 - May 4 | Final Polish & Deployment | Planned |
+
+---
+
+## Sprint 1 Schedule (Feb 10 - Feb 23, 2026)
+
+### Week 1 (Feb 10-16)
+- [x] **Feb 10:** Sprint planning and task assignment
+- [x] **Feb 11-12:** Database schema finalization
+- [x] **Feb 13-14:** API contract review
+- [x] **Feb 15:** Project structure setup
+- [x] **Feb 16:** Sprint 1 Review preparation
+  - [x] Project Follow-up document
+  - [x] Personal Journal
+  - [x] Schedule document
+  - [ ] Database setup script
+  - [ ] README update
+
+### Week 2 (Feb 17-23)
+- [ ] **Feb 17:** Database setup script completion and testing
+- [ ] **Feb 18:** Backend project initialization
+- [ ] **Feb 19:** Basic Express server setup
+- [ ] **Feb 20:** Database connection layer
+- [ ] **Feb 21:** Initial unit tests
+- [ ] **Feb 22:** Code review preparation
+- [ ] **Feb 23:** Sprint 1 Review meeting
+
+---
+
+## Sprint 1 Milestones
+
+### Completed
+- [x] Project documentation complete
+- [x] Database ERD finalized
+- [x] API contracts defined
+- [x] Repository structure established
+
+### In Progress
+- [ ] Database setup script
+- [ ] Backend server initialization
+- [ ] Development environment setup
+
+### Pending
+- [ ] Basic authentication implementation
+- [ ] File upload functionality
+- [ ] Unit test framework setup
+- [ ] Code examples for review
+
+---
+
+## Individual Task Tracking
+
+### Jackson Jacobson (jjacobsonn)
+- [x] Repository setup and branch management
+- [x] Documentation review
+- [x] Project Follow-up document
+- [x] Personal Journal
+- [x] Schedule document
+- [ ] Database setup script (SQL)
+- [ ] README update with setup instructions
+- [ ] Backend project initialization
+
+### Team Member Tasks
+_To be updated with team member assignments_
+
+---
+
+## Review Meeting Dates
+
+| Review | Date | Type |
+|--------|------|------|
+| Sprint 1 Review | February 19, 2026 (3rd Wednesday) | Monthly Review |
+| Sprint 2 Review | March 19, 2026 (3rd Wednesday) | Monthly Review |
+| Sprint 3 Review | April 16, 2026 (3rd Wednesday) | Monthly Review |
+| Final Review | TBD (Final Exam Date) | Final Review |
+
+---
+
+## Key Deliverables by Sprint
+
+### Sprint 1 Deliverables
+- [x] Complete project documentation
+- [ ] Database setup script
+- [ ] Basic project structure
+- [ ] Initial unit tests
+- [ ] Code examples for review
+
+### Sprint 2 Deliverables (Planned)
+- Backend API endpoints
+- Authentication system
+- Database integration
+- Unit tests for services
+
+### Sprint 3 Deliverables (Planned)
+- React frontend application
+- User interface components
+- API integration
+- Frontend unit tests
+
+---
+
+## Dependencies & Blockers
+
+### Current Blockers
+- None identified
+
+### Dependencies
+- PostgreSQL installation required for database setup
+- Node.js and npm required for backend development
+- React development environment for frontend
+
+---
+
+**Last Updated:** February 16, 2026

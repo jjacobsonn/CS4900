@@ -14,7 +14,7 @@
 - Pulled latest changes from main branch
 - Created development branch `dev-jj`
 - Merged teammate's frontend work (lw-dev branch)
-- Created professional documentation structure in `docs/` folder
+- Created professional documentation structure in `assets/docs/` folder
 - Created and tested database setup script (`database/setup.sql`)
 - Implemented complete backend structure:
   - Express.js server with PostgreSQL connection

@@ -8,7 +8,7 @@
 ## Completed Work
 
 ### 1. Documentation Structure ✅
-- Professional documentation organized in `docs/` folder
+- Professional documentation organized in `assets/docs/` folder
 - Project Follow-up document
 - Schedule tracking
 - Personal Journal
@@ -168,7 +168,7 @@ CS4900/
 │   └── package.json
 ├── database/               # Database scripts
 │   └── setup.sql          # Database initialization
-├── docs/                   # Documentation
+├── assets/docs/            # Documentation
 │   ├── project-management/
 │   └── personal/
 ├── assets/                 # Documentation assets

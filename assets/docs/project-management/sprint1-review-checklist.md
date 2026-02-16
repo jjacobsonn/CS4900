@@ -8,9 +8,9 @@
 
 ## Documentation Completed
 
-- [x] **Project Follow-up Document** - Created (`docs/project-management/project-follow-up.md`)
-- [x] **Personal Journal** - Created (`docs/personal/personal-journal-jj.md`)
-- [x] **Schedule** - Created (`docs/project-management/schedule.md`)
+- [x] **Project Follow-up Document** - Created (`assets/docs/sprint-1/project-management/project-follow-up.md`)
+- [x] **Personal Journal** - Created (`assets/docs/sprint-1/personal/personal-journal-jj.md`)
+- [x] **Schedule** - Created (`assets/docs/sprint-1/project-management/schedule.md`)
 - [x] **Database Setup Script** - Created (`database/setup.sql`)
 - [x] **README Updated** - Detailed setup instructions added
 

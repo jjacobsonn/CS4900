@@ -12,5 +12,20 @@ module.exports = {
       }
     ]
   },
-  moduleNameMapper: {}
+  moduleNameMapper: {
+    "^@/(.*)$": "<rootDir>/src/$1"
+  },
+  globals: {
+    "ts-jest": {
+      tsconfig: {
+        compilerOptions: {
+          module: "esnext",
+          target: "esnext"
+        }
+      }
+    }
+  },
+  testEnvironmentOptions: {
+    customExportConditions: [""]
+  }
 };

@@ -10,14 +10,14 @@
 
 import { jest } from '@jest/globals';
 
-// Mock the database module before importing the service
+// Mock the database module
 const mockQuery = jest.fn();
 jest.unstable_mockModule('../config/database.js', () => ({
   query: mockQuery,
   default: {}
 }));
 
-// Import after mocking
+// Import the service after mocking
 const { getAllUserRoles, getUserRoleByCode, getUserRoleById } = await import('../services/userRoleService.js');
 
 describe('UserRoleService', () => {

@@ -6,11 +6,11 @@
 
 **Fast, Mobile-First Digital Asset Review & Approval Platform**
 
-[![React](https://img.shields.io/badge/React-18.0+-61DAFB?logo=react&logoColor=white)](assets/documentation/achitecture.md)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](assets/documentation/achitecture.md)
-[![Mobile First](https://img.shields.io/badge/Mobile-First-4285F4?logo=google&logoColor=white)](assets/documentation/nonfunctional-requirements.md)
-[![Role Based](https://img.shields.io/badge/RBAC-Enabled-FF6B6B)](assets/documentation/functional-requirements.md)
-[![Fast](https://img.shields.io/badge/Load_Time-%3C2s-00D084)](assets/documentation/nonfunctional-requirements.md)
+[![React](https://img.shields.io/badge/React-18.0+-61DAFB?logo=react&logoColor=white)](assets/docs/achitecture.md)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](assets/docs/achitecture.md)
+[![Mobile First](https://img.shields.io/badge/Mobile-First-4285F4?logo=google&logoColor=white)](assets/docs/nonfunctional-requirements.md)
+[![Role Based](https://img.shields.io/badge/RBAC-Enabled-FF6B6B)](assets/docs/functional-requirements.md)
+[![Fast](https://img.shields.io/badge/Load_Time-%3C2s-00D084)](assets/docs/nonfunctional-requirements.md)
 [![License](https://img.shields.io/badge/License-Academic-blue)](LICENSE)
 
 </div>
@@ -26,6 +26,8 @@
 - [Getting Started](#getting-started)
 - [Project Team](#project-team)
 - [License](#license)
+
+**Documentation Location:** All documentation is organized in `assets/docs/` with core technical docs at the root level and sprint-specific docs in `assets/docs/sprint-{number}/` folders.
 
 ---
 
@@ -100,33 +102,34 @@ This screenshot shows:
 
 ### Core Documentation
 
-- **[Elevator Pitch](assets/documentation/elevator-pitch.md)** - Project vision and value proposition
-- **[Architecture](assets/documentation/achitecture.md)** - System architecture and technology stack
-- **[Functional Requirements](assets/documentation/functional-requirements.md)** - Core system capabilities
-- **[Non-Functional Requirements](assets/documentation/nonfunctional-requirements.md)** - Performance, usability, and quality metrics
+- **[Elevator Pitch](assets/docs/elevator-pitch.md)** - Project vision and value proposition
+- **[Architecture](assets/docs/achitecture.md)** - System architecture and technology stack
+- **[Functional Requirements](assets/docs/functional-requirements.md)** - Core system capabilities
+- **[Non-Functional Requirements](assets/docs/nonfunctional-requirements.md)** - Performance, usability, and quality metrics
 
 ### Design & Planning
 
-- **[Personas](assets/documentation/personas.md)** - User personas and target audience
-- **[Use Cases](assets/documentation/use-cases.md)** - Key user scenarios and workflows
-- **[Figma Wireframes](assets/documentation/figma-wireframe.md)** - UI/UX design mockups
-- **[Sequence Diagrams](assets/documentation/sequence-diagrams.md)** - System interaction flows
+- **[Personas](assets/docs/personas.md)** - User personas and target audience
+- **[Use Cases](assets/docs/use-cases.md)** - Key user scenarios and workflows
+- **[Figma Wireframes](assets/docs/figma-wireframe.md)** - UI/UX design mockups
+- **[Sequence Diagrams](assets/docs/sequence-diagrams.md)** - System interaction flows
 
 ### Technical Specifications
 
-- **[API JSON Contracts](assets/documentation/api-json-contracts.md)** - RESTful API endpoint specifications
-- **[Database Diagram](assets/documentation/database-diagram.md)** - Database schema and relationships
+- **[API JSON Contracts](assets/docs/api-json-contracts.md)** - RESTful API endpoint specifications
+- **[Database Diagram](assets/docs/database-diagram.md)** - Database schema and relationships
 
 ### Testing
 
-- **[Testing Plan (Whitebox)](assets/documentation/testing-plan-whitebox.md)** - Unit and integration testing strategy
-- **[User Acceptance Test Plan](assets/documentation/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
+- **[Testing Plan (Whitebox)](assets/docs/testing-plan-whitebox.md)** - Unit and integration testing strategy
+- **[User Acceptance Test Plan](assets/docs/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
+- **[Testing Guide](assets/docs/sprint-1/testing-guide.md)** - How to run tests and test coverage documentation
 
 ### Project Management
 
-- **[Project Follow-up](docs/project-management/project-follow-up.md)** - Sprint review and status tracking
-- **[Schedule](docs/project-management/schedule.md)** - Project timeline and milestones
-- **[Sprint 1 Review Checklist](docs/project-management/sprint1-review-checklist.md)** - Review preparation checklist
+- **[Project Follow-up](assets/docs/sprint-1/project-management/project-follow-up.md)** - Sprint review and status tracking
+- **[Schedule](assets/docs/sprint-1/project-management/schedule.md)** - Project timeline and milestones
+- **[Sprint 1 Review Checklist](assets/docs/sprint-1/project-management/sprint1-review-checklist.md)** - Review preparation checklist
 
 ---
 
@@ -344,7 +347,7 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 - Run `npm install` in both `backend/` and `frontend/` directories
 - Delete `node_modules` and `package-lock.json`, then reinstall
 
-For detailed architecture information, see the [Architecture documentation](assets/documentation/achitecture.md).
+For detailed architecture information, see the [Architecture documentation](assets/docs/achitecture.md).
 
 ---
 

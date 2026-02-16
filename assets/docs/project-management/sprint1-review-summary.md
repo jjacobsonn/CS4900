@@ -130,10 +130,10 @@ frontend/
 ### 5. Documentation ✅
 
 **Project Management:**
-- Project Follow-up document (`docs/project-management/project-follow-up.md`)
-- Schedule tracking (`docs/project-management/schedule.md`)
-- Sprint 1 Review Checklist (`docs/project-management/sprint1-review-checklist.md`)
-- Personal Journal (`docs/personal/personal-journal-jj.md`)
+- Project Follow-up document (`assets/docs/sprint-1/project-management/project-follow-up.md`)
+- Schedule tracking (`assets/docs/sprint-1/project-management/schedule.md`)
+- Sprint 1 Review Checklist (`assets/docs/sprint-1/project-management/sprint1-review-checklist.md`)
+- Personal Journal (`assets/docs/sprint-1/personal/personal-journal-jj.md`)
 
 **Technical:**
 - README.md with complete setup instructions

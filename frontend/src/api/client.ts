@@ -1,7 +1,25 @@
 const DEFAULT_BASE_URL = "/api";
 
+// Get API base URL - handles both Vite runtime and Jest test environment
+function getApiBaseUrl(): string {
+  // In Jest test environment, use global mock
+  if (typeof process !== "undefined" && process.env.JEST_WORKER_ID !== undefined) {
+    return ((globalThis as any).import?.meta?.env?.VITE_API_BASE_URL as string) || DEFAULT_BASE_URL;
+  }
+  
+  // In Vite runtime, use import.meta.env
+  // Use eval to avoid Jest parsing import.meta at parse time
+  try {
+    // @ts-ignore - import.meta is available at runtime in Vite
+    const viteEnv = eval('import.meta.env');
+    return viteEnv.VITE_API_BASE_URL || DEFAULT_BASE_URL;
+  } catch {
+    return DEFAULT_BASE_URL;
+  }
+}
+
 function buildUrl(path: string): string {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined) || DEFAULT_BASE_URL;
+  const base = getApiBaseUrl();
   const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;

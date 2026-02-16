@@ -84,7 +84,7 @@
 
 4. **Project Structure**
    - Repository initialized
-   - Documentation organized in `docs/` folder
+   - Documentation organized in `assets/docs/` folder
    - Branch structure established (dev-jj, merged lw-dev)
    - Professional folder structure implemented
 

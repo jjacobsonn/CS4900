@@ -28,7 +28,7 @@ export function UploadPage({ role }: { role: Role }) {
       return;
     }
 
-    await createAsset({ name: title.trim(), notes });
+    await createAsset({ title: title.trim(), description: notes });
     setSuccess(`Uploaded ${fileName}`);
     setFileName("");
     setTitle("");

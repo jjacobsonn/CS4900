@@ -6,11 +6,11 @@
 
 **Fast, Mobile-First Digital Asset Review & Approval Platform**
 
-[![React](https://img.shields.io/badge/React-18.0+-61DAFB?logo=react&logoColor=white)](assets/docs/achitecture.md)
-[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](assets/docs/achitecture.md)
-[![Mobile First](https://img.shields.io/badge/Mobile-First-4285F4?logo=google&logoColor=white)](assets/docs/nonfunctional-requirements.md)
-[![Role Based](https://img.shields.io/badge/RBAC-Enabled-FF6B6B)](assets/docs/functional-requirements.md)
-[![Fast](https://img.shields.io/badge/Load_Time-%3C2s-00D084)](assets/docs/nonfunctional-requirements.md)
+[![React](https://img.shields.io/badge/React-18.0+-61DAFB?logo=react&logoColor=white)](assets/docs/sprint-1/achitecture.md)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)](assets/docs/sprint-1/achitecture.md)
+[![Mobile First](https://img.shields.io/badge/Mobile-First-4285F4?logo=google&logoColor=white)](assets/docs/sprint-1/nonfunctional-requirements.md)
+[![Role Based](https://img.shields.io/badge/RBAC-Enabled-FF6B6B)](assets/docs/sprint-1/functional-requirements.md)
+[![Fast](https://img.shields.io/badge/Load_Time-%3C2s-00D084)](assets/docs/sprint-1/nonfunctional-requirements.md)
 [![License](https://img.shields.io/badge/License-Academic-blue)](LICENSE)
 
 </div>
@@ -80,21 +80,20 @@ Vellum provides lightweight, role-aware creative reviews optimized for real-worl
 
 ### Login Page with Backend Integration
 
-The login page demonstrates the full-stack connection, with roles dynamically loaded from the PostgreSQL database:
+The login page demonstrates the full-stack connection with seeded-account workflow support:
 
 <div align="center">
 
-<img src="assets/images/ss-02-16.png" alt="Vellum Login Page - Roles loaded from database" width="600"/>
+<img src="assets/images/ss-02-16.png" alt="Vellum Login Page - Seeded role accounts" width="600"/>
 
-*Login page showing roles (Designer, Reviewer, Admin) fetched from backend database*
+*Login page for seeded role accounts (Designer, Reviewer, Admin)*
 
 </div>
 
 This screenshot shows:
 - Frontend React application running
-- Role dropdown populated from backend API
 - Backend connected to PostgreSQL database
-- Complete data flow: Database → Backend → Frontend → UI
+- Complete data flow: Database -> Backend -> Frontend -> UI
 
 ---
 
@@ -102,34 +101,33 @@ This screenshot shows:
 
 ### Core Documentation
 
-- **[Elevator Pitch](assets/docs/elevator-pitch.md)** - Project vision and value proposition
-- **[Architecture](assets/docs/achitecture.md)** - System architecture and technology stack
-- **[Functional Requirements](assets/docs/functional-requirements.md)** - Core system capabilities
-- **[Non-Functional Requirements](assets/docs/nonfunctional-requirements.md)** - Performance, usability, and quality metrics
+- **[Elevator Pitch](assets/docs/sprint-1/elevator-pitch.md)** - Project vision and value proposition
+- **[Architecture](assets/docs/sprint-1/achitecture.md)** - System architecture and technology stack
+- **[Functional Requirements](assets/docs/sprint-1/functional-requirements.md)** - Core system capabilities
+- **[Non-Functional Requirements](assets/docs/sprint-1/nonfunctional-requirements.md)** - Performance, usability, and quality metrics
 
 ### Design & Planning
 
-- **[Personas](assets/docs/personas.md)** - User personas and target audience
-- **[Use Cases](assets/docs/use-cases.md)** - Key user scenarios and workflows
-- **[Figma Wireframes](assets/docs/figma-wireframe.md)** - UI/UX design mockups
-- **[Sequence Diagrams](assets/docs/sequence-diagrams.md)** - System interaction flows
+- **[Personas](assets/docs/sprint-1/personas.md)** - User personas and target audience
+- **[Use Cases](assets/docs/sprint-1/use-cases.md)** - Key user scenarios and workflows
+- **[Figma Wireframes](assets/docs/sprint-1/figma-wireframe.md)** - UI/UX design mockups
+- **[Sequence Diagrams](assets/docs/sprint-1/sequence-diagrams.md)** - System interaction flows
 
 ### Technical Specifications
 
-- **[API JSON Contracts](assets/docs/api-json-contracts.md)** - RESTful API endpoint specifications
-- **[Database Diagram](assets/docs/database-diagram.md)** - Database schema and relationships
+- **[API JSON Contracts](assets/docs/sprint-1/api-json-contracts.md)** - RESTful API endpoint specifications
+- **[Database Diagram](assets/docs/sprint-1/database-diagram.md)** - Database schema and relationships
 
 ### Testing
 
-- **[Testing Plan (Whitebox)](assets/docs/testing-plan-whitebox.md)** - Unit and integration testing strategy
-- **[User Acceptance Test Plan](assets/docs/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
-- **[Testing Guide](assets/docs/sprint-1/testing-guide.md)** - How to run tests and test coverage documentation
+- **[Testing Plan (Whitebox)](assets/docs/sprint-1/testing-plan-whitebox.md)** - Unit and integration testing strategy
+- **[User Acceptance Test Plan](assets/docs/sprint-1/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
 
 ### Project Management
 
-- **[Project Follow-up](assets/docs/sprint-1/project-management/project-follow-up.md)** - Sprint review and status tracking
-- **[Schedule](assets/docs/sprint-1/project-management/schedule.md)** - Project timeline and milestones
-- **[Sprint 1 Review Checklist](assets/docs/sprint-1/project-management/sprint1-review-checklist.md)** - Review preparation checklist
+- **[Project Follow-up](assets/docs/project-management/project-follow-up.md)** - Sprint review and status tracking
+- **[Schedule](assets/docs/project-management/schedule.md)** - Project timeline and milestones
+- **[Sprint 1 Review Checklist](assets/docs/project-management/sprint1-review-checklist.md)** - Review preparation checklist
 
 ---
 
@@ -182,12 +180,7 @@ cd CS4900
 ### Step 2: Install Dependencies
 
 ```bash
-# Install backend dependencies
-cd backend
-npm install
-
-# Install frontend dependencies
-cd ../frontend
+# Install all workspace dependencies
 npm install
 ```
 
@@ -211,7 +204,7 @@ CREATE DATABASE vellum;
 Or using a GUI tool like pgAdmin:
 1. Open pgAdmin
 2. Right-click on "Databases"
-3. Select "Create" → "Database"
+3. Select "Create" â†’ "Database"
 4. Name it `vellum`
 5. Click "Save"
 
@@ -220,11 +213,11 @@ Or using a GUI tool like pgAdmin:
 From the project root directory:
 
 ```bash
-# Using psql command line
-psql -U postgres -d vellum -f database/setup.sql
+# Preferred project command
+npm run init-db
 
-# Or if already connected to vellum database in psql:
-\i database/setup.sql
+# Equivalent direct psql command
+psql -U postgres -d postgres -f database/setup.sql
 ```
 
 The setup script will:
@@ -292,24 +285,25 @@ sudo systemctl start postgresql
 **Windows:**
 PostgreSQL typically runs as a service automatically.
 
-#### 5.2 Start Backend Server
+#### 5.2 Start Backend + Frontend Together (Recommended)
 
 ```bash
-# Navigate to backend directory
-cd backend
-
-# Start development server
-npm run dev
-# or
+# From project root
 npm start
 ```
 
-Backend API will be available at: **http://localhost:3000/api**
+#### 5.3 Start Services Separately (Optional)
 
-#### 5.3 Start Frontend Development Server
+Backend:
 
 ```bash
-# Navigate to frontend directory (in a new terminal)
+cd backend
+npm start
+```
+
+Frontend:
+
+```bash
 cd frontend
 
 # Start React development server (Vite)
@@ -328,7 +322,7 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 ### Default URLs
 
 - **Backend API:** http://localhost:3000/api
-- **Backend Health Check:** http://localhost:3000/health
+- **Backend Health Check:** http://localhost:3000/api/health
 - **User Roles API:** http://localhost:3000/api/user-roles
 - **Frontend GUI:** http://localhost:5173 (Vite dev server)
 
@@ -347,7 +341,7 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 - Run `npm install` in both `backend/` and `frontend/` directories
 - Delete `node_modules` and `package-lock.json`, then reinstall
 
-For detailed architecture information, see the [Architecture documentation](assets/docs/achitecture.md).
+For detailed architecture information, see the [Architecture documentation](assets/docs/sprint-1/achitecture.md).
 
 ---
 
@@ -378,6 +372,6 @@ This project is developed for academic purposes as part of the UVU CS 4900 capst
 
 ---
 
-**Vellum** — Approval workflows, reimagined for mobile.
+**Vellum** - Approval workflows, reimagined for mobile.
 
 [Back to top](#top)

@@ -9,11 +9,5 @@ export function formatDate(isoDate: string): string {
 }
 
 export function statusLabel(status: AssetStatus): string {
-  if (status === "changes_requested") {
-    return "Changes Requested";
-  }
-  if (status === "approved") {
-    return "Approved";
-  }
-  return "Pending";
+  return status;
 }

@@ -1,31 +1,62 @@
 import { apiClient } from "./client";
-import { Asset, AssetStatus } from "../types/models";
+import { Asset } from "../types/models";
 
-interface CreateAssetPayload {
-  name: string;
-  notes?: string;
+// Raw API payload shape returned by backend /api/assets endpoints.
+interface RawAsset {
+  id: number;
+  title: string;
+  description?: string;
+  status: string;
+  owner?: string;
+  current_version?: string;
+  currentVersion?: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
+}
+
+function normalizeStatus(status: string | undefined): Asset["status"] {
+  // Normalize legacy or mock status variants into the UI's canonical status labels.
+  const value = (status || "").trim().toLowerCase();
+
+  if (value === "draft") return "Draft";
+  if (value === "in review" || value === "pending_review" || value === "pending") return "In Review";
+  if (value === "approved") return "Approved";
+  if (value === "changes requested" || value === "changes_requested") return "Changes Requested";
+
+  return "Draft";
+}
+
+// Maps backend fields to frontend view model used by pages/components.
+function toAsset(raw: RawAsset): Asset {
+  return {
+    id: raw.id,
+    name: raw.title,
+    owner: raw.owner ?? "Unassigned",
+    status: normalizeStatus(raw.status),
+    updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    currentVersion: raw.current_version ?? raw.currentVersion ?? "v1.0",
+    notes: raw.description
+  };
 }
 
 export async function getAssets(): Promise<Asset[]> {
-  return apiClient.get<Asset[]>("/assets");
+  const data = await apiClient.get<RawAsset[]>("/assets");
+  return data.map(toAsset);
 }
 
 export async function getAsset(id: string): Promise<Asset> {
-  return apiClient.get<Asset>(`/assets/${id}`);
+  const data = await apiClient.get<RawAsset>(`/assets/${id}`);
+  return toAsset(data);
 }
 
-export async function createAsset(payload: CreateAssetPayload): Promise<Asset> {
-  return apiClient.post<Asset>("/assets", payload);
+export async function createAsset(payload: { title: string; description?: string }): Promise<Asset> {
+  const data = await apiClient.post<RawAsset>("/assets", payload);
+  return toAsset(data);
 }
 
-async function updateAssetStatus(id: string, status: AssetStatus): Promise<Asset> {
-  return apiClient.put<Asset>(`/assets/${id}/status`, { status });
-}
-
-export function approveAsset(id: string): Promise<Asset> {
-  return updateAssetStatus(id, "approved");
-}
-
-export function requestChangesAsset(id: string): Promise<Asset> {
-  return updateAssetStatus(id, "changes_requested");
+export async function patchAssetStatus(id: string, status: string): Promise<Asset> {
+  const data = await apiClient.patch<RawAsset>(`/assets/${id}/status`, { status });
+  return toAsset(data);
 }

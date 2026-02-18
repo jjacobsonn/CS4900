@@ -1,7 +1,11 @@
-export type AssetStatus = "pending" | "approved" | "changes_requested";
+export type AssetStatus =
+  | "Draft"
+  | "In Review"
+  | "Approved"
+  | "Changes Requested";
 
 export interface Asset {
-  id: string;
+  id: string | number;
   name: string;
   owner: string;
   thumbnailUrl?: string;

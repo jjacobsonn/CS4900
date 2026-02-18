@@ -23,7 +23,8 @@ export function DashboardPage() {
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset) => {
-      const matchesSearch = asset.name.toLowerCase().includes(search.toLowerCase());
+      const assetName = (asset.name || "").toString().toLowerCase();
+      const matchesSearch = assetName.includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" ? true : asset.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -47,9 +48,10 @@ export function DashboardPage() {
             Status
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Filter)}>
               <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="changes_requested">Changes Requested</option>
+              <option value="Draft">Draft</option>
+              <option value="In Review">In Review</option>
+              <option value="Approved">Approved</option>
+              <option value="Changes Requested">Changes Requested</option>
             </select>
           </label>
         </div>
@@ -60,7 +62,7 @@ export function DashboardPage() {
         {!loading && !error && (
           <div className="asset-grid">
             {filteredAssets.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} onOpen={(id) => navigate(`/assets/${id}`)} />
+              <AssetCard key={String(asset.id)} asset={asset} onOpen={(id) => navigate(`/assets/${id}`)} />
             ))}
             {filteredAssets.length === 0 && <p>No assets found.</p>}
           </div>

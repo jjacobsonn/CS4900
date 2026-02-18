@@ -1,17 +1,16 @@
 const DEFAULT_BASE_URL = "/api";
 
-// Get API base URL - handles both Vite runtime and Jest test environment
-function getApiBaseUrl(): string {
-  // In Jest test environment, use global mock
-  if (typeof process !== "undefined" && process.env.JEST_WORKER_ID !== undefined) {
-    return ((globalThis as any).import?.meta?.env?.VITE_API_BASE_URL as string) || DEFAULT_BASE_URL;
+// Resolve API base URL for both Vite runtime and Jest tests.
+function resolveApiBaseUrl(): string {
+  const testEnvBase = (globalThis as any).import?.meta?.env?.VITE_API_BASE_URL as string | undefined;
+  if (testEnvBase) {
+    return testEnvBase;
   }
-  
-  // In Vite runtime, use import.meta.env
-  // Use eval to avoid Jest parsing import.meta at parse time
+
+  // Keep eval-based access so Jest does not fail parsing import.meta at load time.
   try {
-    // @ts-ignore - import.meta is available at runtime in Vite
-    const viteEnv = eval('import.meta.env');
+    // @ts-ignore - import.meta is available at runtime in Vite builds.
+    const viteEnv = eval("import.meta.env");
     return viteEnv.VITE_API_BASE_URL || DEFAULT_BASE_URL;
   } catch {
     return DEFAULT_BASE_URL;
@@ -19,7 +18,7 @@ function getApiBaseUrl(): string {
 }
 
 function buildUrl(path: string): string {
-  const base = getApiBaseUrl();
+  const base = resolveApiBaseUrl();
   const normalizedBase = base.endsWith("/") ? base.slice(0, -1) : base;
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
@@ -50,6 +49,8 @@ export const apiClient = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) })
 };

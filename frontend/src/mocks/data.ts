@@ -1,84 +1,88 @@
-import { Asset, Comment, UserAccount, Version } from "../types/models";
+import { Role } from "../utils/permissions";
 
-const initialAssets: Asset[] = [
+export interface MockAssetRow {
+  id: number;
+  title: string;
+  description: string | null;
+  status: "Draft" | "In Review" | "Approved" | "Changes Requested";
+  owner: string;
+  current_version: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MockCommentRow {
+  id: number;
+  asset_id: number;
+  message: string;
+  created_at: string;
+  author: string;
+  comment_type: string;
+}
+
+export interface MockUserRow {
+  id: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+}
+
+const initialAssets: MockAssetRow[] = [
   {
-    id: "asset-1",
-    name: "Homepage Hero",
-    owner: "Mina",
-    status: "pending",
-    updatedAt: "2026-02-10T14:00:00.000Z",
-    currentVersion: "v3"
+    id: 1,
+    title: "Homepage Hero Banner",
+    description: "Main campaign hero graphic for spring launch.",
+    status: "In Review",
+    owner: "Designer User",
+    current_version: "v2.0",
+    created_at: "2026-02-10T14:00:00.000Z",
+    updated_at: "2026-02-10T14:00:00.000Z"
   },
   {
-    id: "asset-2",
-    name: "Brand Poster",
-    owner: "Jordan",
-    status: "approved",
-    updatedAt: "2026-02-05T09:30:00.000Z",
-    currentVersion: "v5"
+    id: 2,
+    title: "Instagram Carousel Set",
+    description: "5-card promo carousel with CTA variants.",
+    status: "Draft",
+    owner: "Designer User",
+    current_version: "v1.3",
+    created_at: "2026-02-05T09:30:00.000Z",
+    updated_at: "2026-02-05T09:30:00.000Z"
   }
 ];
 
-const initialComments: Record<string, Comment[]> = {
-  "asset-1": [
+const initialComments: Record<string, MockCommentRow[]> = {
+  "1": [
     {
-      id: "comment-1",
-      assetId: "asset-1",
-      author: "Reviewer A",
+      id: 1,
+      asset_id: 1,
       message: "Increase contrast in the title area.",
-      createdAt: "2026-02-10T16:00:00.000Z"
+      created_at: "2026-02-10T16:00:00.000Z",
+      author: "Reviewer User",
+      comment_type: "Changes Requested"
     }
   ],
-  "asset-2": [
+  "2": [
     {
-      id: "comment-2",
-      assetId: "asset-2",
-      author: "Admin",
-      message: "Final version approved for release.",
-      createdAt: "2026-02-06T12:30:00.000Z"
+      id: 2,
+      asset_id: 2,
+      message: "Looks ready for review.",
+      created_at: "2026-02-06T12:30:00.000Z",
+      author: "Admin User",
+      comment_type: "General"
     }
   ]
 };
 
-const initialVersions: Record<string, Version[]> = {
-  "asset-1": [
-    {
-      id: "version-1",
-      assetId: "asset-1",
-      versionNumber: "v3",
-      createdAt: "2026-02-10T14:00:00.000Z",
-      status: "pending"
-    },
-    {
-      id: "version-2",
-      assetId: "asset-1",
-      versionNumber: "v2",
-      createdAt: "2026-02-09T11:00:00.000Z",
-      status: "changes_requested"
-    }
-  ],
-  "asset-2": [
-    {
-      id: "version-3",
-      assetId: "asset-2",
-      versionNumber: "v5",
-      createdAt: "2026-02-05T09:30:00.000Z",
-      status: "approved"
-    }
-  ]
-};
-
-const initialUsers: UserAccount[] = [
+const initialUsers: MockUserRow[] = [
   { id: "usr-1", email: "admin@vellum.test", role: "admin", isActive: true },
   { id: "usr-2", email: "designer@vellum.test", role: "designer", isActive: true },
   { id: "usr-3", email: "reviewer@vellum.test", role: "reviewer", isActive: true }
 ];
 
 export type MockDb = {
-  assets: Asset[];
-  commentsByAsset: Record<string, Comment[]>;
-  versionsByAsset: Record<string, Version[]>;
-  users: UserAccount[];
+  assets: MockAssetRow[];
+  commentsByAsset: Record<string, MockCommentRow[]>;
+  users: MockUserRow[];
 };
 
 function clone<T>(value: T): T {
@@ -89,7 +93,6 @@ export function createMockDb(): MockDb {
   return {
     assets: clone(initialAssets),
     commentsByAsset: clone(initialComments),
-    versionsByAsset: clone(initialVersions),
     users: clone(initialUsers)
   };
 }

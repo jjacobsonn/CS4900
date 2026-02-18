@@ -4,6 +4,14 @@
 -- Project: Vellum - Digital Asset Review & Approval Platform
 
 -- ============================================================================
+-- BOOTSTRAP: Create and connect to database
+-- ============================================================================
+
+SELECT 'CREATE DATABASE vellum'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vellum')\gexec
+\connect vellum;
+
+-- ============================================================================
 -- STEP 1: Create Database Schema
 -- ============================================================================
 
@@ -187,10 +195,156 @@ CREATE TRIGGER update_files_updated_at BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
--- STEP 9: Verification Queries
+-- STEP 9: Assets API Schema + Seed Data
 -- ============================================================================
 
--- Verify lookup tables were created and populated
+-- Keeps existing setup.sql model intact and add assets-specific tables as used by
+-- /api/assets endpoints.
+
+CREATE TABLE IF NOT EXISTS roles_lookup (
+    id SERIAL PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO roles_lookup (role_name) VALUES
+    ('Admin'),
+    ('Designer'),
+    ('Reviewer')
+ON CONFLICT (role_name) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS asset_status_lookup (
+    id SERIAL PRIMARY KEY,
+    status_name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO asset_status_lookup (status_name) VALUES
+    ('Draft'),
+    ('In Review'),
+    ('Approved'),
+    ('Changes Requested')
+ON CONFLICT (status_name) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS comment_type_lookup (
+    id SERIAL PRIMARY KEY,
+    type_name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO comment_type_lookup (type_name) VALUES
+    ('General'),
+    ('Changes Requested'),
+    ('Approval Note')
+ON CONFLICT (type_name) DO NOTHING;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);
+
+UPDATE users
+SET display_name = COALESCE(display_name, 'Admin User')
+WHERE email = 'admin@vellum.test';
+
+UPDATE users
+SET display_name = COALESCE(display_name, 'Designer User')
+WHERE email = 'designer@vellum.test';
+
+UPDATE users
+SET display_name = COALESCE(display_name, 'Reviewer User')
+WHERE email = 'reviewer@vellum.test';
+
+CREATE TABLE IF NOT EXISTS assets (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status_id INTEGER NOT NULL REFERENCES asset_status_lookup(id),
+    current_version VARCHAR(20) NOT NULL DEFAULT 'v1.0',
+    created_by_user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS asset_comments (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    author_user_id INTEGER REFERENCES users(id),
+    comment_type_id INTEGER REFERENCES comment_type_lookup(id),
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
+SELECT
+    'Homepage Hero Banner',
+    'Main campaign hero graphic for spring launch.',
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'In Review'),
+    'v2.0',
+    (SELECT id FROM users WHERE email = 'designer@vellum.test')
+WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Homepage Hero Banner');
+
+INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
+SELECT
+    'Instagram Carousel Set',
+    '5-card promo carousel with CTA variants.',
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'Draft'),
+    'v1.3',
+    (SELECT id FROM users WHERE email = 'designer@vellum.test')
+WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Instagram Carousel Set');
+
+INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
+SELECT
+    'Packaging Label Concept',
+    'Round 2 packaging label with updated legal copy.',
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'Changes Requested'),
+    'v1.1',
+    (SELECT id FROM users WHERE email = 'designer@vellum.test')
+WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Packaging Label Concept');
+
+INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
+SELECT
+    'Email Header Illustration',
+    'Final email header illustration for March newsletter.',
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'Approved'),
+    'v3.0',
+    (SELECT id FROM users WHERE email = 'designer@vellum.test')
+WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Email Header Illustration');
+
+INSERT INTO asset_comments (asset_id, author_user_id, comment_type_id, message)
+SELECT
+    a.id,
+    u.id,
+    t.id,
+    'Please tighten spacing around the headline before final approval.'
+FROM assets a, users u, comment_type_lookup t
+WHERE a.title = 'Homepage Hero Banner'
+  AND u.email = 'reviewer@vellum.test'
+  AND t.type_name = 'Changes Requested'
+  AND NOT EXISTS (
+      SELECT 1 FROM asset_comments c
+      WHERE c.asset_id = a.id
+        AND c.message = 'Please tighten spacing around the headline before final approval.'
+  );
+
+INSERT INTO asset_comments (asset_id, author_user_id, comment_type_id, message)
+SELECT
+    a.id,
+    u.id,
+    t.id,
+    'Updated spacing looks good to me.'
+FROM assets a, users u, comment_type_lookup t
+WHERE a.title = 'Homepage Hero Banner'
+  AND u.email = 'designer@vellum.test'
+  AND t.type_name = 'General'
+  AND NOT EXISTS (
+      SELECT 1 FROM asset_comments c
+      WHERE c.asset_id = a.id
+        AND c.message = 'Updated spacing looks good to me.'
+  );
+
+-- ============================================================================
+-- STEP 10: Verification Queries
+-- ============================================================================
+
+-- Verify legacy lookup tables were created and populated
 SELECT 'User Roles:' as info;
 SELECT * FROM user_roles;
 
@@ -198,9 +352,19 @@ SELECT 'Approval Statuses:' as info;
 SELECT * FROM approval_statuses;
 
 SELECT 'Test Users:' as info;
-SELECT u.id, u.email, ur.role_code, u.is_active 
-FROM users u 
+SELECT u.id, u.email, ur.role_code, u.is_active
+FROM users u
 JOIN user_roles ur ON u.role_id = ur.id;
+
+-- Verify assets API lookup tables and seed data
+SELECT 'Asset Status Lookup:' as info;
+SELECT * FROM asset_status_lookup;
+
+SELECT 'Seeded Assets:' as info;
+SELECT a.id, a.title, s.status_name, a.current_version
+FROM assets a
+JOIN asset_status_lookup s ON s.id = a.status_id
+ORDER BY a.id;
 
 -- ============================================================================
 -- Setup Complete

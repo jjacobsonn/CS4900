@@ -1,9 +1,9 @@
 import { formatDate, statusLabel } from "./format";
 
 test("status label mapping returns expected labels", () => {
-  expect(statusLabel("pending")).toBe("Pending");
-  expect(statusLabel("approved")).toBe("Approved");
-  expect(statusLabel("changes_requested")).toBe("Changes Requested");
+  expect(statusLabel("Draft")).toBe("Draft");
+  expect(statusLabel("Approved")).toBe("Approved");
+  expect(statusLabel("Changes Requested")).toBe("Changes Requested");
 });
 
 test("formatDate returns readable value", () => {

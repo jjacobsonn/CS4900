@@ -1,102 +1,68 @@
-/**
- * Vellum Backend Server
- * 
- * Express.js server for the Vellum API.
- * This server provides RESTful endpoints for the digital asset review platform.
- */
+import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
+import { testConnection } from "./config/database.js";
+import assetsRouter from "./routes/assets.js";
+import userRolesRouter from "./routes/userRoles.js";
 
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { testConnection } from './config/database.js';
-import userRolesRouter from './routes/userRoles.js';
-
-// Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors()); // Enable CORS for frontend connections
-app.use(express.json()); // Parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'Vellum API'
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "Vellum API",
+    timestamp: new Date().toISOString()
   });
 });
 
-// API Routes
-app.use('/api/user-roles', userRolesRouter);
+app.use("/api/user-roles", userRolesRouter);
+app.use("/api/assets", assetsRouter);
 
-// Root endpoint
-app.get('/', (req, res) => {
+app.get("/", (_req, res) => {
   res.json({
-    message: 'Vellum API Server',
-    version: '0.1.0',
+    message: "Vellum API",
     endpoints: {
-      health: '/health',
-      userRoles: '/api/user-roles'
+      health: "/api/health",
+      assets: "/api/assets",
+      userRoles: "/api/user-roles"
     }
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    success: false,
-    error: 'Not Found',
-    message: `Route ${req.method} ${req.path} not found`
+    error: "Not Found",
+    path: `${req.method} ${req.path}`
   });
 });
 
-// Error handler
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal Server Error'
+app.use((error, _req, res, _next) => {
+  console.error("Server error:", error);
+  res.status(error.status || 500).json({
+    error: error.message || "Internal Server Error"
   });
 });
 
-// Start server
-async function startServer() {
-  try {
-    // Test database connection before starting server
-    const dbConnected = await testConnection();
-    
-    if (!dbConnected) {
-      console.error('Failed to connect to database. Server not started.');
-      process.exit(1);
-    }
-    
-    app.listen(PORT, () => {
-      console.log(`\n🚀 Vellum API Server running on http://localhost:${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`👥 User Roles API: http://localhost:${PORT}/api/user-roles`);
-      console.log(`\nDatabase connection: ✅ Connected\n`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
+export async function startServer() {
+  const dbOk = await testConnection();
+  if (!dbOk) {
+    console.error("Failed to connect to database. Server not started.");
     process.exit(1);
   }
+  app.listen(PORT, () => {
+    console.log(`Vellum API running on http://localhost:${PORT}`);
+  });
 }
 
-// Start the server
-startServer();
+export { app };
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
+if (process.env.NODE_ENV !== "test") {
+  void startServer();
+}

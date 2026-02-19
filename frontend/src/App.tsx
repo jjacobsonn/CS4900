@@ -5,12 +5,13 @@ import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
 import { BackendTestPage } from "./pages/BackendTestPage";
-import { Role, allRoles, canAccessUpload, canReview } from "./utils/permissions";
+import { Role, canAccessUpload, canReview } from "./utils/permissions";
 import { useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
 const ROLE_KEY = "vellum_role";
 
+// Lightweight auth state for Sprint 1 demo flow.
 function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [role, setRoleState] = useState<Role>(() => (localStorage.getItem(ROLE_KEY) as Role) || "reviewer");
@@ -27,22 +28,15 @@ function useAuth() {
     setToken(null);
   };
 
-  const setRole = (nextRole: Role) => {
-    localStorage.setItem(ROLE_KEY, nextRole);
-    setRoleState(nextRole);
-  };
-
-  return { token, role, setLoggedIn, logout, setRole };
+  return { token, role, setLoggedIn, logout };
 }
 
 function AppLayout({
   role,
-  setRole,
   onLogout,
   children
 }: {
   role: Role;
-  setRole: (role: Role) => void;
   onLogout: () => void;
   children: React.ReactNode;
 }) {
@@ -86,16 +80,6 @@ function AppLayout({
           </button>
         </nav>
         <div className="header-actions">
-          <label>
-            Role
-            <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
-              {allRoles.map((currentRole) => (
-                <option key={currentRole} value={currentRole}>
-                  {currentRole}
-                </option>
-              ))}
-            </select>
-          </label>
           <button type="button" onClick={onLogout}>
             Logout
           </button>
@@ -122,12 +106,12 @@ export default function App() {
   }
 
   return (
-    <AppLayout role={auth.role} setRole={auth.setRole} onLogout={auth.logout}>
+    <AppLayout role={auth.role} onLogout={auth.logout}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/assets/:id" element={<AssetDetailPage role={auth.role} />} />
+        <Route path="/assets/:id" element={<AssetDetailPage />} />
         <Route path="/upload" element={<UploadPage role={auth.role} />} />
         <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/backend-test" element={<BackendTestPage />} />

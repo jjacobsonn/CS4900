@@ -35,5 +35,5 @@ test("upload submits when valid", async () => {
   await userEvent.type(screen.getByLabelText("Title"), "New Asset");
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-  expect(createAssetMock).toHaveBeenCalledWith({ name: "New Asset", notes: "" });
+  expect(createAssetMock).toHaveBeenCalledWith({ title: "New Asset", description: "" });
 });

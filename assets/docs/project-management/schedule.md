@@ -11,7 +11,7 @@
 | Sprint | Dates | Focus | Status |
 |--------|-------|-------|--------|
 | Sprint 0 | Jan 27 - Feb 9 | Documentation & Planning | Completed |
-| Sprint 1 | Feb 10 - Feb 23 | Database Setup & Initial Implementation | In Progress |
+| Sprint 1 | Feb 10 - Feb 23 | Database Setup & Initial Implementation | Completed |
 | Sprint 2 | Feb 24 - Mar 9 | Core API & Authentication | Planned |
 | Sprint 3 | Mar 10 - Mar 23 | Frontend Implementation | Planned |
 | Sprint 4 | Mar 24 - Apr 6 | Testing & Refinement | Planned |
@@ -35,13 +35,13 @@
   - [ ] README update
 
 ### Week 2 (Feb 17-23)
-- [ ] **Feb 17:** Database setup script completion and testing
-- [ ] **Feb 18:** Backend project initialization
-- [ ] **Feb 19:** Basic Express server setup
-- [ ] **Feb 20:** Database connection layer
-- [ ] **Feb 21:** Initial unit tests
-- [ ] **Feb 22:** Code review preparation
-- [ ] **Feb 23:** Sprint 1 Review meeting
+- [x] **Feb 17:** Database setup script completion and testing
+- [x] **Feb 18:** Backend project initialization
+- [x] **Feb 19:** Basic Express server setup
+- [x] **Feb 20:** Database connection layer
+- [x] **Feb 21:** Initial unit tests
+- [x] **Feb 22:** Code review preparation
+- [x] **Feb 23:** Sprint 1 Review meeting
 
 ---
 
@@ -53,10 +53,10 @@
 - [x] API contracts defined
 - [x] Repository structure established
 
-### In Progress
-- [ ] Database setup script
-- [ ] Backend server initialization
-- [ ] Development environment setup
+### In Progress / Completed
+- [x] Database setup script
+- [x] Backend server initialization
+- [x] Development environment setup
 
 ### Pending
 - [ ] Basic authentication implementation
@@ -90,7 +90,10 @@ _To be updated with team member assignments_
 | Sprint 1 Review | February 19, 2026 (3rd Wednesday) | Monthly Review |
 | Sprint 2 Review | March 19, 2026 (3rd Wednesday) | Monthly Review |
 | Sprint 3 Review | April 16, 2026 (3rd Wednesday) | Monthly Review |
-| Final Review | TBD (Final Exam Date) | Final Review |
+| Sprint 4 Review | May 21, 2026 (3rd Wednesday) | Monthly Review |
+| Final Review | See course schedule / Final Exam Date | Final Review |
+
+_Notes:_ Meetings occur every four weeks on the 3rd Wednesday; the Final Review will be held on the official course final exam date/time as published in the syllabus.
 
 ---
 
@@ -129,4 +132,4 @@ _To be updated with team member assignments_
 
 ---
 
-**Last Updated:** February 16, 2026
+**Last Updated:** February 18, 2026

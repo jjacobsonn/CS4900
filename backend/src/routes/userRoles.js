@@ -21,19 +21,23 @@ const router = express.Router();
  * 4. Results returned as JSON response
  */
 router.get('/', async (req, res) => {
+  const start = Date.now();
   try {
     const roles = await getAllUserRoles();
+    const serverTime = Date.now() - start;
     res.json({
       success: true,
       data: roles,
-      count: roles.length
+      count: roles.length,
+      server_time_ms: serverTime
     });
   } catch (error) {
     console.error('Error in GET /api/user-roles:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user roles',
-      message: error.message
+      message: error.message,
+      server_time_ms: Date.now() - start
     });
   }
 });

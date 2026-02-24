@@ -8,7 +8,7 @@
 ---
 
 ## Current Date
-**Date:** February 16, 2026  
+**Date:** February 18, 2026  
 **Sprint:** Sprint 1 Review
 
 ---
@@ -138,6 +138,50 @@ _To be filled during review meeting_
 _To be filled during review meeting_
 
 ---
+
+## Meeting Cadence & Team Responsibilities
+
+- **Follow-up cadence:** The project team will perform a documented project review every four weeks. Meetings are scheduled for the **3rd Wednesday** of each month (Sprint review) and once more on the date/time of the course final exam for the Final Review.
+- **Who should update docs before a review:** Each team member is responsible for updating the following prior to the review meeting:
+   - Personal Journal (your individual `assets/docs/personal/*` entry)
+   - `assets/docs/project-management/schedule.md` to mark items completed
+   - `assets/docs/project-management/project-follow-up.md` (this file) — add current date, schedule status, completed items, and red flags
+   - Any sprint-specific follow-up document (e.g., `sprint1-review-summary.md`)
+- **Meeting prep checklist for each individual:**
+   - Update your Project Journal(s)
+   - Update your Schedule to mark items completed
+   - Update the 'Project Follow-up' document with current Date, Schedule Status, items completed this past sprint, and Red Flags to discuss
+
+During the review meeting the group will capture:
+- Code review notes
+- Action items to be completed as a result of the review
+- Any additional notes or suggestions
+
+## Example Project Follow-up Entry (Final Review)
+
+**PROJECT :  Final Project Review**  
+**Name:** Nav L. Volcy (10611913)  
+**Date:** 04-30-2026  
+**Status:** Green Light
+
+**What did I do ?**
+- Implemented the Pharmacy Edit page, which users are directed to upon clicking the Edit button.
+- Implemented the Save button functionality to confirm successful changes to the user, clear the input fields, and redirect back to the Pharmacy page.
+- Updated the PharmacyViewModel to interact with the database by incorporating a database context and enabling saving of new pharmacy entries when the Save button is clicked.
+- Fixed testing bugs:
+   - PharmacyControllerTests
+   - IRepository.cs
+- Successfully connected to the localhost on port 5140
+
+**What problems did I run into ?**
+- The edit page’s name tag is not retrieving pharmacy names from the database for auto-fill and editing functionality.
+
+---
+
+## Links & GitHub
+
+- Instructor GitHub account for project reviews: https://github.com/gregorymortensen-uvu
+
 
 ## Sprint 1 Review Checklist
 

@@ -78,3 +78,76 @@ Successfully transitioned from planning to implementation. We have a working ful
 ---
 
 **Last Updated:** February 16, 2026
+
+---
+
+## Sprint 2 - Week 1 (Feb 24 - Mar 2, 2026)
+
+### February 27, 2026
+
+**Tasks Completed:**
+- Implemented additional backend API scaffolding and started authentication planning
+- Wrote unit tests for `userRoleService` and fixed minor edge cases
+- Reviewed teammate code for frontend routing and merged small fixes
+
+**Challenges:**
+- Authentication design decisions to finalize in Sprint 2 planning
+
+**Next Steps:**
+- Finalize authentication design and begin implementing login flow
+
+---
+
+## Sprint 3 - Week 2 (Mar 10 - Mar 23, 2026)
+
+### March 19, 2026
+
+**Tasks Completed:**
+- Implemented initial frontend components for dashboard views
+- Integrated backend endpoints with the Dashboard page for live data
+- Added MSW handlers for frontend testing of assets endpoints
+
+**Next Steps:**
+- Continue building UI components and tie permissions to role state
+
+---
+
+## Sprint 4 - Week 1 (Mar 24 - Apr 6, 2026)
+
+### April 3, 2026
+
+**Tasks Completed:**
+- Completed asset detail page and comment UI
+- Added server-side timing headers for diagnostics
+- Prepared demo for Sprint 4 review
+
+**Next Steps:**
+- Address any feedback from Sprint 4 review, focus on polishing and tests
+
+---
+
+## Sprint 5 - Week 2 (Apr 7 - Apr 20, 2026)
+
+### April 17, 2026
+
+**Tasks Completed:**
+- Fixed several frontend unit tests and updated mocks
+- Implemented save/redirect flow on admin pages
+
+**Next Steps:**
+- Prepare final review materials and ensure all docs are up to date
+
+---
+
+## Final Prep
+
+### April 30, 2026
+
+**Tasks Completed:**
+- Finalized demo walkthrough
+- Added final notes to `assets/docs/project-management/project-follow-up.md`
+
+**Reflections:**
+- The project reached a stable state ready for final review; main items remaining are deployment notes and final polish.
+
+**Last Updated:** February 18, 2026

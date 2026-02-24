@@ -7,134 +7,160 @@
 
 import { useEffect, useState } from "react";
 
-interface UserRole {
+type RoleRow = {
   id: number;
   role_code: string;
   description: string;
   created_at: string;
-}
+};
 
-interface ApiResponse {
-  success: boolean;
-  data: UserRole[];
-  count: number;
-}
+type HealthResult = {
+  status: string;
+  service: string;
+  timestamp: string;
+};
 
 export function BackendTestPage() {
-  const [roles, setRoles] = useState<UserRole[]>([]);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
+  const [assetsCount, setAssetsCount] = useState<number | null>(null);
+  const [rolesCount, setRolesCount] = useState<number | null>(null);
+  const [health, setHealth] = useState<HealthResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<string>("Testing...");
+  const [timings, setTimings] = useState<Record<string, number>>({});
+  const [summary, setSummary] = useState<Record<string, number> | null>(null);
 
   useEffect(() => {
-    // Test backend connection
-    const testConnection = async () => {
+    const runChecks = async () => {
+      setLoading(true);
+      setError(null);
+      const nextTimings: Record<string, number> = {};
+
       try {
-        setLoading(true);
-        setError(null);
-        setConnectionStatus("Connecting to backend...");
+        // /api/health
+        const t0 = performance.now();
+        const hRes = await fetch('/api/health');
+        nextTimings.health = Math.round(performance.now() - t0);
+        if (!hRes.ok) throw new Error(`/api/health returned ${hRes.status}`);
+        const hJson = await hRes.json();
+        setHealth(hJson as HealthResult);
 
-        // Call the backend API endpoint
-        const response = await fetch('/api/user-roles');
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        // /api/user-roles
+        const t1 = performance.now();
+        const rRes = await fetch('/api/user-roles');
+        nextTimings.userRoles = Math.round(performance.now() - t1);
+        if (!rRes.ok) throw new Error(`/api/user-roles returned ${rRes.status}`);
+        const rJson = await rRes.json();
+        if (!rJson.success || !Array.isArray(rJson.data)) throw new Error('Unexpected user-roles response');
+        setRoles(rJson.data as RoleRow[]);
+        setRolesCount(Number(rJson.count ?? rJson.data.length));
+        // include server processing time if provided by the API
+        if (typeof rJson.server_time_ms === 'number') {
+          nextTimings.userRolesServer = Math.round(rJson.server_time_ms);
         }
 
-        const data: ApiResponse = await response.json();
-        
-        if (data.success && data.data) {
-          setRoles(data.data);
-          setConnectionStatus(`✅ Connected! Retrieved ${data.count} roles`);
-        } else {
-          throw new Error('Invalid response format');
+        // /api/assets (returns array)
+        const t2 = performance.now();
+        const aRes = await fetch('/api/assets');
+        nextTimings.assets = Math.round(performance.now() - t2);
+        if (!aRes.ok) throw new Error(`/api/assets returned ${aRes.status}`);
+        const aJson = await aRes.json();
+        if (!Array.isArray(aJson)) throw new Error('Unexpected assets response');
+        setAssetsCount(aJson.length);
+        // server processing time exposed as header X-Server-Time-Ms
+        const aServer = aRes.headers.get('X-Server-Time-Ms');
+        if (aServer) nextTimings.assetsServer = Math.round(Number(aServer));
+
+        // /api/assets/summary (grouped counts by status)
+        const t3 = performance.now();
+        const sRes = await fetch('/api/assets/summary');
+        nextTimings.assetsSummary = Math.round(performance.now() - t3);
+        if (!sRes.ok) throw new Error(`/api/assets/summary returned ${sRes.status}`);
+        const sJson = await sRes.json();
+        if (sJson && typeof sJson.summary === 'object') {
+          setSummary(sJson.summary);
+          if (typeof sJson.server_time_ms === 'number') nextTimings.assetsSummaryServer = Math.round(sJson.server_time_ms);
         }
+
+        setTimings(nextTimings);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(errorMessage);
-        setConnectionStatus(`❌ Connection failed: ${errorMessage}`);
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message);
       } finally {
         setLoading(false);
       }
     };
 
-    testConnection();
+    void runChecks();
   }, []);
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Backend Connection Test</h1>
-      
-      <div style={{ 
-        padding: '1rem', 
-        marginBottom: '2rem', 
-        backgroundColor: error ? '#fee' : '#efe',
-        border: `2px solid ${error ? '#faa' : '#afa'}`,
-        borderRadius: '8px'
-      }}>
-        <h2>Connection Status</h2>
-        <p><strong>{connectionStatus}</strong></p>
-        {error && (
-          <div style={{ marginTop: '1rem', color: '#c00' }}>
-            <p><strong>Error Details:</strong></p>
-            <pre style={{ backgroundColor: '#fff', padding: '0.5rem', borderRadius: '4px' }}>
-              {error}
-            </pre>
-            <p style={{ marginTop: '1rem', fontSize: '0.9em' }}>
-              <strong>Make sure:</strong>
-            </p>
-            <ul>
-              <li>Backend server is running on http://localhost:3000</li>
-              <li>Backend CORS is configured to allow frontend origin</li>
-              <li>Database is set up and connected</li>
-            </ul>
+    <div style={{ padding: '1.5rem', maxWidth: 960, margin: '0 auto' }}>
+      <h1>Backend Connectivity & Data Test</h1>
+
+      <section style={{ marginBottom: 16 }}>
+        <h2>Summary</h2>
+        {loading ? (
+          <p>Running checks against backend...</p>
+        ) : error ? (
+          <div style={{ color: '#900' }}>
+            <p><strong>Failure:</strong> {error}</p>
+            <p>Check backend server, database, and network configuration.</p>
+          </div>
+        ) : (
+          <div>
+            <p>Health: <strong>{health?.status ?? 'unknown'}</strong> — service: <em>{health?.service}</em></p>
+            <p>Assets in DB: <strong>{assetsCount}</strong></p>
+            <p>User roles in DB: <strong>{rolesCount}</strong></p>
           </div>
         )}
-      </div>
+      </section>
 
-      {loading && <p>Loading user roles from backend...</p>}
+      <section style={{ marginBottom: 16 }}>
+        <h2>Timings (ms)</h2>
+        <pre style={{ background: '#f6f6f6', padding: 8 }}>{JSON.stringify(timings, null, 2)}</pre>
+      </section>
 
-      {!loading && !error && roles.length > 0 && (
-        <div>
-          <h2>User Roles from Database</h2>
-          <p>Successfully retrieved {roles.length} roles from PostgreSQL database:</p>
-          <table style={{ 
-            width: '100%', 
-            borderCollapse: 'collapse',
-            marginTop: '1rem',
-            backgroundColor: '#fff',
-            border: '1px solid #ddd'
-          }}>
+      <section style={{ marginBottom: 16 }}>
+        <h2>Assets Summary (server grouping)</h2>
+        {loading ? (
+          <p>Loading summary...</p>
+        ) : summary == null ? (
+          <p>No summary available.</p>
+        ) : (
+          <pre style={{ background: '#f6f6f6', padding: 8 }}>{JSON.stringify(summary, null, 2)}</pre>
+        )}
+      </section>
+
+      <section>
+        <h2>User Roles (raw)</h2>
+        {loading ? (
+          <p>Loading roles...</p>
+        ) : roles.length === 0 ? (
+          <p>No roles returned.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #ddd' }}>ID</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Role Code</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Description</th>
+              <tr style={{ textAlign: 'left' }}>
+                <th style={{ padding: 8, borderBottom: '1px solid #ddd' }}>ID</th>
+                <th style={{ padding: 8, borderBottom: '1px solid #ddd' }}>Code</th>
+                <th style={{ padding: 8, borderBottom: '1px solid #ddd' }}>Description</th>
+                <th style={{ padding: 8, borderBottom: '1px solid #ddd' }}>Created At</th>
               </tr>
             </thead>
             <tbody>
-              {roles.map((role) => (
-                <tr key={role.id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '0.75rem' }}>{role.id}</td>
-                  <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>{role.role_code}</td>
-                  <td style={{ padding: '0.75rem' }}>{role.description}</td>
+              {roles.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>{r.id}</td>
+                  <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>{r.role_code}</td>
+                  <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>{r.description}</td>
+                  <td style={{ padding: 8, borderBottom: '1px solid #eee' }}>{r.created_at}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-        <h3>What This Test Shows</h3>
-        <ul>
-          <li>✅ Frontend can make HTTP requests to backend</li>
-          <li>✅ Backend API is responding correctly</li>
-          <li>✅ Database connection is working</li>
-          <li>✅ Service → Database pattern is functional</li>
-          <li>✅ CORS is configured correctly</li>
-        </ul>
-      </div>
+        )}
+      </section>
     </div>
   );
 }

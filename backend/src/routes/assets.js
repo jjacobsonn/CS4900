@@ -23,11 +23,32 @@ const router = express.Router();
  * Retrieve all assets from the database.
  */
 router.get("/", async (_req, res, next) => {
+  const start = Date.now();
   try {
     const items = await listAssets();
+    const serverTime = Date.now() - start;
+    // expose server processing time as a header for client-side measurement
+    res.setHeader('X-Server-Time-Ms', String(serverTime));
     res.json(items);
   } catch (error) {
     next(error);
+  }
+});
+
+// GET /api/assets/summary - return asset counts grouped by status
+router.get('/summary', async (_req, res, next) => {
+  const start = Date.now();
+  try {
+    const items = await listAssets();
+    const summary = items.reduce((acc, it) => {
+      const s = it.status || 'Unknown';
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    }, {});
+    const serverTime = Date.now() - start;
+    res.json({ success: true, summary, total: items.length, server_time_ms: serverTime });
+  } catch (err) {
+    next(err);
   }
 });
 

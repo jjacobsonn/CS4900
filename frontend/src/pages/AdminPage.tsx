@@ -13,13 +13,27 @@ const defaultOverview: AdminOverview = {
 export function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview>(defaultOverview);
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("designer");
 
   const load = async () => {
-    const [overviewData, usersData] = await Promise.all([getAdminOverview(), getUsers()]);
-    setOverview(overviewData);
-    setUsers(usersData);
+    setLoading(true);
+    setUsersError(null);
+    try {
+      const [overviewData, usersData] = await Promise.all([
+        getAdminOverview().catch(() => defaultOverview),
+        getUsers().catch((err: Error) => {
+          setUsersError(err.message || "Could not load users");
+          return [];
+        })
+      ]);
+      setOverview(overviewData);
+      setUsers(usersData);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -69,18 +83,42 @@ export function AdminPage() {
             Create User
           </button>
         </form>
-        <ul className="user-list">
-          {users.map((user) => (
-            <li key={user.id}>
-              <span>{user.email}</span>
-              <select value={user.role} onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}>
-                <option value="designer">designer</option>
-                <option value="reviewer">reviewer</option>
-                <option value="admin">admin</option>
-              </select>
-            </li>
-          ))}
-        </ul>
+        <h2>All users in database</h2>
+        {usersError && <p role="alert" style={{ color: "#900" }}>{usersError}</p>}
+        {loading ? (
+          <p>Loading users...</p>
+        ) : (
+          <table className="user-table" style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+            <thead>
+              <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                <th style={{ padding: "8px 12px" }}>Email</th>
+                <th style={{ padding: "8px 12px" }}>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={2} style={{ padding: 12 }}>
+                    No users yet. Create one above.
+                  </td>
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
+                    <td style={{ padding: "8px 12px" }}>{user.email}</td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <select value={user.role} onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}>
+                        <option value="designer">designer</option>
+                        <option value="reviewer">reviewer</option>
+                        <option value="admin">admin</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </section>
   );

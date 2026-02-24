@@ -60,7 +60,12 @@ function AppLayout({
           <button type="button" onClick={() => navigate("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
             Dashboard
           </button>
-          <button type="button" onClick={() => navigate("/upload")} className={location.pathname === "/upload" ? "active" : ""}>
+          <button
+            type="button"
+            onClick={() => navigate("/upload")}
+            className={location.pathname === "/upload" ? "active" : ""}
+            disabled={!allowUpload}
+          >
             Upload
           </button>
           <button
@@ -75,6 +80,7 @@ function AppLayout({
             type="button"
             onClick={() => navigate("/backend-test")}
             className={location.pathname === "/backend-test" ? "active" : ""}
+            disabled={role !== "admin"}
           >
             Backend Test
           </button>
@@ -112,9 +118,9 @@ export default function App() {
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/assets/:id" element={<AssetDetailPage />} />
-        <Route path="/upload" element={<UploadPage role={auth.role} />} />
+        <Route path="/upload" element={canAccessUpload(auth.role) ? <UploadPage role={auth.role} /> : <Navigate to="/dashboard" replace />} />
         <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/backend-test" element={<BackendTestPage />} />
+        <Route path="/backend-test" element={auth.role === "admin" ? <BackendTestPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>

@@ -98,6 +98,27 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ---
 
+## Re-implementation (Architecture revisions)
+
+### February 23, 2026
+
+**Tasks Completed:**
+- Started re-implementation per `architecture-revise.md` (reviewer upload, admin user list, versioning ideas, backend test visibility)
+- **Phase 0:** Created `archive/sprint-1-baseline` snapshot of sprint-1 docs; confirmed `sprint-2/` and reimplementation plan; added `DOC-VERSIONING.md`
+- **Phase 1 quick wins:**  
+  - Reviewer: Upload disabled in nav and route (same pattern as Admin); reviewers cannot open Upload  
+  - Backend Test: Nav and route restricted to admin only; designers and reviewers no longer see it  
+  - Admin: "All users in database" table (Email | Role) with role dropdown, loading state, and error state when user list fails to load  
+- Updated `reimplementation-plan.md` with completed Phase 0 and Phase 1 checkboxes
+
+**Note:** Backend does not yet expose `GET /api/users`; Admin user list uses MSW in dev. Add users API for real data when ready.
+
+**Next Steps:**
+- Phase 2: Add `sprint-2/versioning-spec.md` and implement versioning (snapshots, Git-like actions)
+- Optionally add backend users route so Admin table shows real users
+
+---
+
 ## Sprint 3 - Week 2 (Mar 10 - Mar 23, 2026)
 
 ### March 19, 2026
@@ -150,4 +171,4 @@ Successfully transitioned from planning to implementation. We have a working ful
 **Reflections:**
 - The project reached a stable state ready for final review; main items remaining are deployment notes and final polish.
 
-**Last Updated:** February 18, 2026
+**Last Updated:** February 23, 2026

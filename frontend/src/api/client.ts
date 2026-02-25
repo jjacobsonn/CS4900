@@ -24,13 +24,31 @@ function buildUrl(path: string): string {
   return `${normalizedBase}${normalizedPath}`;
 }
 
+const ROLE_HEADER = "X-Vellum-Role";
+
+function getRoleHeader(): string | undefined {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const role = localStorage.getItem("vellum_role");
+      if (role && ["designer", "reviewer", "admin"].includes(role)) return role;
+    }
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> | undefined)
+  };
+  const role = getRoleHeader();
+  if (role) headers[ROLE_HEADER] = role;
+
   const response = await fetch(buildUrl(path), {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {})
-    },
-    ...init
+    ...init,
+    headers
   });
 
   if (!response.ok) {

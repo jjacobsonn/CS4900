@@ -12,7 +12,7 @@
 |--------|-------|-------|--------|
 | Sprint 0 | Jan 27 - Feb 9 | Documentation & Planning | Completed |
 | Sprint 1 | Feb 10 - Feb 23 | Database Setup & Initial Implementation | Completed |
-| Sprint 2 | Feb 24 - Mar 9 | Core API & Authentication | Planned |
+| Sprint 2 | Feb 24 - Mar 9 | Core API, Authentication, Admin Dashboard & Versioning | In Progress/Review |
 | Sprint 3 | Mar 10 - Mar 23 | Frontend Implementation | Planned |
 | Sprint 4 | Mar 24 - Apr 6 | Testing & Refinement | Planned |
 | Sprint 5 | Apr 7 - Apr 20 | Advanced Features | Planned |
@@ -31,8 +31,8 @@
   - [x] Project Follow-up document
   - [x] Personal Journal
   - [x] Schedule document
-  - [ ] Database setup script
-  - [ ] README update
+  - [x] Database setup script
+  - [x] README update
 
 ### Week 2 (Feb 17-23)
 - [x] **Feb 17:** Database setup script completion and testing
@@ -61,8 +61,8 @@
 ### Pending
 - [ ] Basic authentication implementation
 - [ ] File upload functionality
-- [ ] Unit test framework setup
-- [ ] Code examples for review
+- [x] Unit test framework setup
+- [x] Code examples for review
 
 ---
 
@@ -74,9 +74,10 @@
 - [x] Project Follow-up document
 - [x] Personal Journal
 - [x] Schedule document
-- [ ] Database setup script (SQL)
-- [ ] README update with setup instructions
-- [ ] Backend project initialization
+- [x] Database setup script (SQL)
+- [x] README update with setup instructions
+- [x] Backend project initialization
+- [x] Re-implementation Phase 0 & 1 (docs, reviewer upload, backend test admin-only, admin user list)
 
 ### Team Member Tasks
 _To be updated with team member assignments_
@@ -101,16 +102,17 @@ _Notes:_ Meetings occur every four weeks on the 3rd Wednesday; the Final Review 
 
 ### Sprint 1 Deliverables
 - [x] Complete project documentation
-- [ ] Database setup script
-- [ ] Basic project structure
-- [ ] Initial unit tests
-- [ ] Code examples for review
+- [x] Database setup script
+- [x] Basic project structure
+- [x] Initial unit tests
+- [x] Code examples for review
 
-### Sprint 2 Deliverables (Planned)
-- Backend API endpoints
-- Authentication system
-- Database integration
-- Unit tests for services
+### Sprint 2 Deliverables (Actual for review)
+- Backend API endpoints for assets, users, admin overview/activity, and versioning
+- Authentication/login flow backed by the real database with role resolution
+- Role-based access control enforced across backend routes and reflected in the frontend navigation
+- Admin dashboard with System Overview, Recent Activity (assets/comments), and full user management
+- Initial versioning support (asset versions table + Versions tab wired to backend)
 
 ### Sprint 3 Deliverables (Planned)
 - React frontend application
@@ -132,4 +134,4 @@ _Notes:_ Meetings occur every four weeks on the 3rd Wednesday; the Final Review 
 
 ---
 
-**Last Updated:** February 18, 2026
+**Last Updated:** February 23, 2026

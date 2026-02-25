@@ -2,8 +2,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { testConnection } from "./config/database.js";
+import adminRouter from "./routes/admin.js";
 import assetsRouter from "./routes/assets.js";
+import authRouter from "./routes/auth.js";
 import userRolesRouter from "./routes/userRoles.js";
+import usersRouter from "./routes/users.js";
 
 dotenv.config();
 
@@ -22,8 +25,11 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+app.use("/api/auth", authRouter);
 app.use("/api/user-roles", userRolesRouter);
 app.use("/api/assets", assetsRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/", (_req, res) => {
   res.json({
@@ -31,7 +37,10 @@ app.get("/", (_req, res) => {
     endpoints: {
       health: "/api/health",
       assets: "/api/assets",
-      userRoles: "/api/user-roles"
+      userRoles: "/api/user-roles",
+      auth: "/api/auth",
+      users: "/api/users",
+      admin: "/api/admin"
     }
   });
 });

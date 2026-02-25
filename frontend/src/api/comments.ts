@@ -8,7 +8,11 @@ export function getComments(
 
 export function addComment(
   assetId: string,
-  payload: { message: string; commentType: string }
-): Promise<{ id: number; asset_id: number; message: string; created_at: string }> {
+  payload: { message: string; commentType: string; authorUserId?: string }
+): Promise<{ id: number; asset_id: number; message: string; created_at: string; author?: string }> {
   return apiClient.post(`/assets/${assetId}/comments`, payload);
+}
+
+export function deleteComment(assetId: string, commentId: string): Promise<void> {
+  return apiClient.delete(`/assets/${assetId}/comments/${commentId}`);
 }

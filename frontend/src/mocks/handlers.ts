@@ -73,6 +73,37 @@ export const handlers = [
     );
     return HttpResponse.json(counts);
   }),
+  http.get("/api/admin/activity", () => {
+    const recentAssets = [...db.assets]
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 20)
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        status: a.status,
+        owner: a.owner ?? "Unassigned",
+        updatedAt: a.updated_at
+      }));
+    const allComments = Object.entries(db.commentsByAsset).flatMap(([assetId, comments]) =>
+      comments.map((c) => ({
+        ...c,
+        assetId: Number(assetId),
+        assetTitle: db.assets.find((a) => a.id === Number(assetId))?.title ?? "Asset"
+      }))
+    );
+    const recentComments = allComments
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 20)
+      .map((c) => ({
+        id: c.id,
+        assetId: c.asset_id ?? c.assetId,
+        assetTitle: c.assetTitle,
+        message: c.message,
+        author: c.author ?? "Unknown",
+        createdAt: c.created_at
+      }));
+    return HttpResponse.json({ recentAssets, recentComments });
+  }),
   http.get("/api/users", () => HttpResponse.json(db.users)),
   http.post("/api/users", async ({ request }) => {
     const body = (await request.json()) as { email: string; role: "designer" | "reviewer" | "admin" };
@@ -91,5 +122,29 @@ export const handlers = [
     if (!user) return new HttpResponse("User not found", { status: 404 });
     user.role = body.role;
     return HttpResponse.json(user);
+  }),
+  http.patch("/api/users/:id", async ({ params, request }) => {
+    const body = (await request.json()) as { role?: string; is_active?: boolean };
+    const user = db.users.find((entry) => entry.id === params.id);
+    if (!user) return new HttpResponse("User not found", { status: 404 });
+    if (typeof body.is_active === "boolean") user.isActive = body.is_active;
+    if (typeof body.role === "string") user.role = body.role as "designer" | "reviewer" | "admin";
+    return HttpResponse.json(user);
+  }),
+  http.post("/api/auth/login", async ({ request }) => {
+    const body = (await request.json()) as { email: string; password: string };
+    const normalized = body.email.trim().toLowerCase();
+    const user = db.users.find((u) => u.email.toLowerCase() === normalized);
+    if (!user || body.password !== "TestPass123!") {
+      return new HttpResponse("Invalid email or password.", { status: 401 });
+    }
+    return HttpResponse.json({
+      token: "mock-token",
+      user: {
+        id: user.id,
+        email: user.email.toLowerCase(),
+        role: user.role
+      }
+    });
   })
 ];

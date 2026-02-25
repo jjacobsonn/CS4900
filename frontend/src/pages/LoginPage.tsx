@@ -1,28 +1,13 @@
 import { FormEvent, useState } from "react";
-import { Role } from "../utils/permissions";
+import { login } from "../api/auth";
+import type { AuthUser } from "../App";
 
-const seedAccounts: Record<Role, { email: string; password: string }> = {
-  admin: { email: "admin@vellum.test", password: "TestPass123!" },
-  designer: { email: "designer@vellum.test", password: "TestPass123!" },
-  reviewer: { email: "reviewer@vellum.test", password: "TestPass123!" }
-};
-
-function resolveSeedRole(loginEmail: string): Role | null {
-  const normalized = loginEmail.trim().toLowerCase();
-  for (const [role, account] of Object.entries(seedAccounts) as Array<[Role, { email: string; password: string }]>) {
-    if (account.email.toLowerCase() === normalized) {
-      return role;
-    }
-  }
-  return null;
-}
-
-export function LoginPage({ onLogin }: { onLogin: (token: string, role: Role) => void }) {
+export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
@@ -31,19 +16,14 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, role: Role) =>
       return;
     }
 
-    const role = resolveSeedRole(email);
-    if (!role) {
-      setError("Unknown account. Use one of the seeded emails.");
-      return;
+    try {
+      const result = await login(email, password);
+      onLogin(result.token, { id: String(result.user.id), email: result.user.email, role: result.user.role });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message || "Login failed." : "Login failed.";
+      setError(message);
     }
-
-    if (password !== seedAccounts[role].password) {
-      setError("Invalid password for seeded account.");
-      return;
-    }
-
-    // auth is intentionally simulated via seeded accounts for sprint 1
-    onLogin("mock-token", role);
   };
 
   return (

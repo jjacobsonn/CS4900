@@ -102,20 +102,57 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ### February 23, 2026
 
-**Tasks Completed:**
-- Started re-implementation per `architecture-revise.md` (reviewer upload, admin user list, versioning ideas, backend test visibility)
-- **Phase 0:** Created `archive/sprint-1-baseline` snapshot of sprint-1 docs; confirmed `sprint-2/` and reimplementation plan; added `DOC-VERSIONING.md`
+**Tasks Completed (Phase 0 & 1):**
+- Started re-implementation per `architecture-revise.md` (reviewer upload, admin user list, versioning ideas, backend test visibility).
+- **Phase 0:** Created `archive/sprint-1-baseline` snapshot of sprint-1 docs; confirmed `sprint-2/` and reimplementation plan; added `DOC-VERSIONING.md` and `review-prep-and-cadence.md`.
 - **Phase 1 quick wins:**  
-  - Reviewer: Upload disabled in nav and route (same pattern as Admin); reviewers cannot open Upload  
-  - Backend Test: Nav and route restricted to admin only; designers and reviewers no longer see it  
-  - Admin: "All users in database" table (Email | Role) with role dropdown, loading state, and error state when user list fails to load  
-- Updated `reimplementation-plan.md` with completed Phase 0 and Phase 1 checkboxes
+  - Reviewer: Upload disabled in nav and route (same pattern as Admin); reviewers cannot open Upload.  
+  - Backend Test: Nav and route restricted to admin only; designers and reviewers no longer see it.  
+  - Admin: "All users in database" table (Email | Role) with role dropdown, loading state, and error state when user list fails to load.  
+- Updated `reimplementation-plan.md` with completed Phase 0 and Phase 1 checkboxes.
 
-**Note:** Backend does not yet expose `GET /api/users`; Admin user list uses MSW in dev. Add users API for real data when ready.
+**Next Steps (after Phase 1 at that time):**
+- Phase 2: Add `sprint-2/versioning-spec.md` and implement versioning (snapshots, Git-like actions).
+- Add backend users route so Admin table shows real users instead of MSW-only data.
+
+---
+
+### March 19, 2026 — Sprint 2 Review Prep (Backend, Admin, Versioning)
+
+**Tasks Completed:**
+- **Authentication & roles**
+  - Implemented backend `/api/auth/login` using the real `users` + `user_roles` tables; login now validates email/password and returns role from DB.
+  - Updated frontend Login page to call the backend and persist a token plus user (id, email, role) in local storage.
+  - Added role middleware to backend routes and ensured designer/reviewer/admin permissions are enforced for assets, users, and admin endpoints.
+- **User management & admin dashboard**
+  - Implemented full `/api/users` CRUD (list, create, update role, deactivate/reactivate, soft-delete) with admin-only access.
+  - Extended users with `display_name` and wired Admin “Create User” form + user table to show realistic names.
+  - Implemented `/api/admin/overview` and `/api/admin/activity` for real counts and recent activity.
+  - Updated Admin page to show System Overview, collapsible Recent Assets/Recent Comments tables, and inline Delete actions for assets and comments.
+- **Assets, comments, and ownership**
+  - Ensured new uploads from designers/admins set `created_by_user_id` so Owner reflects the logged-in user (display name or email).
+  - Wired comments to store `author_user_id` and display authors using `display_name`/email instead of the placeholder “Frontend User”.
+  - Added an “Assign owner” control on the asset detail page so admins can reassign ownership (or unassign) directly from the UI.
+- **Versioning**
+  - Added an `asset_versions` table and migrated existing assets to have at least one version row.
+  - Implemented `GET /api/assets/:id/versions` and wired the Versions tab to show real DB-backed version history.
+  - Implemented `POST /api/assets/:id/versions` so designers/admins can create new versions; each new version:
+    - Increments the version number.
+    - Moves asset status back to **In Review**.
+    - Updates `current_version` (e.g. `v2.0`) so Admin “Pending Review” stays in sync with the latest version.
+
+**Challenges:**
+- Keeping role enforcement, login state, and frontend behavior (Dashboard, Upload, Admin, Backend Test) consistent as we replaced mock/MSW flows with real APIs.
+- Designing versioning to feel modern while staying within the course scope and existing DB schema.
 
 **Next Steps:**
-- Phase 2: Add `sprint-2/versioning-spec.md` and implement versioning (snapshots, Git-like actions)
-- Optionally add backend users route so Admin table shows real users
+- Replace the shared test password + mock token with bcrypt-based password hashing and a JWT for authentication.
+- Extend versioning to track per-version approval state and potentially add “revert to version” actions.
+- Add real file storage for assets beyond the current metadata-only implementation.
+
+**Reflections:**
+- The system now feels much closer to a real SaaS admin experience: Admins can see live counts, recent activity, and manage users/assets/comments directly.  
+- Designers and reviewers have clearer, role-based flows (upload vs review) and comments/versions are now tied to real users and database-backed history, which will make Sprint 2’s review much easier to demonstrate.
 
 ---
 

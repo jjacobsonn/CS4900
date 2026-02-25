@@ -45,9 +45,10 @@ describe("Assets API", () => {
         ]
       });
 
-    // Act: Call API endpoint with valid payload
+    // Act: Call API endpoint with valid payload (designer/admin required)
     const response = await request(app)
       .post("/api/assets")
+      .set("X-Vellum-Role", "designer")
       .send({ title: "Landing Page Banner", description: "Sprint 1 demo asset" });
 
     // Assert: Verify response contract
@@ -59,9 +60,10 @@ describe("Assets API", () => {
     // Arrange: Mock missing lookup status result
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
-    // Act: Call API with an invalid status value
+    // Act: Call API with an invalid status value (reviewer/admin required)
     const response = await request(app)
       .patch("/api/assets/101/status")
+      .set("X-Vellum-Role", "reviewer")
       .send({ status: "NOT_A_REAL_STATUS" });
 
     // Assert: Verify status validation error
@@ -82,6 +84,30 @@ describe("Assets API", () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
     expect(response.body.length).toBe(1);
+  });
+
+  test("POST /api/assets returns 403 without X-Vellum-Role", async () => {
+    const response = await request(app)
+      .post("/api/assets")
+      .send({ title: "Test", description: "" });
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBeDefined();
+  });
+
+  test("POST /api/assets returns 403 for reviewer role", async () => {
+    const response = await request(app)
+      .post("/api/assets")
+      .set("X-Vellum-Role", "reviewer")
+      .send({ title: "Test", description: "" });
+    expect(response.status).toBe(403);
+  });
+
+  test("PATCH /api/assets/:id/status returns 403 for designer role", async () => {
+    const response = await request(app)
+      .patch("/api/assets/1/status")
+      .set("X-Vellum-Role", "designer")
+      .send({ status: "Approved" });
+    expect(response.status).toBe(403);
   });
 
   test("POST /api/assets/:id/comments returns 201", async () => {

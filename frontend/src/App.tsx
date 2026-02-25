@@ -10,25 +10,46 @@ import { useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
 const ROLE_KEY = "vellum_role";
+const USER_KEY = "vellum_user";
 
-// Lightweight auth state for Sprint 1 demo flow.
-function useAuth() {
+export type AuthUser = { id: string; email: string; role: Role };
+
+function parseUser(raw: string | null): AuthUser | null {
+  if (!raw) return null;
+  try {
+    const o = JSON.parse(raw) as unknown;
+    if (o && typeof o === "object" && "id" in o && "email" in o && "role" in o)
+      return { id: String((o as AuthUser).id), email: String((o as AuthUser).email), role: (o as AuthUser).role };
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+// Lightweight auth state: token, role, and user (id, email, role) for comment author etc.
+export function useAuth() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [role, setRoleState] = useState<Role>(() => (localStorage.getItem(ROLE_KEY) as Role) || "reviewer");
+  const [user, setUser] = useState<AuthUser | null>(() => parseUser(localStorage.getItem(USER_KEY)));
 
-  const setLoggedIn = (nextToken: string, nextRole: Role) => {
+  const setLoggedIn = (nextToken: string, nextUser: AuthUser) => {
     localStorage.setItem(TOKEN_KEY, nextToken);
-    localStorage.setItem(ROLE_KEY, nextRole);
+    localStorage.setItem(ROLE_KEY, nextUser.role);
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
     setToken(nextToken);
-    setRoleState(nextRole);
+    setRoleState(nextUser.role);
+    setUser(nextUser);
   };
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(ROLE_KEY);
+    localStorage.removeItem(USER_KEY);
     setToken(null);
+    setUser(null);
   };
 
-  return { token, role, setLoggedIn, logout };
+  return { token, role, user, setLoggedIn, logout };
 }
 
 function AppLayout({
@@ -117,8 +138,17 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/assets/:id" element={<AssetDetailPage />} />
-        <Route path="/upload" element={canAccessUpload(auth.role) ? <UploadPage role={auth.role} /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/assets/:id" element={<AssetDetailPage currentUser={auth.user} />} />
+        <Route
+          path="/upload"
+          element={
+            canAccessUpload(auth.role) ? (
+              <UploadPage role={auth.role} currentUser={auth.user} />
+            ) : (
+              <Navigate to="/dashboard" replace />
+            )
+          }
+        />
         <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/backend-test" element={auth.role === "admin" ? <BackendTestPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

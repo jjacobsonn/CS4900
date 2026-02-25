@@ -8,8 +8,10 @@
 ---
 
 ## Current Date
-**Date:** February 18, 2026  
-**Sprint:** Sprint 1 Review
+**Date:** March 19, 2026  
+**Sprint:** Sprint 2 — Core API, authentication, admin dashboard, and versioning updates ready for review.
+
+**Sprint 2 purpose:** Ensure the **four-week review process** is fulfilled — every 3rd Wednesday and at the final. Each individual must update Personal Journal, Schedule, and this Project Follow-up before each meeting; during the meeting we capture Code Review Notes, Action Items, and suggestions. Use **[Sprint 2 Purpose & Review Requirements](../sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** as the master checklist so **everything is being done** (setup from README, DB script, code examples, unit tests a–d, demo, actual vs planned status).
 
 ---
 
@@ -17,22 +19,18 @@
 
 ### Overall Project Timeline
 - **Sprint 0:** Completed - Documentation and planning phase
-- **Sprint 1:** In Progress - Initial implementation and database setup
-- **Sprint 2:** Planned - Core API endpoints and authentication
+- **Sprint 1:** Completed - Initial implementation and database setup
+- **Sprint 2:** In Progress/Review - Core API endpoints, authentication, admin dashboard, and versioning
 - **Sprint 3:** Planned - Frontend implementation
 - **Sprint 4:** Planned - Testing and refinement
 
-### Current Sprint (Sprint 1) Status
-- Project documentation completed
-- Database schema designed and implemented
-- API contracts defined
-- Database setup script created and tested
-- Backend server implemented and running
-- Frontend project initialized and connected to backend
-- Database connection working (PostgreSQL)
-- Service → Database code examples implemented
-- GUI → Service code examples implemented
-- Unit test framework configured (Jest)
+### Current Sprint (Sprint 2) Status
+- Sprint 1 baseline frozen; Sprint 2 re-implementation underway.
+- Backend and frontend are both running end-to-end against the real PostgreSQL database (no in-memory mocks in normal dev).
+- Core authentication/login implemented against seeded users (email + password), with roles resolved from `user_roles`.
+- Role-based access control (designer, reviewer, admin) enforced on backend routes and mirrored in the frontend navigation/UX.
+- Admin dashboard implemented with real counts, recent assets, recent comments, and full user management.
+- Initial versioning support in place with `asset_versions` table and Versions tab wired to the backend.
 
 ---
 
@@ -88,6 +86,43 @@
    - Branch structure established (dev-jj, merged lw-dev)
    - Professional folder structure implemented
 
+### Post–Sprint 1 (Feb 23, 2026) — Re-implementation Phase 0 & 1
+- **Phase 0:** Archive `sprint-1-baseline` created; `sprint-2/` and reimplementation plan added; `DOC-VERSIONING.md` and `review-prep-and-cadence.md` for review cadence.
+- **Phase 1:** Reviewer — Upload disabled in nav and route (same as Admin); Backend Test — visible only to admin; Admin — “All users in database” table (Email | Role) with loading/error state.
+- Personal journal (JJ) updated; changes pushed to `dev-jj`.
+
+### Sprint 2 (through March 19, 2026) — Backend + Admin + Versioning
+- **Authentication & roles**
+  - Added `/api/auth/login` endpoint backed by the real `users` and `user_roles` tables (email + password, role from DB).
+  - Frontend login page now calls the backend to validate credentials and stores a token + user (id, email, role).
+  - Implemented role middleware on the backend using `X-Vellum-Role` so:
+    - Designers/Admins can upload assets.
+    - Reviewers/Admins can change asset status.
+    - Admin-only routes (users, admin overview/activity) are protected.
+- **User management (Admin)**
+  - Implemented full `/api/users` CRUD (list, create, update role, deactivate/reactivate, soft-delete) with admin-only access.
+  - Added `display_name` column, optional display name field in Admin “Create User” form, and a Name column in the users table.
+  - Admin can deactivate/reactivate accounts and assign realistic names for designers/reviewers/admins.
+- **Admin dashboard**
+  - `/api/admin/overview` returns real counts of assets in Pending Review, Changes Requested, and Approved states.
+  - `/api/admin/activity` returns recent assets and recent comments from the database.
+  - Frontend Admin page shows:
+    - System Overview card with counts.
+    - Recent Activity panel with collapsible, scrollable tables for recent assets and comments.
+    - Inline Delete actions for assets and comments so admins can clean up bad test data.
+- **Assets, comments, and ownership**
+  - Assets are now created with `created_by_user_id` when a logged-in designer/admin uploads; owner is resolved from user display name/email.
+  - Comments store `author_user_id`; backend joins to `users` so authors show as real names/emails instead of “Frontend User”.
+  - Admin can reassign the owner of an asset from the detail page via an “Assign owner” dropdown (or set to Unassigned).
+- **Versioning**
+  - Added `asset_versions` table with version numbers, creator, timestamps, label, and notes.
+  - Seeded initial versions for existing assets and add a new version record for each new asset.
+  - Implemented `GET /api/assets/:id/versions` and wired the Versions tab on the Asset Detail page to this endpoint.
+  - Implemented `POST /api/assets/:id/versions` so designers/admins can create new versions:
+    - Each new version increments the version number.
+    - Asset status is moved back to **In Review**, and `current_version` is updated (e.g. `v2.0`).
+  - Versions tab now includes a “Create new version” action and shows a history of versions tied to real DB rows.
+
 ---
 
 ## Red Flags or Important Issues to Discuss
@@ -104,14 +139,13 @@
    - File storage location to be configured in Sprint 2
 
 3. **Future Enhancements**
-   - Authentication system to be implemented in Sprint 2
-   - Additional API endpoints needed for full functionality
-   - File upload functionality pending
+   - Password hashing + JWT to replace the shared test password and mock token.
+   - Per-version approval state and optional “revert to version” actions.
+   - Real file storage for uploads (disk or object storage) beyond current metadata-only implementation.
 
 ### Project Management
 1. **Timeline**
-   - Sprint 1 review deadline: Wednesday (this week)
-   - Need to prioritize core functionality for demo
+   - Next 3rd Wednesday review: March 19, 2026 (Sprint 2). Prepare journal, schedule, and Project Follow-up before that date.
    - May need to adjust scope if implementation takes longer than expected
 
 2. **Team Coordination**
@@ -141,7 +175,7 @@ _To be filled during review meeting_
 
 ## Meeting Cadence & Team Responsibilities
 
-- **Follow-up cadence:** The project team will perform a documented project review every four weeks. Meetings are scheduled for the **3rd Wednesday** of each month (Sprint review) and once more on the date/time of the course final exam for the Final Review.
+- **Follow-up cadence:** The project team will perform a documented project review every four weeks. Meetings are scheduled for the **3rd Wednesday** of each month (Sprint review) and once more on the date/time of the course final exam for the Final Review. See **`review-prep-and-cadence.md`** for the full before-meeting checklist and sprint review requirements.
 - **Who should update docs before a review:** Each team member is responsible for updating the following prior to the review meeting:
    - Personal Journal (your individual `assets/docs/personal/*` entry)
    - `assets/docs/project-management/schedule.md` to mark items completed
@@ -193,7 +227,7 @@ During the review meeting the group will capture:
 - [x] Server components start correctly
 - [x] Default URLs documented:
   - [x] Backend API URL: `http://localhost:3000/api`
-  - [x] Backend Health: `http://localhost:3000/health`
+  - [x] Backend Health: `http://localhost:3000/api/health`
   - [x] Frontend GUI URL: `http://localhost:5173`
 
 ### Code Review Preparation
@@ -254,4 +288,4 @@ During the review meeting the group will capture:
 
 ---
 
-**Last Updated:** February 16, 2026
+**Last Updated:** February 23, 2026

@@ -1,8 +1,9 @@
 import { FormEvent, useState } from "react";
 import { createAsset } from "../api/assets";
 import { Role, canAccessUpload } from "../utils/permissions";
+import type { AuthUser } from "../App";
 
-export function UploadPage({ role }: { role: Role }) {
+export function UploadPage({ role, currentUser }: { role: Role; currentUser: AuthUser | null }) {
   const [fileName, setFileName] = useState("");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -28,7 +29,11 @@ export function UploadPage({ role }: { role: Role }) {
       return;
     }
 
-    await createAsset({ title: title.trim(), description: notes });
+    await createAsset({
+      title: title.trim(),
+      description: notes,
+      createdByUserId: currentUser?.id
+    });
     setSuccess(`Uploaded ${fileName}`);
     setFileName("");
     setTitle("");

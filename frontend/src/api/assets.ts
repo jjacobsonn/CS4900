@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import { Asset } from "../types/models";
+import { Asset, Version } from "../types/models";
 
 // Raw API payload shape returned by backend /api/assets endpoints.
 interface RawAsset {
@@ -51,7 +51,11 @@ export async function getAsset(id: string): Promise<Asset> {
   return toAsset(data);
 }
 
-export async function createAsset(payload: { title: string; description?: string }): Promise<Asset> {
+export async function createAsset(payload: {
+  title: string;
+  description?: string;
+  createdByUserId?: string;
+}): Promise<Asset> {
   const data = await apiClient.post<RawAsset>("/assets", payload);
   return toAsset(data);
 }
@@ -59,4 +63,47 @@ export async function createAsset(payload: { title: string; description?: string
 export async function patchAssetStatus(id: string, status: string): Promise<Asset> {
   const data = await apiClient.patch<RawAsset>(`/assets/${id}/status`, { status });
   return toAsset(data);
+}
+
+export async function deleteAsset(id: string): Promise<void> {
+  await apiClient.delete(`/assets/${id}`);
+}
+
+export async function updateAssetOwner(assetId: string, ownerUserId: string | null): Promise<Asset> {
+  const data = await apiClient.patch<RawAsset>(`/assets/${assetId}/owner`, { ownerUserId });
+  return toAsset(data);
+}
+
+type RawAssetVersion = {
+  id: number;
+  asset_id: number;
+  version_number: number;
+  created_at: string;
+  created_by?: string;
+};
+
+export async function getAssetVersions(assetId: string): Promise<Version[]> {
+  const rows = await apiClient.get<RawAssetVersion[]>(`/assets/${assetId}/versions`);
+  return rows.map((row) => ({
+    id: String(row.id),
+    assetId: String(row.asset_id),
+    versionNumber: `v${row.version_number}`,
+    createdAt: row.created_at,
+    // For now, version status mirrors the asset's current status in the UI; could be version-specific later.
+    status: "Draft"
+  }));
+}
+
+export async function createAssetVersionApi(
+  assetId: string,
+  payload: { label?: string; notes?: string; createdByUserId?: string }
+): Promise<Version> {
+  const row = await apiClient.post<RawAssetVersion>(`/assets/${assetId}/versions`, payload);
+  return {
+    id: String(row.id),
+    assetId: String(row.asset_id),
+    versionNumber: `v${row.version_number}`,
+    createdAt: row.created_at,
+    status: "In Review"
+  };
 }

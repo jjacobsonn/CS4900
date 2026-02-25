@@ -252,6 +252,10 @@ UPDATE users
 SET display_name = COALESCE(display_name, 'Reviewer User')
 WHERE email = 'reviewer@vellum.test';
 
+-- ============================================================================
+-- STEP 9: Assets + Versions model for Sprint 2
+-- ============================================================================
+
 CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
@@ -271,6 +275,18 @@ CREATE TABLE IF NOT EXISTS asset_comments (
     message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Versions table for assets (lightweight history; not tied to binary files yet)
+CREATE TABLE IF NOT EXISTS asset_versions (
+    id SERIAL PRIMARY KEY,
+    asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+    version_number INTEGER NOT NULL,
+    created_by_user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS label VARCHAR(100);
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS notes TEXT;
 
 INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
 SELECT
@@ -340,6 +356,14 @@ WHERE a.title = 'Homepage Hero Banner'
         AND c.message = 'Updated spacing looks good to me.'
   );
 
+-- Seed one version row for each existing asset if none exist yet (v1 baseline)
+INSERT INTO asset_versions (asset_id, version_number, created_by_user_id)
+SELECT a.id, 1, a.created_by_user_id
+FROM assets a
+WHERE NOT EXISTS (
+  SELECT 1 FROM asset_versions v WHERE v.asset_id = a.id
+);
+
 -- ============================================================================
 -- STEP 10: Verification Queries
 -- ============================================================================
@@ -365,6 +389,11 @@ SELECT a.id, a.title, s.status_name, a.current_version
 FROM assets a
 JOIN asset_status_lookup s ON s.id = a.status_id
 ORDER BY a.id;
+
+SELECT 'Asset Versions:' as info;
+SELECT v.id, v.asset_id, v.version_number, v.created_at
+FROM asset_versions v
+ORDER BY v.asset_id, v.version_number;
 
 -- ============================================================================
 -- Setup Complete

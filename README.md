@@ -127,6 +127,8 @@ This screenshot shows:
 
 - **[Project Follow-up](assets/docs/project-management/project-follow-up.md)** - Sprint review and status tracking
 - **[Schedule](assets/docs/project-management/schedule.md)** - Project timeline and milestones
+- **[Sprint 2 Purpose & Review Requirements](assets/docs/sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** - Four-week review process; master checklist so everything is done
+- **[Review Prep & Cadence](assets/docs/project-management/review-prep-and-cadence.md)** - Before-meeting prep and sprint review checklist
 - **[Sprint 1 Review Checklist](assets/docs/project-management/sprint1-review-checklist.md)** - Review preparation checklist
 
 ---

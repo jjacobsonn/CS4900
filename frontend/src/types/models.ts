@@ -34,6 +34,7 @@ export interface Version {
 export interface UserAccount {
   id: string;
   email: string;
+  displayName?: string | null;
   role: "designer" | "reviewer" | "admin";
   isActive: boolean;
 }

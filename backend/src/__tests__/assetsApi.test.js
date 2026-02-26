@@ -29,21 +29,27 @@ describe("Assets API", () => {
   });
 
   test("POST /api/assets returns 201 with asset id for valid payload", async () => {
-    // Arrange: Mock lookup query + asset insert response
+    // Arrange: Mock full createAsset flow (status lookup, insert asset, insert version, getAssetById)
     mockQuery
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Draft status lookup
+      .mockResolvedValueOnce({
+        rows: [{ id: 101, title: "Landing Page Banner", description: "Sprint 1 demo asset" }]
+      }) // INSERT assets RETURNING id
+      .mockResolvedValueOnce({ rows: [] }) // INSERT asset_versions
       .mockResolvedValueOnce({
         rows: [
           {
             id: 101,
             title: "Landing Page Banner",
             description: "Sprint 1 demo asset",
-            status_id: 1,
+            status: "Draft",
+            current_version: "v1.0",
+            owner: "Unassigned",
             created_at: "2026-02-17T00:00:00.000Z",
             updated_at: "2026-02-17T00:00:00.000Z"
           }
         ]
-      });
+      }); // getAssetById SELECT
 
     // Act: Call API endpoint with valid payload (designer/admin required)
     const response = await request(app)

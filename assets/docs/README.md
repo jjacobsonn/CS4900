@@ -30,7 +30,7 @@ assets/docs/
 │   ├── sequence-diagrams.md
 │   ├── api-json-contracts.md
 │   ├── database-diagram.md
-│   ├── testing-plan-whitebox.md
+│   (testing-plan-whitebox.md moved to repo tests/)
 │   └── user-acceptance-test-plan.md
 └── README.md                     # This file
 ```
@@ -48,7 +48,7 @@ Technical and design documentation for the Vellum project:
 - **[Sequence Diagrams](sequence-diagrams.md)** - System interaction flows
 - **[API JSON Contracts](api-json-contracts.md)** - RESTful API endpoint specifications
 - **[Database Diagram](database-diagram.md)** - Database schema and relationships
-- **[Testing Plan (Whitebox)](testing-plan-whitebox.md)** - Unit and integration testing strategy
+- **[Testing Plan (Whitebox)](../../tests/testing-plan-whitebox.md)** - Unit and integration testing strategy (see also [tests/README.md](../../tests/README.md) for how to run tests and login verification)
 - **[User Acceptance Test Plan](user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
 
 ---

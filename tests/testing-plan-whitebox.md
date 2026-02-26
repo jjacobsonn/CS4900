@@ -1,4 +1,4 @@
-## Testing Plan — White Box (Unit Testing)
+# Testing Plan — White Box (Unit Testing)
 
 This document defines the white-box testing strategy for the Vellum system.
 White-box testing focuses on verifying that internal system logic behaves correctly according to the implemented design, independent of external systems.

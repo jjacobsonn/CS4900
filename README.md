@@ -120,7 +120,7 @@ This screenshot shows:
 
 ### Testing
 
-- **[Testing Plan (Whitebox)](assets/docs/sprint-1/testing-plan-whitebox.md)** - Unit and integration testing strategy
+- **[Testing Plan (Whitebox)](tests/testing-plan-whitebox.md)** - Unit and integration testing strategy
 - **[User Acceptance Test Plan](assets/docs/sprint-1/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
 
 ### Project Management
@@ -221,6 +221,8 @@ npm run init-db
 # Equivalent direct psql command
 psql -U postgres -d postgres -f database/setup.sql
 ```
+
+**Full guide (prerequisites, verification, troubleshooting):** [database/README.md](database/README.md)
 
 The setup script will:
 - Create all required tables (users, files, file_versions, comments, approval_history)

@@ -49,12 +49,17 @@ describe('UserRoleService', () => {
     });
 
     it('should throw error when database query fails', async () => {
-      // Arrange: Mock database error
+      // Arrange: Mock database error; suppress expected console.error from service catch block
       const mockError = new Error('Database connection failed');
       mockQuery.mockRejectedValue(mockError);
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Act & Assert: Verify error is thrown
-      await expect(getAllUserRoles()).rejects.toThrow('Failed to fetch user roles');
+      try {
+        // Act & Assert: Verify error is thrown
+        await expect(getAllUserRoles()).rejects.toThrow('Failed to fetch user roles');
+      } finally {
+        consoleSpy.mockRestore();
+      }
     });
   });
 

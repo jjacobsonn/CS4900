@@ -8,14 +8,17 @@ Express.js RESTful API server for the Vellum digital asset review platform.
 backend/
 ├── src/
 │   ├── config/
-│   │   └── database.js          # PostgreSQL connection pool
+│   │   └── database.js             # PostgreSQL connection pool
 │   ├── routes/
-│   │   └── userRoles.js          # User roles API endpoints
+│   │   ├── assets.js               # Assets API endpoints (CRUD, status, comments)
+│   │   └── userRoles.js            # User roles API endpoints
 │   ├── services/
-│   │   └── userRoleService.js    # Business logic for user roles
-│   ├── middleware/                # Custom middleware (future)
+│   │   ├── assetService.js         # Business logic for assets and workflows
+│   │   └── userRoleService.js      # Business logic for user roles
+│   ├── middleware/                 # Custom middleware (future)
 │   ├── __tests__/
-│   │   └── userRoleService.test.js  # Unit tests with mocked DB
+│   │   ├── assetsApi.test.js       # Assets API route tests (mocked DB)
+│   │   └── userRoleService.test.js # User roles unit tests (mocked DB)
 │   └── server.js                  # Express server entry point
 ├── .env.example                   # Environment variables template
 ├── package.json                   # Dependencies and scripts
@@ -65,6 +68,14 @@ Server will start on `http://localhost:3000` (or PORT from .env)
 - `GET /api/user-roles/:code` - Get role by code (DESIGNER, REVIEWER, ADMIN)
 - `GET /api/user-roles/id/:id` - Get role by ID
 
+### Assets (role-protected)
+- `GET /api/assets` - List all assets (any authenticated role)
+- `GET /api/assets/:id` - Get asset by ID
+- `POST /api/assets` - Create asset (designer or admin; requires `X-Vellum-Role`)
+- `PATCH /api/assets/:id/status` - Update asset status (reviewer or admin)
+- `POST /api/assets/:id/comments` - Add comment to asset
+- `GET /api/assets/:id/comments` - List comments for asset
+
 ## Testing
 
 **Run all tests:**
@@ -78,6 +89,9 @@ npm run test:watch
 ```
 
 Tests use mocked database connections, so no live database is required for unit tests.
+
+- **assetsApi.test.js** – Mocks `config/database.js` and exercises assets routes (POST create, PATCH status, GET list, role checks, comments). Each test resets mocks and supplies the exact query sequence the service expects (e.g. createAsset: status lookup → insert asset → insert version → getAssetById).
+- **userRoleService.test.js** – Unit tests for user role service (with mocked DB and error-path tests).
 
 ## Code Examples
 

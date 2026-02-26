@@ -99,7 +99,7 @@ export async function getAssetById(assetId) {
      WHERE a.id = $1`,
     [assetId]
   );
-  return result.rows[0] ?? null;
+  return result?.rows?.[0] ?? null;
 }
 
 /**

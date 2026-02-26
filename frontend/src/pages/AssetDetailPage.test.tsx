@@ -4,12 +4,15 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { jest } from "@jest/globals";
 import { AssetDetailPage } from "./AssetDetailPage";
-import { getAsset, patchAssetStatus } from "../api/assets";
+import { getAsset, getAssetVersions, patchAssetStatus, createAssetVersionApi, updateAssetOwner } from "../api/assets";
 import { addComment, getComments } from "../api/comments";
 
 jest.mock("../api/assets", () => ({
   getAsset: jest.fn(),
-  patchAssetStatus: jest.fn()
+  getAssetVersions: jest.fn(),
+  patchAssetStatus: jest.fn(),
+  createAssetVersionApi: jest.fn(),
+  updateAssetOwner: jest.fn()
 }));
 
 jest.mock("../api/comments", () => ({
@@ -22,6 +25,9 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
   const patchAssetStatusMock = patchAssetStatus as jest.MockedFunction<typeof patchAssetStatus>;
   const getCommentsMock = getComments as jest.MockedFunction<typeof getComments>;
   const addCommentMock = addComment as jest.MockedFunction<typeof addComment>;
+
+  const getAssetVersionsMock = getAssetVersions as jest.MockedFunction<typeof getAssetVersions>;
+  getAssetVersionsMock.mockResolvedValue([]);
 
   getAssetMock.mockResolvedValue({
     id: 42,

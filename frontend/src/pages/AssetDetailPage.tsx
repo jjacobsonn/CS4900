@@ -11,10 +11,35 @@ import type { AuthUser } from "../App";
 
 type Tab = "comments" | "versions";
 
+function renderAssetPreview(asset: Asset) {
+  if (!asset.fileUrl) {
+    return <div className="asset-preview empty">No file uploaded yet</div>;
+  }
+
+  if (asset.mimeType?.startsWith("image/")) {
+    return (
+      <div className="asset-preview media-frame">
+        <img src={asset.fileUrl} alt={asset.name} className="asset-preview-image" />
+      </div>
+    );
+  }
+
+  if (asset.mimeType === "application/pdf") {
+    return (
+      <div className="asset-preview media-frame">
+        <iframe src={asset.fileUrl} title={`${asset.name} preview`} className="asset-preview-pdf" />
+      </div>
+    );
+  }
+
+  return <div className="asset-preview empty">Preview unavailable for this file</div>;
+}
+
 export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null }) {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [asset, setAsset] = useState<Asset | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>("comments");
   const [commentInput, setCommentInput] = useState("");
@@ -114,91 +139,144 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     setAsset(updated);
   };
 
+  const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
+
   if (loading) return <section className="panel"><p>Loading asset...</p></section>;
   if (error || !asset) return <section className="panel"><p role="alert">{error || "Asset not found."}</p></section>;
 
   return (
-    <section className="page-grid">
-      <div className="panel">
-        <button type="button" className="secondary-btn" onClick={() => navigate("/dashboard")}>
-          Back
-        </button>
-        <h1>{asset.name}</h1>
-        <div className="asset-preview">Preview Placeholder</div>
-        <p>Owner: {asset.owner}</p>
-        {currentUser?.role === "admin" && (
-          <div style={{ margin: "0.5rem 0 0.75rem" }}>
-            <label>
-              Assign owner
-              <select
-                value={ownerSelectId}
-                onChange={(event) => setOwnerSelectId(event.target.value)}
+    <>
+      <section className="page-grid">
+        <div className="panel">
+          <button type="button" className="secondary-btn" onClick={() => navigate("/dashboard")}>
+            Back
+          </button>
+          <h1>{asset.name}</h1>
+          <div
+            className={`asset-viewer ${canEnlargePreview ? "clickable" : ""}`}
+            role={canEnlargePreview ? "button" : undefined}
+            tabIndex={canEnlargePreview ? 0 : -1}
+            onClick={() => {
+              if (canEnlargePreview) setIsPreviewOpen(true);
+            }}
+            onKeyDown={(event) => {
+              if (canEnlargePreview && (event.key === "Enter" || event.key === " ")) {
+                event.preventDefault();
+                setIsPreviewOpen(true);
+              }
+            }}
+          >
+            {renderAssetPreview(asset)}
+          </div>
+          <div className="asset-viewer-actions">
+            {canEnlargePreview ? (
+              <button type="button" className="secondary-btn" onClick={() => setIsPreviewOpen(true)}>
+                Enlarge preview
+              </button>
+            ) : null}
+            {asset.fileUrl ? (
+              <a className="secondary-btn file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
+                Open full file
+              </a>
+            ) : null}
+          </div>
+          <p>Owner: {asset.owner}</p>
+          {asset.fileUrl && asset.fileName ? (
+            <p>
+              Current file:{" "}
+              <a href={asset.fileUrl} target="_blank" rel="noreferrer">
+                {asset.fileName}
+              </a>
+            </p>
+          ) : null}
+          {currentUser?.role === "admin" && (
+            <div style={{ margin: "0.5rem 0 0.75rem" }}>
+              <label>
+                Assign owner
+                <select
+                  value={ownerSelectId}
+                  onChange={(event) => setOwnerSelectId(event.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {ownerCandidates.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.displayName || u.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="secondary-btn"
+                style={{ marginTop: "0.4rem" }}
+                onClick={() => void saveOwner()}
               >
-                <option value="">Unassigned</option>
-                {ownerCandidates.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.displayName || u.email}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="secondary-btn"
-              style={{ marginTop: "0.4rem" }}
-              onClick={() => void saveOwner()}
-            >
-              Save owner
+                Save owner
+              </button>
+            </div>
+          )}
+          <p>Current version: {asset.currentVersion}</p>
+          {asset.notes ? <p>Notes: {asset.notes}</p> : null}
+          <p>
+            Status: <StatusBadge status={asset.status} />
+          </p>
+          <div className="row-actions">
+            <button type="button" className="primary-btn" onClick={() => changeStatus("Approved")}>
+              Approve
+            </button>
+            <button type="button" className="secondary-btn" onClick={() => changeStatus("Changes Requested")}>
+              Request Changes
             </button>
           </div>
-        )}
-        <p>Current version: {asset.currentVersion}</p>
-        <p>
-          Status: <StatusBadge status={asset.status} />
-        </p>
-        <div className="row-actions">
-          <button type="button" className="primary-btn" onClick={() => changeStatus("Approved")}>
-            Approve
-          </button>
-          <button type="button" className="secondary-btn" onClick={() => changeStatus("Changes Requested")}>
-            Request Changes
-          </button>
         </div>
-      </div>
-      <div className="panel">
-        <div className="toolbar tabs">
-          <button type="button" className={activeTab === "comments" ? "active" : ""} onClick={() => setActiveTab("comments")}>
-            Comments
-          </button>
-          <button type="button" className={activeTab === "versions" ? "active" : ""} onClick={() => setActiveTab("versions")}>
-            Versions
-          </button>
+        <div className="panel">
+          <div className="toolbar tabs">
+            <button type="button" className={activeTab === "comments" ? "active" : ""} onClick={() => setActiveTab("comments")}>
+              Comments
+            </button>
+            <button type="button" className={activeTab === "versions" ? "active" : ""} onClick={() => setActiveTab("versions")}>
+              Versions
+            </button>
+          </div>
+          {activeTab === "comments" && (
+            <>
+              <form onSubmit={submitComment}>
+                <label>
+                  Add Comment
+                  <textarea value={commentInput} onChange={(event) => setCommentInput(event.target.value)} />
+                </label>
+                <button type="submit" className="primary-btn">Post Comment</button>
+              </form>
+              <CommentList comments={comments} />
+            </>
+          )}
+          {activeTab === "versions" && (
+            <>
+              {(currentUser?.role === "designer" || currentUser?.role === "admin") && (
+                <div style={{ marginBottom: "0.6rem" }}>
+                  <button type="button" className="primary-btn" onClick={() => void createNewVersion()}>
+                    Create new version
+                  </button>
+                </div>
+              )}
+              <VersionList versions={versions} />
+            </>
+          )}
         </div>
-        {activeTab === "comments" && (
-          <>
-            <form onSubmit={submitComment}>
-              <label>
-                Add Comment
-                <textarea value={commentInput} onChange={(event) => setCommentInput(event.target.value)} />
-              </label>
-              <button type="submit" className="primary-btn">Post Comment</button>
-            </form>
-            <CommentList comments={comments} />
-          </>
-        )}
-        {activeTab === "versions" && (
-          <>
-            {(currentUser?.role === "designer" || currentUser?.role === "admin") && (
-              <div style={{ marginBottom: "0.6rem" }}>
-                <button type="button" className="primary-btn" onClick={() => void createNewVersion()}>
-                  Create new version
-                </button>
-              </div>
-            )}
-            <VersionList versions={versions} />
-          </>
-        )}
-      </div>
-    </section>
+      </section>
+      {isPreviewOpen && canEnlargePreview ? (
+        <div className="preview-lightbox" onClick={() => setIsPreviewOpen(false)} role="presentation">
+          <button type="button" className="preview-lightbox-close" onClick={() => setIsPreviewOpen(false)}>
+            Close
+          </button>
+          <img
+            src={asset.fileUrl || ""}
+            alt={asset.name}
+            className="preview-lightbox-image"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }

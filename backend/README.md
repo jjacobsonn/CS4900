@@ -8,12 +8,13 @@ Express.js RESTful API server for the Vellum digital asset review platform.
 backend/
 ├── src/
 │   ├── config/
-│   │   └── database.js             # PostgreSQL connection pool
+│   │   ├── database.js             # PostgreSQL connection pool
+│   │   └── upload.js               # Multer upload config and file URL helpers
 │   ├── routes/
-│   │   ├── assets.js               # Assets API endpoints (CRUD, status, comments)
+│   │   ├── assets.js               # Assets API endpoints (CRUD, upload, status, comments, versions)
 │   │   └── userRoles.js            # User roles API endpoints
 │   ├── services/
-│   │   ├── assetService.js         # Business logic for assets and workflows
+│   │   ├── assetService.js         # Business logic for assets, file metadata, and workflows
 │   │   └── userRoleService.js      # Business logic for user roles
 │   ├── middleware/                 # Custom middleware (future)
 │   ├── __tests__/
@@ -61,7 +62,7 @@ Server will start on `http://localhost:3000` (or PORT from .env)
 ## API Endpoints
 
 ### Health Check
-- `GET /health` - Server health status
+- `GET /api/health` - Server health status
 
 ### User Roles
 - `GET /api/user-roles` - Get all user roles
@@ -71,10 +72,15 @@ Server will start on `http://localhost:3000` (or PORT from .env)
 ### Assets (role-protected)
 - `GET /api/assets` - List all assets (any authenticated role)
 - `GET /api/assets/:id` - Get asset by ID
-- `POST /api/assets` - Create asset (designer or admin; requires `X-Vellum-Role`)
+- `POST /api/assets` - Create asset (designer or admin; accepts multipart upload; requires `X-Vellum-Role`)
 - `PATCH /api/assets/:id/status` - Update asset status (reviewer or admin)
 - `POST /api/assets/:id/comments` - Add comment to asset
 - `GET /api/assets/:id/comments` - List comments for asset
+- `GET /api/assets/:id/versions` - List asset versions
+- `POST /api/assets/:id/versions` - Create a new asset version (designer or admin; multipart supported)
+
+### Uploaded Files
+- `GET /uploads/:filename` - Serve uploaded asset files stored on the backend server
 
 ## Testing
 
@@ -88,7 +94,7 @@ npm test
 npm run test:watch
 ```
 
-Tests use mocked database connections, so no live database is required for unit tests.
+Tests use mocked database connections, so no live database is required for unit tests. Upload route tests write to an isolated temporary directory during test runs.
 
 - **assetsApi.test.js** – Mocks `config/database.js` and exercises assets routes (POST create, PATCH status, GET list, role checks, comments). Each test resets mocks and supplies the exact query sequence the service expects (e.g. createAsset: status lookup → insert asset → insert version → getAssetById).
 - **userRoleService.test.js** – Unit tests for user role service (with mocked DB and error-path tests).
@@ -120,7 +126,7 @@ The `database.js` module provides:
 
 ## Environment Variables
 
-See `.env.example` for required variables:
+See `.env.example` or `backend/.env` for required variables:
 - `DB_HOST` - Database host (default: localhost)
 - `DB_PORT` - Database port (default: 5432)
 - `DB_NAME` - Database name (vellum)
@@ -128,3 +134,4 @@ See `.env.example` for required variables:
 - `DB_PASSWORD` - Database password
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
+- `UPLOAD_DIR` - Relative or absolute upload directory used by multer/static file serving

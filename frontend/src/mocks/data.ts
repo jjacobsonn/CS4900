@@ -9,6 +9,10 @@ export interface MockAssetRow {
   current_version: string;
   created_at: string;
   updated_at: string;
+  file_url?: string | null;
+  file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
 }
 
 export interface MockCommentRow {

@@ -40,8 +40,8 @@ export function AdminPage() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<Role>("designer");
-   const [showAssets, setShowAssets] = useState(true);
-   const [showComments, setShowComments] = useState(true);
+  const [showAssets, setShowAssets] = useState(true);
+  const [showComments, setShowComments] = useState(true);
 
   const load = async () => {
     setLoading(true);
@@ -92,8 +92,6 @@ export function AdminPage() {
   };
 
   const handleDeleteAsset = async (id: string) => {
-    // Simple confirm; enough for admin cleanup.
-    // eslint-disable-next-line no-alert
     const ok = window.confirm("Delete this asset and all its comments/versions?");
     if (!ok) return;
     await deleteAsset(id);
@@ -101,7 +99,6 @@ export function AdminPage() {
   };
 
   const handleDeleteComment = async (assetId: string, commentId: string) => {
-    // eslint-disable-next-line no-alert
     const ok = window.confirm("Delete this comment?");
     if (!ok) return;
     await deleteComment(assetId, commentId);
@@ -109,8 +106,8 @@ export function AdminPage() {
   };
 
   return (
-    <section className="page-grid">
-      <div className="panel">
+    <section className="page-grid admin-page">
+      <div className="panel admin-overview-panel">
         <h1>System Overview</h1>
         <ul className="overview-list">
           <li>Pending Review: {overview.pendingReview}</li>
@@ -118,62 +115,69 @@ export function AdminPage() {
           <li>Approved: {overview.approved}</li>
         </ul>
       </div>
-      <div className="panel">
+
+      <div className="panel admin-desktop-only admin-aside-panel">
+        <h1>Admin Notes</h1>
+        <ul className="overview-list">
+          <li>Total Users: {users.length}</li>
+          <li>Active Users: {users.filter((user) => user.isActive).length}</li>
+          <li>Recent Assets Shown: {Math.min(activity.recentAssets.length, 20)}</li>
+        </ul>
+        <div className="admin-callout">
+          <strong>Quick reminders</strong>
+          <p>Use Recent Activity for cleanup, then manage permissions below.</p>
+          <p>Delete only assets or comments that should no longer appear in review history.</p>
+        </div>
+      </div>
+
+      <div className="panel admin-activity-panel">
         <h1>Recent Activity</h1>
-        <p style={{ fontSize: "0.9rem", color: "#666" }}>Last updated assets and comments</p>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-          <h2 style={{ fontSize: "1rem", margin: 0 }}>Recent assets</h2>
+        <p className="admin-subtitle">Last updated assets and comments</p>
+
+        <div className="admin-split-header">
+          <h2 className="admin-section-title">Recent assets</h2>
           {activity.recentAssets.length > 0 && (
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => setShowAssets((prev) => !prev)}
-            >
+            <button type="button" className="secondary-btn" onClick={() => setShowAssets((prev) => !prev)}>
               {showAssets ? "Hide" : "Show"}
             </button>
           )}
         </div>
+
         {showAssets && (
-          <div style={{ maxHeight: 220, overflowY: "auto", marginTop: 8 }}>
+          <div className="admin-scroll-table">
             {activity.recentAssets.length === 0 ? (
               <p>No assets yet.</p>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+              <table className="admin-table compact">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #ddd", textAlign: "left" }}>
-                    <th style={{ padding: "4px 6px" }}>Title</th>
-                    <th style={{ padding: "4px 6px" }}>Status</th>
-                    <th style={{ padding: "4px 6px" }}>Owner</th>
-                    <th style={{ padding: "4px 6px" }}>Updated</th>
-                    <th style={{ padding: "4px 6px" }} />
+                  <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Owner</th>
+                    <th>Updated</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.recentAssets.slice(0, 20).map((a) => (
-                    <tr key={a.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={{ padding: "4px 6px" }}>
+                  {activity.recentAssets.slice(0, 20).map((asset) => (
+                    <tr key={asset.id}>
+                      <td data-label="Title">
                         <button
                           type="button"
-                          onClick={() => navigate(`/assets/${a.id}`)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: 0,
-                            textAlign: "left"
-                          }}
+                          onClick={() => navigate(`/assets/${asset.id}`)}
+                          className="admin-link-button"
                         >
-                          {a.title}
+                          {asset.title}
                         </button>
                       </td>
-                      <td style={{ padding: "4px 6px" }}>{a.status}</td>
-                      <td style={{ padding: "4px 6px" }}>{a.owner}</td>
-                      <td style={{ padding: "4px 6px" }}>{formatDate(a.updatedAt)}</td>
-                      <td style={{ padding: "4px 6px", textAlign: "right" }}>
+                      <td data-label="Status">{asset.status}</td>
+                      <td data-label="Owner">{asset.owner}</td>
+                      <td data-label="Updated">{formatDate(asset.updatedAt)}</td>
+                      <td data-label="Actions" className="actions-cell">
                         <button
                           type="button"
                           className="secondary-btn"
-                          onClick={() => void handleDeleteAsset(String(a.id))}
+                          onClick={() => void handleDeleteAsset(String(asset.id))}
                         >
                           Delete
                         </button>
@@ -185,59 +189,51 @@ export function AdminPage() {
             )}
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
-          <h2 style={{ fontSize: "1rem", margin: 0 }}>Recent comments</h2>
+
+        <div className="admin-split-header admin-section-gap">
+          <h2 className="admin-section-title">Recent comments</h2>
           {activity.recentComments.length > 0 && (
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => setShowComments((prev) => !prev)}
-            >
+            <button type="button" className="secondary-btn" onClick={() => setShowComments((prev) => !prev)}>
               {showComments ? "Hide" : "Show"}
             </button>
           )}
         </div>
+
         {showComments && (
-          <div style={{ maxHeight: 220, overflowY: "auto", marginTop: 8 }}>
+          <div className="admin-scroll-table">
             {activity.recentComments.length === 0 ? (
               <p>No comments yet.</p>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+              <table className="admin-table compact">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #ddd", textAlign: "left" }}>
-                    <th style={{ padding: "4px 6px" }}>Asset</th>
-                    <th style={{ padding: "4px 6px" }}>Comment</th>
-                    <th style={{ padding: "4px 6px" }}>Author</th>
-                    <th style={{ padding: "4px 6px" }}>When</th>
-                    <th style={{ padding: "4px 6px" }} />
+                  <tr>
+                    <th>Asset</th>
+                    <th>Comment</th>
+                    <th>Author</th>
+                    <th>When</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.recentComments.slice(0, 30).map((c) => (
-                    <tr key={c.id} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={{ padding: "4px 6px" }}>
+                  {activity.recentComments.slice(0, 30).map((comment) => (
+                    <tr key={comment.id}>
+                      <td data-label="Asset">
                         <button
                           type="button"
-                          onClick={() => navigate(`/assets/${c.assetId}`)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: 0,
-                            textAlign: "left"
-                          }}
+                          onClick={() => navigate(`/assets/${comment.assetId}`)}
+                          className="admin-link-button"
                         >
-                          {c.assetTitle}
+                          {comment.assetTitle}
                         </button>
                       </td>
-                      <td style={{ padding: "4px 6px" }}>“{c.message}”</td>
-                      <td style={{ padding: "4px 6px" }}>{c.author}</td>
-                      <td style={{ padding: "4px 6px" }}>{formatDate(c.createdAt)}</td>
-                      <td style={{ padding: "4px 6px", textAlign: "right" }}>
+                      <td data-label="Comment">"{comment.message}"</td>
+                      <td data-label="Author">{comment.author}</td>
+                      <td data-label="When">{formatDate(comment.createdAt)}</td>
+                      <td data-label="Actions" className="actions-cell">
                         <button
                           type="button"
                           className="secondary-btn"
-                          onClick={() => void handleDeleteComment(String(c.assetId), String(c.id))}
+                          onClick={() => void handleDeleteComment(String(comment.assetId), String(comment.id))}
                         >
                           Delete
                         </button>
@@ -250,8 +246,9 @@ export function AdminPage() {
           </div>
         )}
       </div>
-      <div className="panel" style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 800, margin: "0 auto" }}>
+
+      <div className="panel admin-wide-panel">
+        <div className="admin-content">
           <h1>User Management</h1>
           <form onSubmit={handleCreateUser} className="admin-form">
             <label>
@@ -279,55 +276,56 @@ export function AdminPage() {
               Create User
             </button>
           </form>
+
           <h2>All users in database</h2>
-          {usersError && <p role="alert" style={{ color: "#900" }}>{usersError}</p>}
+          {usersError && <p role="alert" className="admin-error">{usersError}</p>}
           {loading ? (
             <p>Loading users...</p>
           ) : (
-            <table className="user-table" style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
-              <thead>
-                <tr style={{ textAlign: "left", borderBottom: "2px solid #ddd" }}>
-                  <th style={{ padding: "8px 12px" }}>Name</th>
-                  <th style={{ padding: "8px 12px" }}>Email</th>
-                  <th style={{ padding: "8px 12px" }}>Role</th>
-                  <th style={{ padding: "8px 12px" }}>Status</th>
-                  <th style={{ padding: "8px 12px" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 ? (
+            <div className="admin-scroll-table">
+              <table className="admin-table user-table">
+                <thead>
                   <tr>
-                    <td colSpan={5} style={{ padding: 12 }}>
-                      No users yet. Create one above.
-                    </td>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  users.map((user) => (
-                    <tr key={user.id} style={{ borderBottom: "1px solid #eee" }}>
-                      <td style={{ padding: "8px 12px" }}>{user.displayName || "—"}</td>
-                      <td style={{ padding: "8px 12px" }}>{user.email}</td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <select value={user.role} onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}>
-                          <option value="designer">designer</option>
-                          <option value="reviewer">reviewer</option>
-                          <option value="admin">admin</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: "8px 12px" }}>{user.isActive ? "Active" : "Inactive"}</td>
-                      <td style={{ padding: "8px 12px" }}>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeactivate(user.id, user.isActive)}
-                          className={user.isActive ? "secondary-btn" : "primary-btn"}
-                        >
-                          {user.isActive ? "Deactivate" : "Reactivate"}
-                        </button>
-                      </td>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>No users yet. Create one above.</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    users.map((user) => (
+                      <tr key={user.id}>
+                        <td data-label="Name">{user.displayName || "-"}</td>
+                        <td data-label="Email">{user.email}</td>
+                        <td data-label="Role">
+                          <select value={user.role} onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}>
+                            <option value="designer">designer</option>
+                            <option value="reviewer">reviewer</option>
+                            <option value="admin">admin</option>
+                          </select>
+                        </td>
+                        <td data-label="Status">{user.isActive ? "Active" : "Inactive"}</td>
+                        <td data-label="Actions" className="actions-cell">
+                          <button
+                            type="button"
+                            onClick={() => void handleDeactivate(user.id, user.isActive)}
+                            className={user.isActive ? "secondary-btn" : "primary-btn"}
+                          >
+                            {user.isActive ? "Deactivate" : "Reactivate"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

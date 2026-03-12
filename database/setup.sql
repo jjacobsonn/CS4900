@@ -112,9 +112,18 @@ CREATE TABLE IF NOT EXISTS approval_history (
 -- ============================================================================
 
 -- Add foreign key constraint for current_version_id (must be done after file_versions table exists)
-ALTER TABLE files 
-ADD CONSTRAINT fk_files_current_version 
-FOREIGN KEY (current_version_id) REFERENCES file_versions(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_files_current_version'
+    ) THEN
+        ALTER TABLE files
+        ADD CONSTRAINT fk_files_current_version
+        FOREIGN KEY (current_version_id) REFERENCES file_versions(id);
+    END IF;
+END $$;
 
 -- ============================================================================
 -- STEP 5: Create Indexes for Performance
@@ -187,10 +196,12 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger to auto-update updated_at on users table
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger to auto-update updated_at on files table
+DROP TRIGGER IF EXISTS update_files_updated_at ON files;
 CREATE TRIGGER update_files_updated_at BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -287,6 +298,11 @@ CREATE TABLE IF NOT EXISTS asset_versions (
 
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS label VARCHAR(100);
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS stored_file_name VARCHAR(255);
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
+ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
 
 INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
 SELECT

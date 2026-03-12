@@ -24,11 +24,12 @@ test("DashboardPage renders assets and filters by status", async () => {
     </MemoryRouter>
   );
 
-  expect(await screen.findByText("Asset A")).toBeInTheDocument();
+  expect(await screen.findByText("Asset B")).toBeInTheDocument();
+  expect(screen.queryByText("Asset A")).not.toBeInTheDocument();
+  expect(screen.queryByText("Asset C")).not.toBeInTheDocument();
   expect(screen.getByText("Asset B")).toBeInTheDocument();
-  expect(screen.getByText("Asset C")).toBeInTheDocument();
 
-  await userEvent.selectOptions(screen.getByLabelText("Status"), "Draft");
+  await userEvent.selectOptions(screen.getByLabelText("Queue Scope"), "Draft");
   expect(screen.getByText("Asset A")).toBeInTheDocument();
   expect(screen.queryByText("Asset B")).not.toBeInTheDocument();
   expect(screen.queryByText("Asset C")).not.toBeInTheDocument();

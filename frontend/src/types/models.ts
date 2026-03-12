@@ -9,6 +9,10 @@ export interface Asset {
   name: string;
   owner: string;
   thumbnailUrl?: string;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
   status: AssetStatus;
   updatedAt: string;
   currentVersion: string;
@@ -29,6 +33,10 @@ export interface Version {
   versionNumber: string;
   createdAt: string;
   status: AssetStatus;
+  fileUrl?: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 }
 
 export interface UserAccount {

@@ -4,12 +4,20 @@ import { Role, canAccessUpload } from "../utils/permissions";
 import type { AuthUser } from "../App";
 
 export function UploadPage({ role, currentUser }: { role: Role; currentUser: AuthUser | null }) {
-  const [fileName, setFileName] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const canUpload = canAccessUpload(role);
+  const allowedTypes = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+    "application/pdf"
+  ]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -20,7 +28,7 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
       setError("Your role cannot upload assets.");
       return;
     }
-    if (!fileName) {
+    if (!file) {
       setError("Please select a file.");
       return;
     }
@@ -28,16 +36,32 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
       setError("Title is required.");
       return;
     }
+    if (!allowedTypes.has(file.type)) {
+      setError("Unsupported file type. Use PNG, JPG, WEBP, GIF, or PDF.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File must be 10 MB or smaller.");
+      return;
+    }
 
-    await createAsset({
-      title: title.trim(),
-      description: notes,
-      createdByUserId: currentUser?.id
-    });
-    setSuccess(`Uploaded ${fileName}`);
-    setFileName("");
-    setTitle("");
-    setNotes("");
+    try {
+      setIsSubmitting(true);
+      await createAsset({
+        title: title.trim(),
+        description: notes.trim(),
+        createdByUserId: currentUser?.id,
+        file
+      });
+      setSuccess(`Uploaded ${file.name}`);
+      setFile(null);
+      setTitle("");
+      setNotes("");
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "Upload failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -46,15 +70,16 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
       <form onSubmit={handleSubmit}>
         <div className="upload-dropzone">
           <p>Upload Area</p>
-          <small>Click or drag file here</small>
+          <small>{file ? `${file.name} selected` : "Click to choose a supported file"}</small>
         </div>
         <label>
           File
           <input
             type="file"
+            accept=".png,.jpg,.jpeg,.webp,.gif,.pdf"
             onChange={(event) => {
               const selected = event.target.files?.[0];
-              setFileName(selected?.name || "");
+              setFile(selected ?? null);
             }}
           />
         </label>
@@ -66,8 +91,8 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
           Notes
           <textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
         </label>
-        <button type="submit" disabled={!canUpload}>
-          Submit
+        <button type="submit" disabled={!canUpload || isSubmitting}>
+          {isSubmitting ? "Uploading..." : "Submit"}
         </button>
       </form>
       {error && <p role="alert">{error}</p>}

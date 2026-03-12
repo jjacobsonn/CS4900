@@ -64,14 +64,19 @@ Vellum provides lightweight, role-aware creative reviews optimized for real-worl
 - **Creative Reviewer:** Review files, provide feedback, approve/request changes
 - **Admin/Project Owner:** Manage users, roles, and project settings
 
-**Multi-Format File Support**
-- Images, PDFs, Office documents
-- Text, code files, CSV, JSON
-- Archive files (ZIP) and more
+**Review Queue Dashboard**
+- Review-focused queue defaults to assets that still need attention
+- Summary metrics for In Review, Changes Requested, Draft, and Approved
+- Dedicated filter panel with queue scope and title search
+
+**Asset Upload and Preview**
+- Designer/admin upload flow stores real files on the backend server
+- Supported upload types: images and PDFs
+- Asset detail page shows in-page preview plus open-full-file actions
 
 **Contextual Feedback**
-- Comment on files with approval context
-- Version history tracking
+- Comment on assets with approval context
+- Lightweight version history tracking
 - Clear visual approval indicators
 
 ---
@@ -266,7 +271,7 @@ NODE_ENV=development
 JWT_SECRET=your_jwt_secret_key_here
 
 # File Upload Configuration
-UPLOAD_DIR=./uploads
+UPLOAD_DIR=backend/uploads
 MAX_FILE_SIZE=10485760  # 10MB in bytes
 ```
 
@@ -321,14 +326,21 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 1. **Database:** Verify tables exist and lookup data is populated
 2. **Backend:** Check that server starts without errors
 3. **Frontend:** Verify React app loads in browser
-4. **API Connection:** Test API endpoints (when implemented)
+4. **API Connection:** Verify login, dashboard data, and asset upload against the real backend
 
 ### Default URLs
 
 - **Backend API:** http://localhost:3000/api
 - **Backend Health Check:** http://localhost:3000/api/health
 - **User Roles API:** http://localhost:3000/api/user-roles
+- **Uploaded Files:** http://localhost:3000/uploads/<stored-file-name>
 - **Frontend GUI:** http://localhost:5173 (Vite dev server)
+
+### Current App Notes
+
+- The dashboard behaves as a **Review Queue** by default, showing only `In Review` and `Changes Requested` assets unless the queue scope is widened.
+- The old `Backend Test` page has been removed from the user-facing navigation.
+- Uploaded files are stored locally on the backend server for the MVP
 
 ### Troubleshooting
 

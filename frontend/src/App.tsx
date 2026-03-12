@@ -4,9 +4,8 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
-import { BackendTestPage } from "./pages/BackendTestPage";
 import { Role, canAccessUpload, canReview } from "./utils/permissions";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
 const ROLE_KEY = "vellum_role";
@@ -65,6 +64,7 @@ function AppLayout({
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
   const allowReview = canReview(role);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const activeSection = location.pathname.startsWith("/assets")
     ? "review"
     : location.pathname.startsWith("/admin")
@@ -73,17 +73,37 @@ function AppLayout({
       ? "upload"
       : "dashboard";
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const goTo = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <div className="brand-box">Vellum</div>
-        <nav className="nav-links">
-          <button type="button" onClick={() => navigate("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
+        <button
+          type="button"
+          className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="main-navigation"
+          aria-label="Toggle navigation menu"
+          onClick={() => setIsMobileMenuOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <nav id="main-navigation" className={`nav-links ${isMobileMenuOpen ? "open" : ""}`}>
+          <button type="button" onClick={() => goTo("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
             Dashboard
           </button>
           <button
             type="button"
-            onClick={() => navigate("/upload")}
+            onClick={() => goTo("/upload")}
             className={location.pathname === "/upload" ? "active" : ""}
             disabled={!allowUpload}
           >
@@ -91,19 +111,14 @@ function AppLayout({
           </button>
           <button
             type="button"
-            onClick={() => navigate("/admin")}
+            onClick={() => goTo("/admin")}
             className={location.pathname === "/admin" ? "active" : ""}
             disabled={role !== "admin"}
           >
             Admin
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/backend-test")}
-            className={location.pathname === "/backend-test" ? "active" : ""}
-            disabled={role !== "admin"}
-          >
-            Backend Test
+          <button type="button" className="mobile-logout" onClick={onLogout}>
+            Logout
           </button>
         </nav>
         <div className="header-actions">
@@ -150,7 +165,6 @@ export default function App() {
           }
         />
         <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/backend-test" element={auth.role === "admin" ? <BackendTestPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>

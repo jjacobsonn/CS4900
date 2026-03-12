@@ -13,6 +13,11 @@ export function VersionList({ versions }: { versions: Version[] }) {
         <li key={version.id}>
           <strong>{version.versionNumber}</strong>
           <span>{formatDate(version.createdAt)}</span>
+          {version.fileUrl && version.fileName ? (
+            <a href={version.fileUrl} target="_blank" rel="noreferrer">
+              {version.fileName}
+            </a>
+          ) : null}
           <StatusBadge status={version.status} />
         </li>
       ))}

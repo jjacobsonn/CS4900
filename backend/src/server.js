@@ -1,6 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import path from "path";
 import { testConnection } from "./config/database.js";
 import adminRouter from "./routes/admin.js";
 import assetsRouter from "./routes/assets.js";
@@ -12,10 +13,12 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "backend/uploads");
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(uploadDir));
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({

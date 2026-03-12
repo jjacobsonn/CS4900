@@ -11,8 +11,13 @@
 
 import request from "supertest";
 import { jest } from "@jest/globals";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 const mockQuery = jest.fn();
+const testUploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "vellum-upload-test-"));
+process.env.UPLOAD_DIR = testUploadDir;
 
 jest.unstable_mockModule("../config/database.js", () => ({
   query: mockQuery,
@@ -26,6 +31,20 @@ describe("Assets API", () => {
   beforeEach(() => {
     // Clear all mocks before each test
     mockQuery.mockReset();
+  });
+
+  afterEach(() => {
+    if (!fs.existsSync(testUploadDir)) return;
+    for (const entry of fs.readdirSync(testUploadDir)) {
+      fs.unlinkSync(path.join(testUploadDir, entry));
+    }
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(testUploadDir)) {
+      fs.rmSync(testUploadDir, { recursive: true, force: true });
+    }
+    delete process.env.UPLOAD_DIR;
   });
 
   test("POST /api/assets returns 201 with asset id for valid payload", async () => {
@@ -139,5 +158,53 @@ describe("Assets API", () => {
     // Assert: Verify created comment response
     expect(response.status).toBe(201);
     expect(response.body.id).toBe(500);
+  });
+
+  test("POST /api/assets accepts multipart upload and persists file metadata", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 102 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 102,
+            title: "Spec Sheet",
+            description: "Uploaded from UI",
+            status: "Draft",
+            current_version: "v1.0",
+            owner: "Designer User",
+            original_file_name: "spec-sheet.pdf",
+            mime_type: "application/pdf",
+            size_bytes: 7,
+            file_path: "backend/uploads/fake-spec-sheet.pdf",
+            created_at: "2026-03-12T00:00:00.000Z",
+            updated_at: "2026-03-12T00:00:00.000Z"
+          }
+        ]
+      });
+
+    const response = await request(app)
+      .post("/api/assets")
+      .set("X-Vellum-Role", "designer")
+      .field("title", "Spec Sheet")
+      .field("description", "Uploaded from UI")
+      .attach("file", Buffer.from("pdfdata"), "spec-sheet.pdf");
+
+    expect(response.status).toBe(201);
+    expect(response.body.file_name).toBe("spec-sheet.pdf");
+    expect(mockQuery).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("INSERT INTO asset_versions"),
+      expect.arrayContaining([
+        102,
+        null,
+        "spec-sheet.pdf",
+        expect.stringMatching(/spec-sheet\.pdf$/),
+        "application/pdf",
+        7,
+        expect.stringMatching(/spec-sheet\.pdf$/)
+      ])
+    );
   });
 });

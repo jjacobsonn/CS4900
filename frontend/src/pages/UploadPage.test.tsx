@@ -10,7 +10,7 @@ jest.mock("../api/assets", () => ({
 }));
 
 test("upload form validation requires file and title", async () => {
-  render(<UploadPage role="admin" />);
+  render(<UploadPage role="admin" currentUser={{ id: "7", email: "admin@vellum.test", role: "admin" }} />);
 
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Please select a file.");
@@ -25,15 +25,24 @@ test("upload submits when valid", async () => {
   const createAssetMock = createAsset as jest.MockedFunction<typeof createAsset>;
   createAssetMock.mockResolvedValue({
     id: "asset-3",
-    name: "New Asset"
+    name: "New Asset",
+    owner: "Admin User",
+    status: "Draft",
+    updatedAt: "2026-03-12T00:00:00.000Z",
+    currentVersion: "v1.0"
   });
 
-  render(<UploadPage role="admin" />);
+  render(<UploadPage role="admin" currentUser={{ id: "7", email: "admin@vellum.test", role: "admin" }} />);
 
   const file = new File(["hello"], "design.png", { type: "image/png" });
   await userEvent.upload(screen.getByLabelText("File"), file);
   await userEvent.type(screen.getByLabelText("Title"), "New Asset");
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 
-  expect(createAssetMock).toHaveBeenCalledWith({ title: "New Asset", description: "" });
+  expect(createAssetMock).toHaveBeenCalledWith({
+    title: "New Asset",
+    description: "",
+    createdByUserId: "7",
+    file
+  });
 });

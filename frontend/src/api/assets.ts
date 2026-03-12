@@ -14,6 +14,10 @@ interface RawAsset {
   createdAt?: string;
   updated_at?: string;
   updatedAt?: string;
+  file_url?: string | null;
+  file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
 }
 
 function normalizeStatus(status: string | undefined): Asset["status"] {
@@ -37,7 +41,11 @@ function toAsset(raw: RawAsset): Asset {
     status: normalizeStatus(raw.status),
     updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     currentVersion: raw.current_version ?? raw.currentVersion ?? "v1.0",
-    notes: raw.description
+    notes: raw.description,
+    fileUrl: raw.file_url ?? null,
+    fileName: raw.file_name ?? null,
+    mimeType: raw.mime_type ?? null,
+    sizeBytes: raw.size_bytes ?? null
   };
 }
 
@@ -55,8 +63,18 @@ export async function createAsset(payload: {
   title: string;
   description?: string;
   createdByUserId?: string;
+  file?: File;
 }): Promise<Asset> {
-  const data = await apiClient.post<RawAsset>("/assets", payload);
+  const body = new FormData();
+  body.set("title", payload.title);
+  body.set("description", payload.description ?? "");
+  if (payload.createdByUserId) {
+    body.set("createdByUserId", payload.createdByUserId);
+  }
+  if (payload.file) {
+    body.set("file", payload.file);
+  }
+  const data = await apiClient.post<RawAsset>("/assets", body);
   return toAsset(data);
 }
 
@@ -80,6 +98,10 @@ type RawAssetVersion = {
   version_number: number;
   created_at: string;
   created_by?: string;
+  file_url?: string | null;
+  original_file_name?: string | null;
+  mime_type?: string | null;
+  size_bytes?: number | null;
 };
 
 export async function getAssetVersions(assetId: string): Promise<Version[]> {
@@ -90,20 +112,39 @@ export async function getAssetVersions(assetId: string): Promise<Version[]> {
     versionNumber: `v${row.version_number}`,
     createdAt: row.created_at,
     // For now, version status mirrors the asset's current status in the UI; could be version-specific later.
-    status: "Draft"
+    status: "Draft",
+    fileUrl: row.file_url ?? null,
+    fileName: row.original_file_name ?? null,
+    mimeType: row.mime_type ?? null,
+    sizeBytes: row.size_bytes ?? null
   }));
 }
 
 export async function createAssetVersionApi(
   assetId: string,
-  payload: { label?: string; notes?: string; createdByUserId?: string }
+  payload: { label?: string; notes?: string; createdByUserId?: string; file?: File }
 ): Promise<Version> {
-  const row = await apiClient.post<RawAssetVersion>(`/assets/${assetId}/versions`, payload);
+  const body =
+    payload.file instanceof File
+      ? (() => {
+          const form = new FormData();
+          if (payload.label) form.set("label", payload.label);
+          if (payload.notes) form.set("notes", payload.notes);
+          if (payload.createdByUserId) form.set("createdByUserId", payload.createdByUserId);
+          form.set("file", payload.file);
+          return form;
+        })()
+      : payload;
+  const row = await apiClient.post<RawAssetVersion>(`/assets/${assetId}/versions`, body);
   return {
     id: String(row.id),
     assetId: String(row.asset_id),
     versionNumber: `v${row.version_number}`,
     createdAt: row.created_at,
-    status: "In Review"
+    status: "In Review",
+    fileUrl: row.file_url ?? null,
+    fileName: row.original_file_name ?? null,
+    mimeType: row.mime_type ?? null,
+    sizeBytes: row.size_bytes ?? null
   };
 }

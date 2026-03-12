@@ -11,12 +11,24 @@
  */
 
 import { query } from "../config/database.js";
+import { getPublicFileUrl } from "../config/upload.js";
 
 /**
  * Example API -> DB flow snippet requested in sprint outline:
  * const pool = require('./db/connection');
  * const assets = await pool.query('SELECT * FROM assets;');
  */
+
+function mapAssetRow(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    file_url: getPublicFileUrl(row.file_path),
+    file_name: row.original_file_name ?? null,
+    mime_type: row.mime_type ?? null,
+    size_bytes: row.size_bytes ?? null
+  };
+}
 
 /**
  * Get all assets from the database
@@ -34,14 +46,21 @@ export async function listAssets() {
             s.status_name AS status,
             a.current_version,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
+            v.original_file_name,
+            v.mime_type,
+            v.size_bytes,
+            v.file_path,
             a.created_at,
             a.updated_at
      FROM assets a
      JOIN asset_status_lookup s ON s.id = a.status_id
      LEFT JOIN users u ON u.id = a.created_by_user_id
+     LEFT JOIN asset_versions v
+       ON v.asset_id = a.id
+      AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)
      ORDER BY a.id DESC`
   );
-  return result.rows;
+  return result.rows.map(mapAssetRow);
 }
 
 /**
@@ -50,7 +69,7 @@ export async function listAssets() {
  * This function inserts a new asset and defaults it to Draft status. When a
  * createdByUserId is provided, that user is recorded as the asset owner.
  *
- * @param {{ title: string, description?: string, createdByUserId?: number|null }} payload - Asset create payload
+ * @param {{ title: string, description?: string, createdByUserId?: number|null, file?: Object|null }} payload - Asset create payload
  * @returns {Promise<Object>} Created asset response object (raw DB row)
  */
 export async function createAsset(payload) {
@@ -68,9 +87,26 @@ export async function createAsset(payload) {
   if (!row) return null;
   // Seed an initial version row for this asset (v1)
   await query(
-    `INSERT INTO asset_versions (asset_id, version_number, created_by_user_id)
-     VALUES ($1, 1, NULL)`,
-    [row.id]
+    `INSERT INTO asset_versions (
+       asset_id,
+       version_number,
+       created_by_user_id,
+       original_file_name,
+       stored_file_name,
+       mime_type,
+       size_bytes,
+       file_path
+     )
+     VALUES ($1, 1, $2, $3, $4, $5, $6, $7)`,
+    [
+      row.id,
+      payload.createdByUserId ?? null,
+      payload.file?.originalFileName ?? null,
+      payload.file?.storedFileName ?? null,
+      payload.file?.mimeType ?? null,
+      payload.file?.sizeBytes ?? null,
+      payload.file?.filePath ?? null
+    ]
   );
   // Re-load via getAssetById so owner/status fields match list/get endpoints.
   const refreshed = await getAssetById(row.id);
@@ -91,15 +127,22 @@ export async function getAssetById(assetId) {
             s.status_name AS status,
             a.current_version,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
+            v.original_file_name,
+            v.mime_type,
+            v.size_bytes,
+            v.file_path,
             a.created_at,
             a.updated_at
      FROM assets a
      JOIN asset_status_lookup s ON s.id = a.status_id
      LEFT JOIN users u ON u.id = a.created_by_user_id
+     LEFT JOIN asset_versions v
+       ON v.asset_id = a.id
+      AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)
      WHERE a.id = $1`,
     [assetId]
   );
-  return result?.rows?.[0] ?? null;
+  return mapAssetRow(result?.rows?.[0] ?? null);
 }
 
 /**
@@ -114,14 +157,21 @@ export async function listAssetVersions(assetId) {
             v.asset_id,
             v.version_number,
             v.created_at,
-            COALESCE(u.display_name, u.email, 'Unknown') AS created_by
+            COALESCE(u.display_name, u.email, 'Unknown') AS created_by,
+            v.original_file_name,
+            v.mime_type,
+            v.size_bytes,
+            v.file_path
      FROM asset_versions v
      LEFT JOIN users u ON u.id = v.created_by_user_id
      WHERE v.asset_id = $1
      ORDER BY v.version_number ASC`,
     [assetId]
   );
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    file_url: getPublicFileUrl(row.file_path)
+  }));
 }
 
 /**
@@ -221,7 +271,7 @@ export async function setAssetOwner(assetId, userId) {
  * and moves the asset status back to "In Review" so it appears in review queues.
  *
  * @param {number} assetId - Asset ID
- * @param {{ label?: string, notes?: string, createdByUserId?: number|null }} payload
+ * @param {{ label?: string, notes?: string, createdByUserId?: number|null, file?: Object|null }} payload
  * @returns {Promise<Object|null>} Newly created version row
  */
 export async function createAssetVersion(assetId, payload) {
@@ -233,15 +283,31 @@ export async function createAssetVersion(assetId, payload) {
   const nextVersion = Number(max.rows[0]?.max_version ?? 0) + 1;
 
   const inserted = await query(
-    `INSERT INTO asset_versions (asset_id, version_number, created_by_user_id, label, notes)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, asset_id, version_number, created_at`,
+    `INSERT INTO asset_versions (
+       asset_id,
+       version_number,
+       created_by_user_id,
+       label,
+       notes,
+       original_file_name,
+       stored_file_name,
+       mime_type,
+       size_bytes,
+       file_path
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id, asset_id, version_number, created_at, original_file_name, mime_type, size_bytes, file_path`,
     [
       assetId,
       nextVersion,
       payload.createdByUserId ?? null,
       payload.label ?? null,
-      payload.notes ?? null
+      payload.notes ?? null,
+      payload.file?.originalFileName ?? null,
+      payload.file?.storedFileName ?? null,
+      payload.file?.mimeType ?? null,
+      payload.file?.sizeBytes ?? null,
+      payload.file?.filePath ?? null
     ]
   );
   const row = inserted.rows[0];
@@ -263,7 +329,10 @@ export async function createAssetVersion(assetId, payload) {
     );
   }
 
-  return row;
+  return {
+    ...row,
+    file_url: getPublicFileUrl(row.file_path)
+  };
 }
 
 /**
@@ -302,13 +371,5 @@ export async function updateAssetStatus(assetId, statusName) {
     return null;
   }
 
-  return {
-    id: refreshed.id,
-    title: refreshed.title,
-    description: refreshed.description,
-    owner: refreshed.owner,
-    current_version: refreshed.current_version,
-    status: valid.rows[0].status_name,
-    updatedAt: refreshed.updated_at
-  };
+  return refreshed;
 }

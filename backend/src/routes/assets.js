@@ -8,6 +8,8 @@
  */
 
 import express from "express";
+import multer from "multer";
+import { toStoredAssetFile, uploadAssetFile } from "../config/upload.js";
 import { attachRole, requireRole } from "../middleware/roleAuth.js";
 import {
   addAssetComment,
@@ -24,6 +26,7 @@ import {
 } from "../services/assetService.js";
 
 const router = express.Router();
+const singleAssetUpload = uploadAssetFile.single("file");
 
 // Attach req.role from X-Vellum-Role for all asset routes
 router.use(attachRole);
@@ -69,21 +72,42 @@ router.get('/summary', async (_req, res, next) => {
  * Create a new asset record. Requires role designer or admin.
  */
 router.post("/", requireRole(["designer", "admin"]), async (req, res, next) => {
-  try {
-    const { title, description, createdByUserId } = req.body ?? {};
-    if (!title || typeof title !== "string") {
-      return res.status(400).json({ error: "title is required" });
+  const handleCreate = async () => {
+    try {
+      const { title, description, createdByUserId } = req.body ?? {};
+      if (!title || typeof title !== "string") {
+        return res.status(400).json({ error: "title is required" });
+      }
+      if (req.is("multipart/form-data") && !req.file) {
+        return res.status(400).json({ error: "file is required" });
+      }
+      const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
+      const created = await createAsset({
+        title,
+        description,
+        createdByUserId: Number.isFinite(creatorId) ? creatorId : null,
+        file: toStoredAssetFile(req.file)
+      });
+      return res.status(201).json(created);
+    } catch (error) {
+      return next(error);
     }
-    const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
-    const created = await createAsset({
-      title,
-      description,
-      createdByUserId: Number.isFinite(creatorId) ? creatorId : null
+  };
+
+  if (req.is("multipart/form-data")) {
+    singleAssetUpload(req, res, (error) => {
+      if (error instanceof multer.MulterError) {
+        return res.status(400).json({ error: error.message });
+      }
+      if (error) {
+        return res.status(400).json({ error: error.message || "Upload failed" });
+      }
+      return void handleCreate();
     });
-    return res.status(201).json(created);
-  } catch (error) {
-    return next(error);
+    return;
   }
+
+  return void handleCreate();
 });
 
 /**
@@ -211,25 +235,43 @@ router.get("/:assetId/versions", async (req, res, next) => {
  * Create a new version for an asset. Requires role designer or admin.
  */
 router.post("/:assetId/versions", requireRole(["designer", "admin"]), async (req, res, next) => {
-  try {
-    const assetId = Number(req.params.assetId);
-    if (!Number.isFinite(assetId)) {
-      return res.status(400).json({ error: "Invalid asset id" });
+  const handleVersionCreate = async () => {
+    try {
+      const assetId = Number(req.params.assetId);
+      if (!Number.isFinite(assetId)) {
+        return res.status(400).json({ error: "Invalid asset id" });
+      }
+      const { label, notes, createdByUserId } = req.body ?? {};
+      const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
+      const version = await createAssetVersion(assetId, {
+        label: typeof label === "string" ? label : undefined,
+        notes: typeof notes === "string" ? notes : undefined,
+        createdByUserId: Number.isFinite(creatorId) ? creatorId : null,
+        file: toStoredAssetFile(req.file)
+      });
+      if (!version) {
+        return res.status(404).json({ error: "Asset not found" });
+      }
+      return res.status(201).json(version);
+    } catch (error) {
+      return next(error);
     }
-    const { label, notes, createdByUserId } = req.body ?? {};
-    const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
-    const version = await createAssetVersion(assetId, {
-      label: typeof label === "string" ? label : undefined,
-      notes: typeof notes === "string" ? notes : undefined,
-      createdByUserId: Number.isFinite(creatorId) ? creatorId : null
+  };
+
+  if (req.is("multipart/form-data")) {
+    singleAssetUpload(req, res, (error) => {
+      if (error instanceof multer.MulterError) {
+        return res.status(400).json({ error: error.message });
+      }
+      if (error) {
+        return res.status(400).json({ error: error.message || "Upload failed" });
+      }
+      return void handleVersionCreate();
     });
-    if (!version) {
-      return res.status(404).json({ error: "Asset not found" });
-    }
-    return res.status(201).json(version);
-  } catch (error) {
-    return next(error);
+    return;
   }
+
+  return void handleVersionCreate();
 });
 
 /**

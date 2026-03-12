@@ -33,6 +33,9 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
     id: 42,
     name: "Hero Graphic",
     owner: "Designer",
+    fileUrl: "/uploads/hero.png",
+    fileName: "hero.png",
+    mimeType: "image/png",
     status: "In Review",
     updatedAt: "2026-02-10T00:00:00.000Z",
     currentVersion: "v1.0",
@@ -43,6 +46,9 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
     id: 42,
     name: "Hero Graphic",
     owner: "Designer",
+    fileUrl: "/uploads/hero.png",
+    fileName: "hero.png",
+    mimeType: "image/png",
     status: "Approved",
     updatedAt: "2026-02-10T00:00:00.000Z",
     currentVersion: "v1.0",
@@ -64,6 +70,8 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
   );
 
   expect(await screen.findByText("Hero Graphic")).toBeInTheDocument();
+  expect(screen.getByText("Notes: Demo details")).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "Hero Graphic" })).toBeInTheDocument();
 
   await userEvent.click(screen.getByRole("button", { name: "Approve" }));
   expect(patchAssetStatusMock).toHaveBeenCalledWith("42", "Approved");

@@ -304,7 +304,11 @@ export function AdminPage() {
                         <td data-label="Name">{user.displayName || "-"}</td>
                         <td data-label="Email">{user.email}</td>
                         <td data-label="Role">
-                          <select value={user.role} onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}>
+                          <select
+                            value={user.role}
+                            onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}
+                            disabled={user.email.toLowerCase() === "admin@vellum.test"}
+                          >
                             <option value="designer">designer</option>
                             <option value="reviewer">reviewer</option>
                             <option value="admin">admin</option>

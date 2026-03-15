@@ -1,11 +1,21 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { createAssetVersionApi, getAsset, getAssetVersions, patchAssetStatus, updateAssetOwner } from "../api/assets";
+import {
+  createAssetVersionApi,
+  deleteAssetVersion,
+  getAsset,
+  getAssetVersions,
+  getVersionAudit,
+  patchAssetStatus,
+  patchAssetVersion,
+  updateAssetOwner
+} from "../api/assets";
 import { addComment, getComments } from "../api/comments";
 import { Asset, Comment, UserAccount, Version } from "../types/models";
 import { getUsers } from "../api/users";
 import { CommentList } from "../components/CommentList";
 import { StatusBadge } from "../components/StatusBadge";
+import { sanitizeFileName } from "../utils/format";
 import { VersionList } from "../components/VersionList";
 import type { AuthUser } from "../App";
 
@@ -46,42 +56,55 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
+  const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
+  const [newVersionLabel, setNewVersionLabel] = useState("");
+  const [newVersionNotes, setNewVersionNotes] = useState("");
+  const [versionUploading, setVersionUploading] = useState(false);
+  const [versionFormKey, setVersionFormKey] = useState(0);
+  const [auditEntries, setAuditEntries] = useState<Array<{ id: number; asset_id: number; asset_version_id: number | null; action: string; performed_at: string; details: string | null; performed_by: string }>>([]);
   const [ownerCandidates, setOwnerCandidates] = useState<UserAccount[]>([]);
   const [ownerSelectId, setOwnerSelectId] = useState<string | "">("");
 
+  const loadData = async () => {
+    if (!id) return;
+    const [assetData, commentRows, versionRows, usersData, auditData] = await Promise.all([
+      getAsset(id),
+      getComments(id),
+      getAssetVersions(id),
+      currentUser?.role === "admin" ? getUsers() : Promise.resolve(null),
+      currentUser?.role === "admin" ? getVersionAudit(id) : Promise.resolve([])
+    ]);
+    setAsset(assetData);
+    setComments(
+      commentRows.map((row: { id: number; asset_id: number; author?: string; message: string; created_at: string }) => ({
+        id: String(row.id),
+        assetId: String(row.asset_id),
+        author: row.author ?? "Unknown",
+        message: row.message,
+        createdAt: row.created_at
+      }))
+    );
+    setVersions(
+      versionRows.map((v: Version) => ({
+        ...v,
+        status: assetData.status
+      }))
+    );
+    if (currentUser?.role === "admin" && Array.isArray(usersData)) {
+      setOwnerCandidates(usersData as UserAccount[]);
+      const currentOwner = (usersData as UserAccount[]).find(
+        (u) => u.email === assetData.owner || u.displayName === assetData.owner
+      );
+      setOwnerSelectId(currentOwner?.id ?? "");
+    }
+    if (currentUser?.role === "admin" && Array.isArray(auditData)) {
+      setAuditEntries(auditData);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
-    const promises: Promise<unknown>[] = [getAsset(id), getComments(id), getAssetVersions(id)];
-    if (currentUser?.role === "admin") {
-      promises.push(getUsers());
-    }
-    Promise.all(promises)
-      .then(([assetData, commentRows, versionRows, usersData]) => {
-        setAsset(assetData);
-        setComments(
-          commentRows.map((row) => ({
-            id: String(row.id),
-            assetId: String(row.asset_id),
-            author: row.author ?? "Unknown",
-            message: row.message,
-            createdAt: row.created_at
-          }))
-        );
-        setVersions(
-          versionRows.map((v) => ({
-            ...v,
-            // For now, mirror the asset's current status; can be version-specific later.
-            status: assetData.status
-          }))
-        );
-        if (currentUser?.role === "admin" && Array.isArray(usersData)) {
-          setOwnerCandidates(usersData as UserAccount[]);
-          const currentOwner = (usersData as UserAccount[]).find(
-            (u) => u.email === assetData.owner || u.displayName === assetData.owner
-          );
-          setOwnerSelectId(currentOwner?.id ?? "");
-        }
-      })
+    loadData()
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
@@ -115,21 +138,33 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   };
 
   const createNewVersion = async () => {
-    if (!asset || !id) return;
-    const label = window.prompt("Optional version label (e.g. 'Round 2')") || undefined;
-    await createAssetVersionApi(id, {
-      label,
-      createdByUserId: currentUser?.id
-    });
-    // Reload asset + versions so status and list stay in sync
-    const [assetData, versionRows] = await Promise.all([getAsset(id), getAssetVersions(id)]);
-    setAsset(assetData);
-    setVersions(
-      versionRows.map((v) => ({
-        ...v,
-        status: assetData.status
-      }))
-    );
+    if (!asset || !id || !newVersionFile) return;
+    setVersionUploading(true);
+    try {
+      await createAssetVersionApi(id, {
+        label: newVersionLabel || undefined,
+        notes: newVersionNotes || undefined,
+        createdByUserId: currentUser?.id,
+        file: newVersionFile
+      });
+      await loadData();
+      setNewVersionFile(null);
+      setNewVersionLabel("");
+      setNewVersionNotes("");
+      setVersionFormKey((k) => k + 1);
+    } finally {
+      setVersionUploading(false);
+    }
+  };
+
+  const handleEditVersion = async (versionId: string, payload: { label?: string; notes?: string }) => {
+    if (!id || !currentUser?.id) return;
+    await patchAssetVersion(id, versionId, { ...payload, performedByUserId: currentUser.id });
+  };
+
+  const handleDeleteVersion = async (versionId: string) => {
+    if (!id || !currentUser?.id) return;
+    await deleteAssetVersion(id, versionId, currentUser.id);
   };
 
   const saveOwner = async () => {
@@ -185,7 +220,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
             <p>
               Current file:{" "}
               <a href={asset.fileUrl} target="_blank" rel="noreferrer">
-                {asset.fileName}
+                {sanitizeFileName(asset.fileName)}
               </a>
             </p>
           ) : null}
@@ -253,13 +288,57 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           {activeTab === "versions" && (
             <>
               {(currentUser?.role === "designer" || currentUser?.role === "admin") && (
-                <div style={{ marginBottom: "0.6rem" }}>
-                  <button type="button" className="primary-btn" onClick={() => void createNewVersion()}>
-                    Create new version
+                <form
+                  key={versionFormKey}
+                  style={{ marginBottom: "0.6rem", display: "grid", gap: "0.4rem" }}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void createNewVersion();
+                  }}
+                >
+                  <label>
+                    New version file
+                    <input
+                      type="file"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        setNewVersionFile(file);
+                      }}
+                      required
+                      disabled={versionUploading}
+                    />
+                  </label>
+                  <label>
+                    Label (optional)
+                    <input
+                      type="text"
+                      value={newVersionLabel}
+                      onChange={(event) => setNewVersionLabel(event.target.value)}
+                      disabled={versionUploading}
+                    />
+                  </label>
+                  <label>
+                    Notes (optional)
+                    <textarea
+                      value={newVersionNotes}
+                      onChange={(event) => setNewVersionNotes(event.target.value)}
+                      disabled={versionUploading}
+                    />
+                  </label>
+                  <button type="submit" className="primary-btn" disabled={!newVersionFile || versionUploading}>
+                    {versionUploading ? "Uploading…" : "Upload new version"}
                   </button>
-                </div>
+                </form>
               )}
-              <VersionList versions={versions} />
+              <VersionList
+                versions={versions}
+                currentVersionId={asset.currentVersionId}
+                isAdmin={currentUser?.role === "admin"}
+                auditEntries={auditEntries}
+                onEditVersion={currentUser?.role === "admin" ? handleEditVersion : undefined}
+                onDeleteVersion={currentUser?.role === "admin" ? handleDeleteVersion : undefined}
+                onRefresh={loadData}
+              />
             </>
           )}
         </div>

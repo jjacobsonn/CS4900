@@ -99,6 +99,15 @@ export async function createUserAccount({ email, role, displayName }) {
  * Update a user's role.
  */
 export async function updateUserRoleById(id, role) {
+  // Hard guard: never allow demoting the seeded admin account via API.
+  const current = await query("SELECT email FROM users WHERE id = $1 LIMIT 1", [id]);
+  const currentEmail = current.rows[0]?.email?.toLowerCase?.() ?? null;
+  if (currentEmail === "admin@vellum.test".toLowerCase() && role !== "admin") {
+    const error = new Error("Cannot change role for primary admin account.");
+    error.status = 400;
+    throw error;
+  }
+
   const roleCode = toRoleCode(role);
   if (!roleCode) {
     const error = new Error("Invalid role");

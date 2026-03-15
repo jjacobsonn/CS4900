@@ -219,3 +219,21 @@ Successfully transitioned from planning to implementation. We have a working ful
 **Reflections:**
 - Today’s work cleaned up both **infrastructure** (DB schema alignment) and **experience** (role-based visibility and documentation), so the project feels more production-ready going into Sprint 2.
 - Renaming the sprints to use a baseline `sprint-0/` and dedicated `sprint-1/` / `sprint-2/` folders makes the history of the project and the reimplementation phases much easier to explain at review time.
+
+### March 15, 2026 (continued) — Filenames, version list redesign, admin guard
+
+**Tasks Completed:**
+- **Filename sanitization:** Fixed weird characters (e.g. `â¯`) in uploaded filenames (Unicode narrow no-break space / mojibake). Backend `upload.js` now sanitizes `originalFileName` before storing; frontend `format.ts` has `sanitizeFileName()` and we use it everywhere filenames are displayed (VersionList, AssetDetailPage “Current file”). Also added fallback replacement for the literal mojibake sequence so existing bad DB rows display correctly.
+- **Version list redesign:** Restructured the version list into three clear zones with spacing: (1) Version info row — version number once, Current badge, status badge; (2) Lighter metadata line (e.g. “Mar 15, 2026 • Admin”) and a dedicated file row (filename as main content, no duplicate version); (3) Actions (Edit / Delete) isolated on the right. Improved vertical spacing between groups and removed the paper-clip emoji per preference.
+- **Admin role fix and guard:** The seeded user `admin@vellum.test` had been changed to designer in the DB (likely via Admin User Management), so the Admin nav and edit/delete actions disappeared. Restored the row to ADMIN in the `vellum` database via SQL. Added a backend guard in `userService.updateUserRoleById` so the primary admin account cannot be demoted via the API (400 if attempted). Disabled the role dropdown in the Admin user table for `admin@vellum.test` so it can’t be changed from the UI again.
+
+**Challenges:**
+- Confirming the correct Postgres database name (`vellum` not `vellum_db`) and running the fix so the user didn’t need to run psql manually.
+- Ensuring filename display is sanitized in every place (version history and asset detail “Current file”) so one fix covers all views.
+
+**Next Steps:**
+- Optional: add a one-time SQL script or doc note for cleaning existing mojibake in `asset_versions.original_file_name` and `assets.name` for other environments.
+- Continue Sprint 2 work on `jj-sprint-2` and keep dev-jj in sync for demos.
+
+**Reflections:**
+- Small UX details (filename display, version list layout, and protecting the admin account) make the app feel more reliable and easier to use in demos.

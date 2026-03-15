@@ -21,6 +21,20 @@ function sanitizeBaseName(name) {
   return name.replace(/[^a-zA-Z0-9_-]/g, "-").replace(/-+/g, "-").slice(0, 60) || "asset";
 }
 
+/** Normalize filename for display/storage: fix Unicode spaces and strip problematic chars. */
+function sanitizeDisplayFilename(name) {
+  if (!name || typeof name !== "string") return name || "";
+  return name
+    // Handle known mojibake sequence for narrow no-break space
+    .replace(/â¯/g, " ")
+    .replace(/\u202F/g, " ")   // narrow no-break space
+    .replace(/\u00A0/g, " ")   // non-breaking space
+    .replace(/\u2007/g, " ")   // figure space
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 255) || "file";
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     ensureUploadRoot();
@@ -51,7 +65,7 @@ export function toStoredAssetFile(file) {
   if (!file) return null;
 
   return {
-    originalFileName: file.originalname,
+    originalFileName: sanitizeDisplayFilename(file.originalname),
     storedFileName: file.filename,
     mimeType: file.mimetype,
     sizeBytes: file.size,

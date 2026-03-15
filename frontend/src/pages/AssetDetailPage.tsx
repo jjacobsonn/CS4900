@@ -6,11 +6,12 @@ import {
   getAsset,
   getAssetVersions,
   getVersionAudit,
+  patchAsset,
   patchAssetStatus,
   patchAssetVersion,
   updateAssetOwner
 } from "../api/assets";
-import { addComment, getComments } from "../api/comments";
+import { addComment, deleteComment, getComments } from "../api/comments";
 import { Asset, Comment, UserAccount, Version } from "../types/models";
 import { getUsers } from "../api/users";
 import { CommentList } from "../components/CommentList";
@@ -64,6 +65,12 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [auditEntries, setAuditEntries] = useState<Array<{ id: number; asset_id: number; asset_version_id: number | null; action: string; performed_at: string; details: string | null; performed_by: string }>>([]);
   const [ownerCandidates, setOwnerCandidates] = useState<UserAccount[]>([]);
   const [ownerSelectId, setOwnerSelectId] = useState<string | "">("");
+  const [editAssetOpen, setEditAssetOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [replaceMainFile, setReplaceMainFile] = useState<File | null>(null);
+  const [savingAsset, setSavingAsset] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!id) return;
@@ -157,7 +164,10 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     }
   };
 
-  const handleEditVersion = async (versionId: string, payload: { label?: string; notes?: string }) => {
+  const handleEditVersion = async (
+    versionId: string,
+    payload: { label?: string; notes?: string; file?: File | null; removeFile?: boolean }
+  ) => {
     if (!id || !currentUser?.id) return;
     await patchAssetVersion(id, versionId, { ...payload, performedByUserId: currentUser.id });
   };
@@ -172,6 +182,46 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     const nextOwnerId = ownerSelectId || null;
     const updated = await updateAssetOwner(id, nextOwnerId);
     setAsset(updated);
+  };
+
+  const openEditAsset = () => {
+    if (asset) {
+      setEditTitle(asset.name);
+      setEditNotes(asset.notes ?? "");
+      setReplaceMainFile(null);
+      setEditAssetOpen(true);
+    }
+  };
+
+  const saveEditAsset = async () => {
+    if (!asset || !id) return;
+    setSavingAsset(true);
+    try {
+      await patchAsset(id, { title: editTitle.trim(), description: editNotes || undefined });
+      const nextOwnerId = ownerSelectId || null;
+      await updateAssetOwner(id, nextOwnerId);
+      if (replaceMainFile && asset.currentVersionId) {
+        await patchAssetVersion(id, String(asset.currentVersionId), {
+          file: replaceMainFile,
+          performedByUserId: currentUser?.id
+        });
+      }
+      await loadData();
+      setEditAssetOpen(false);
+    } finally {
+      setSavingAsset(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!id) return;
+    setDeletingCommentId(commentId);
+    try {
+      await deleteComment(id, commentId);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } finally {
+      setDeletingCommentId(null);
+    }
   };
 
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
@@ -225,30 +275,61 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
             </p>
           ) : null}
           {currentUser?.role === "admin" && (
-            <div style={{ margin: "0.5rem 0 0.75rem" }}>
-              <label>
-                Assign owner
-                <select
-                  value={ownerSelectId}
-                  onChange={(event) => setOwnerSelectId(event.target.value)}
-                >
-                  <option value="">Unassigned</option>
-                  {ownerCandidates.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.displayName || u.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="secondary-btn"
-                style={{ marginTop: "0.4rem" }}
-                onClick={() => void saveOwner()}
-              >
-                Save owner
-              </button>
-            </div>
+            <>
+              {!editAssetOpen ? (
+                <button type="button" className="secondary-btn" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
+                  Edit asset
+                </button>
+              ) : (
+                <div className="panel edit-asset-panel" style={{ marginTop: "0.75rem", padding: "0.75rem" }}>
+                  <h3 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>Edit asset</h3>
+                  <label>
+                    Title
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Description / notes
+                    <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+                  </label>
+                  <label>
+                    Owner
+                    <select
+                      value={ownerSelectId}
+                      onChange={(e) => setOwnerSelectId(e.target.value)}
+                    >
+                      <option value="">Unassigned</option>
+                      {ownerCandidates.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.displayName || u.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {asset.currentVersionId && (
+                    <label>
+                      Replace preview file (optional)
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => setReplaceMainFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                  )}
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+                    <button type="button" className="primary-btn" onClick={() => void saveEditAsset()} disabled={savingAsset}>
+                      {savingAsset ? "Saving…" : "Save"}
+                    </button>
+                    <button type="button" className="secondary-btn" onClick={() => { setEditAssetOpen(false); setReplaceMainFile(null); }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <p>Current version: {asset.currentVersion}</p>
           {asset.notes ? <p>Notes: {asset.notes}</p> : null}
@@ -282,7 +363,12 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                 </label>
                 <button type="submit" className="primary-btn">Post Comment</button>
               </form>
-              <CommentList comments={comments} />
+              <CommentList
+                comments={comments}
+                isAdmin={currentUser?.role === "admin"}
+                onDeleteComment={currentUser?.role === "admin" ? handleDeleteComment : undefined}
+                deletingCommentId={deletingCommentId}
+              />
             </>
           )}
           {activeTab === "versions" && (

@@ -4,12 +4,19 @@ import { VersionAuditEntry } from "../api/assets";
 import { formatDate, sanitizeFileName } from "../utils/format";
 import { StatusBadge } from "./StatusBadge";
 
+type EditPayload = {
+  label?: string;
+  notes?: string;
+  file?: File | null;
+  removeFile?: boolean;
+};
+
 type Props = {
   versions: Version[];
   currentVersionId?: string | number;
   isAdmin?: boolean;
   auditEntries?: VersionAuditEntry[];
-  onEditVersion?: (versionId: string, payload: { label?: string; notes?: string }) => Promise<void>;
+  onEditVersion?: (versionId: string, payload: EditPayload) => Promise<void>;
   onDeleteVersion?: (versionId: string) => Promise<void>;
   onRefresh?: () => Promise<void>;
 };
@@ -26,6 +33,8 @@ export function VersionList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [removeAttachment, setRemoveAttachment] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -33,13 +42,20 @@ export function VersionList({
     setEditingId(v.id as string);
     setEditLabel(v.label ?? "");
     setEditNotes(v.notes ?? "");
+    setEditFile(null);
+    setRemoveAttachment(false);
   };
 
   const saveEdit = async () => {
     if (!editingId || !onEditVersion || !onRefresh) return;
     setSaving(true);
     try {
-      await onEditVersion(editingId, { label: editLabel || undefined, notes: editNotes || undefined });
+      await onEditVersion(editingId, {
+        label: editLabel || undefined,
+        notes: editNotes || undefined,
+        file: editFile || undefined,
+        removeFile: removeAttachment || undefined
+      });
       await onRefresh();
       setEditingId(null);
     } finally {
@@ -135,6 +151,31 @@ export function VersionList({
                     Notes
                     <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
                   </label>
+                  <label>
+                    Replace attachment
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        setEditFile(f ?? null);
+                        if (f) setRemoveAttachment(false);
+                      }}
+                    />
+                  </label>
+                  {(version.fileName || version.fileUrl) && (
+                    <label className="version-edit-remove">
+                      <input
+                        type="checkbox"
+                        checked={removeAttachment}
+                        onChange={(e) => {
+                          setRemoveAttachment(e.target.checked);
+                          if (e.target.checked) setEditFile(null);
+                        }}
+                      />
+                      Remove attachment
+                    </label>
+                  )}
                   <div>
                     <button type="button" className="primary-btn small" onClick={() => saveEdit()} disabled={saving}>
                       {saving ? "Saving…" : "Save"}

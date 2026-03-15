@@ -533,8 +533,19 @@ h1 {
 .comment-meta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 0.5rem;
   font-size: 0.74rem;
+}
+
+.comment-delete-btn {
+  flex-shrink: 0;
+}
+
+.version-edit-inline .version-edit-remove {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 label {

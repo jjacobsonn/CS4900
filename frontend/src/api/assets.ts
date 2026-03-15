@@ -10,6 +10,7 @@ interface RawAsset {
   owner?: string;
   current_version?: string;
   currentVersion?: string;
+  current_version_id?: number | null;
   created_at?: string;
   createdAt?: string;
   updated_at?: string;
@@ -41,6 +42,7 @@ function toAsset(raw: RawAsset): Asset {
     status: normalizeStatus(raw.status),
     updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     currentVersion: raw.current_version ?? raw.currentVersion ?? "v1.0",
+    currentVersionId: raw.current_version_id ?? undefined,
     notes: raw.description,
     fileUrl: raw.file_url ?? null,
     fileName: raw.file_name ?? null,
@@ -92,12 +94,22 @@ export async function updateAssetOwner(assetId: string, ownerUserId: string | nu
   return toAsset(data);
 }
 
+export async function patchAsset(
+  assetId: string,
+  payload: { title?: string; description?: string }
+): Promise<Asset> {
+  const data = await apiClient.patch<RawAsset>(`/assets/${assetId}`, payload);
+  return toAsset(data);
+}
+
 type RawAssetVersion = {
   id: number;
   asset_id: number;
   version_number: number;
   created_at: string;
   created_by?: string;
+  label?: string | null;
+  notes?: string | null;
   file_url?: string | null;
   original_file_name?: string | null;
   mime_type?: string | null;
@@ -111,7 +123,9 @@ export async function getAssetVersions(assetId: string): Promise<Version[]> {
     assetId: String(row.asset_id),
     versionNumber: `v${row.version_number}`,
     createdAt: row.created_at,
-    // For now, version status mirrors the asset's current status in the UI; could be version-specific later.
+    createdBy: row.created_by,
+    label: row.label ?? undefined,
+    notes: row.notes ?? undefined,
     status: "Draft",
     fileUrl: row.file_url ?? null,
     fileName: row.original_file_name ?? null,
@@ -147,4 +161,57 @@ export async function createAssetVersionApi(
     mimeType: row.mime_type ?? null,
     sizeBytes: row.size_bytes ?? null
   };
+}
+
+export interface VersionAuditEntry {
+  id: number;
+  performed_by: string;
+  action: string;
+  details?: string | null;
+  performed_at: string;
+}
+
+export async function getVersionAudit(assetId: string): Promise<VersionAuditEntry[]> {
+  try {
+    const data = await apiClient.get<VersionAuditEntry[]>(`/assets/${assetId}/version-audit`);
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function patchAssetVersion(
+  assetId: string,
+  versionId: string,
+  payload: {
+    label?: string;
+    notes?: string;
+    performedByUserId?: string;
+    file?: File | null;
+    removeFile?: boolean;
+  }
+): Promise<void> {
+  if (payload.file != null && payload.file instanceof File) {
+    const form = new FormData();
+    if (payload.label !== undefined) form.set("label", payload.label);
+    if (payload.notes !== undefined) form.set("notes", payload.notes);
+    if (payload.performedByUserId !== undefined) form.set("performedByUserId", payload.performedByUserId);
+    form.set("file", payload.file);
+    await apiClient.patchForm(`/assets/${assetId}/versions/${versionId}`, form);
+  } else {
+    const body: Record<string, string | boolean> = {};
+    if (payload.label !== undefined) body.label = payload.label;
+    if (payload.notes !== undefined) body.notes = payload.notes;
+    if (payload.performedByUserId !== undefined) body.performedByUserId = payload.performedByUserId;
+    if (payload.removeFile === true) body.removeFile = true;
+    await apiClient.patch(`/assets/${assetId}/versions/${versionId}`, body);
+  }
+}
+
+export async function deleteAssetVersion(
+  assetId: string,
+  versionId: string,
+  _performedByUserId?: string
+): Promise<void> {
+  await apiClient.delete(`/assets/${assetId}/versions/${versionId}`);
 }

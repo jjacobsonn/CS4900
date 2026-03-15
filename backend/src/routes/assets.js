@@ -17,12 +17,16 @@ import {
   createAssetVersion,
   deleteAssetById,
   deleteAssetCommentById,
+  deleteAssetVersionById,
   getAssetById,
   listAssetComments,
   listAssets,
   listAssetVersions,
+  listVersionAudit,
   setAssetOwner,
-  updateAssetStatus
+  updateAsset,
+  updateAssetStatus,
+  updateAssetVersion
 } from "../services/assetService.js";
 
 const router = express.Router();
@@ -129,6 +133,28 @@ router.get("/:assetId", async (req, res, next) => {
 });
 
 /**
+ * PATCH /api/assets/:assetId
+ *
+ * Update asset title and/or description. Admin only.
+ */
+router.patch("/:assetId", requireRole(["admin"]), async (req, res, next) => {
+  try {
+    const assetId = Number(req.params.assetId);
+    if (!Number.isFinite(assetId)) {
+      return res.status(400).json({ error: "Invalid asset id" });
+    }
+    const { title, description } = req.body ?? {};
+    const updated = await updateAsset(assetId, { title, description });
+    if (!updated) {
+      return res.status(404).json({ error: "Asset not found" });
+    }
+    return res.json(updated);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
  * PATCH /api/assets/:assetId/owner
  *
  * Update the primary owner (created_by_user_id) for an asset. Admin only.
@@ -212,6 +238,24 @@ router.delete("/:assetId/comments/:commentId", requireRole(["admin"]), async (re
 });
 
 /**
+ * GET /api/assets/:assetId/version-audit
+ *
+ * List audit log for version actions. Admin only.
+ */
+router.get("/:assetId/version-audit", requireRole(["admin"]), async (req, res, next) => {
+  try {
+    const assetId = Number(req.params.assetId);
+    if (!Number.isFinite(assetId)) {
+      return res.status(400).json({ error: "Invalid asset id" });
+    }
+    const entries = await listVersionAudit(assetId);
+    return res.json(entries);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
  * GET /api/assets/:assetId/versions
  *
  * Retrieve all versions for the specified asset.
@@ -272,6 +316,71 @@ router.post("/:assetId/versions", requireRole(["designer", "admin"]), async (req
   }
 
   return void handleVersionCreate();
+});
+
+/**
+ * PATCH /api/assets/:assetId/versions/:versionId
+ *
+ * Update version metadata and/or replace or remove file. Admin only.
+ */
+router.patch("/:assetId/versions/:versionId", requireRole(["admin"]), (req, res, next) => {
+  const handleUpdate = async () => {
+    try {
+      const assetId = Number(req.params.assetId);
+      const versionId = Number(req.params.versionId);
+      if (!Number.isFinite(assetId) || !Number.isFinite(versionId)) {
+        return res.status(400).json({ error: "Invalid asset or version id" });
+      }
+      const body = req.body ?? {};
+      const label = typeof body.label === "string" ? body.label : undefined;
+      const notes = typeof body.notes === "string" ? body.notes : undefined;
+      const removeFile = body.removeFile === true || body.removeFile === "true";
+      const file = toStoredAssetFile(req.file);
+      const performedByUserId = body.performedByUserId != null ? Number(body.performedByUserId) : null;
+      const updated = await updateAssetVersion(
+        assetId,
+        versionId,
+        { label, notes, file: file || undefined, removeFile: removeFile || undefined },
+        Number.isFinite(performedByUserId) ? performedByUserId : null
+      );
+      if (!updated) {
+        return res.status(404).json({ error: "Version not found" });
+      }
+      return res.json(updated);
+    } catch (error) {
+      return next(error);
+    }
+  };
+  if (req.is("multipart/form-data")) {
+    singleAssetUpload(req, res, (err) => {
+      if (err) return next(err);
+      return void handleUpdate();
+    });
+    return;
+  }
+  return void handleUpdate();
+});
+
+/**
+ * DELETE /api/assets/:assetId/versions/:versionId
+ *
+ * Delete a version. Admin only.
+ */
+router.delete("/:assetId/versions/:versionId", requireRole(["admin"]), async (req, res, next) => {
+  try {
+    const assetId = Number(req.params.assetId);
+    const versionId = Number(req.params.versionId);
+    if (!Number.isFinite(assetId) || !Number.isFinite(versionId)) {
+      return res.status(400).json({ error: "Invalid asset or version id" });
+    }
+    const result = await deleteAssetVersionById(assetId, versionId);
+    if (!result.deleted) {
+      return res.status(404).json({ error: "Version not found" });
+    }
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
 });
 
 /**

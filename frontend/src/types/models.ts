@@ -16,6 +16,7 @@ export interface Asset {
   status: AssetStatus;
   updatedAt: string;
   currentVersion: string;
+  currentVersionId?: string | number;
   notes?: string;
 }
 
@@ -32,6 +33,9 @@ export interface Version {
   assetId: string;
   versionNumber: string;
   createdAt: string;
+  createdBy?: string;
+  label?: string | null;
+  notes?: string | null;
   status: AssetStatus;
   fileUrl?: string | null;
   fileName?: string | null;

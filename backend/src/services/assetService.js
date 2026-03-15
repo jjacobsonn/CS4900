@@ -45,6 +45,7 @@ export async function listAssets() {
             a.description,
             s.status_name AS status,
             a.current_version,
+            a.current_version_id,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
@@ -57,7 +58,7 @@ export async function listAssets() {
      LEFT JOIN users u ON u.id = a.created_by_user_id
      LEFT JOIN asset_versions v
        ON v.asset_id = a.id
-      AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)
+      AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))
      ORDER BY a.id DESC`
   );
   return result.rows.map(mapAssetRow);
@@ -126,6 +127,7 @@ export async function getAssetById(assetId) {
             a.description,
             s.status_name AS status,
             a.current_version,
+            a.current_version_id,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
@@ -138,7 +140,7 @@ export async function getAssetById(assetId) {
      LEFT JOIN users u ON u.id = a.created_by_user_id
      LEFT JOIN asset_versions v
        ON v.asset_id = a.id
-      AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)
+      AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))
      WHERE a.id = $1`,
     [assetId]
   );
@@ -157,6 +159,8 @@ export async function listAssetVersions(assetId) {
             v.asset_id,
             v.version_number,
             v.created_at,
+            v.label,
+            v.notes,
             COALESCE(u.display_name, u.email, 'Unknown') AS created_by,
             v.original_file_name,
             v.mime_type,
@@ -323,9 +327,10 @@ export async function createAssetVersion(assetId, payload) {
       `UPDATE assets
        SET status_id = $1,
            current_version = $2,
+           current_version_id = $3,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3`,
-      [statusId, `v${nextVersion}.0`, assetId]
+       WHERE id = $4`,
+      [statusId, `v${nextVersion}.0`, row.id, assetId]
     );
   }
 
@@ -372,4 +377,148 @@ export async function updateAssetStatus(assetId, statusName) {
   }
 
   return refreshed;
+}
+
+/**
+ * Update asset title and/or description. Admin only at route layer.
+ *
+ * @param {number} assetId - Asset ID
+ * @param {{ title?: string, description?: string }} payload
+ * @returns {Promise<Object|null>} Updated asset or null if not found
+ */
+export async function updateAsset(assetId, payload) {
+  const updates = [];
+  const values = [];
+  let i = 1;
+  if (payload.title !== undefined && typeof payload.title === "string") {
+    updates.push(`title = $${i++}`);
+    values.push(payload.title.trim() || null);
+  }
+  if (payload.description !== undefined) {
+    updates.push(`description = $${i++}`);
+    values.push(payload.description === "" || payload.description == null ? null : String(payload.description));
+  }
+  if (updates.length === 0) return getAssetById(assetId);
+  values.push(assetId);
+  const result = await query(
+    `UPDATE assets SET ${updates.join(", ")}, updated_at = CURRENT_TIMESTAMP WHERE id = $${i} RETURNING id`,
+    values
+  );
+  if (result.rows.length === 0) return null;
+  return getAssetById(assetId);
+}
+
+/**
+ * Update a version's metadata and optionally replace or remove its file.
+ * Admin only at route layer.
+ *
+ * @param {number} assetId - Asset ID
+ * @param {number} versionId - Version ID
+ * @param {{ label?: string, notes?: string, file?: Object|null, removeFile?: boolean }} payload
+ * @param {number|null} performedByUserId - For audit
+ * @returns {Promise<Object|null>} Updated version row or null
+ */
+export async function updateAssetVersion(assetId, versionId, payload, performedByUserId = null) {
+  const version = await query(
+    "SELECT id, asset_id, version_number FROM asset_versions WHERE id = $1 AND asset_id = $2",
+    [versionId, assetId]
+  );
+  if (version.rows.length === 0) return null;
+
+  const updates = [];
+  const values = [];
+  let i = 1;
+  if (payload.label !== undefined) {
+    updates.push(`label = $${i++}`);
+    values.push(payload.label === "" || payload.label == null ? null : String(payload.label));
+  }
+  if (payload.notes !== undefined) {
+    updates.push(`notes = $${i++}`);
+    values.push(payload.notes === "" || payload.notes == null ? null : String(payload.notes));
+  }
+  if (payload.removeFile === true) {
+    updates.push("original_file_name = NULL", "stored_file_name = NULL", "mime_type = NULL", "size_bytes = NULL", "file_path = NULL");
+  } else if (payload.file) {
+    updates.push(
+      "original_file_name = $" + i,
+      "stored_file_name = $" + (i + 1),
+      "mime_type = $" + (i + 2),
+      "size_bytes = $" + (i + 3),
+      "file_path = $" + (i + 4)
+    );
+    values.push(
+      payload.file.originalFileName ?? null,
+      payload.file.storedFileName ?? null,
+      payload.file.mimeType ?? null,
+      payload.file.sizeBytes ?? null,
+      payload.file.filePath ?? null
+    );
+    i += 5;
+  }
+  if (updates.length > 0) {
+    values.push(versionId);
+    await query(
+      `UPDATE asset_versions SET ${updates.join(", ")} WHERE id = $${i}`,
+      values
+    );
+  }
+  const updated = await query(
+    `SELECT v.id, v.asset_id, v.version_number, v.created_at, v.original_file_name, v.mime_type, v.size_bytes, v.file_path
+     FROM asset_versions v WHERE v.id = $1`,
+    [versionId]
+  );
+  const row = updated.rows[0];
+  if (!row) return null;
+  const out = { ...row, file_url: getPublicFileUrl(row.file_path) };
+  return out;
+}
+
+/**
+ * Delete a version. If it was the current version, asset's current_version is set to the previous version.
+ * Admin only at route layer.
+ *
+ * @param {number} assetId - Asset ID
+ * @param {number} versionId - Version ID
+ * @returns {Promise<{ deleted: boolean }>}
+ */
+export async function deleteAssetVersionById(assetId, versionId) {
+  const version = await query(
+    "SELECT id, version_number FROM asset_versions WHERE id = $1 AND asset_id = $2",
+    [versionId, assetId]
+  );
+  if (version.rows.length === 0) return { deleted: false };
+  const currentVersionId = (await query("SELECT current_version_id FROM assets WHERE id = $1", [assetId])).rows[0]?.current_version_id;
+  await query("DELETE FROM asset_versions WHERE id = $1", [versionId]);
+  if (currentVersionId === versionId) {
+    const prev = await query(
+      "SELECT id, version_number FROM asset_versions WHERE asset_id = $1 ORDER BY version_number DESC LIMIT 1",
+      [assetId]
+    );
+    const nextId = prev.rows[0]?.id ?? null;
+    const nextNum = prev.rows[0]?.version_number ?? 1;
+    await query(
+      `UPDATE assets SET current_version_id = $1, current_version = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [nextId, `v${nextNum}.0`, assetId]
+    );
+  }
+  return { deleted: true };
+}
+
+/**
+ * List audit log entries for an asset's versions. Admin only.
+ *
+ * @param {number} assetId - Asset ID
+ * @returns {Promise<Array>}
+ */
+export async function listVersionAudit(assetId) {
+  const result = await query(
+    `SELECT a.id, a.asset_id, a.asset_version_id, a.action, a.performed_at, a.details,
+            COALESCE(u.display_name, u.email, 'Unknown') AS performed_by
+     FROM asset_version_audit a
+     LEFT JOIN users u ON u.id = a.performed_by_user_id
+     WHERE a.asset_id = $1
+     ORDER BY a.performed_at DESC`,
+    [assetId]
+  );
+  return result.rows;
 }

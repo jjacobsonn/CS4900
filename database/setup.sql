@@ -304,6 +304,18 @@ ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
 
+-- Audit log for admin actions on versions (delete, edit metadata)
+CREATE TABLE IF NOT EXISTS asset_version_audit (
+  id SERIAL PRIMARY KEY,
+  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+  asset_version_id INTEGER REFERENCES asset_versions(id) ON DELETE SET NULL,
+  action VARCHAR(50) NOT NULL,
+  performed_by_user_id INTEGER REFERENCES users(id),
+  performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  details TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_asset_version_audit_asset_id ON asset_version_audit(asset_id);
+
 INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
 SELECT
     'Homepage Hero Banner',

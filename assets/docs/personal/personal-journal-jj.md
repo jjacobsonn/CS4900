@@ -237,3 +237,18 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 **Reflections:**
 - Small UX details (filename display, version list layout, and protecting the admin account) make the app feel more reliable and easier to use in demos.
+
+### March 15, 2026 (continued) — Admin asset editing, comment delete, version attachments
+
+**Tasks Completed:**
+- **Edit whole asset (admin):** Added an “Edit asset” panel on the asset detail page (admin only) to edit title, description (notes), owner, and optionally replace the preview file. Replacing the preview file updates the current version’s file via `PATCH /api/assets/:id/versions/:versionId` so the card preview and “Current file” update without creating a new version. Backend: `updateAsset(assetId, { title?, description? })`, new route `PATCH /api/assets/:assetId` (admin).
+- **Delete comments on the page:** CommentList now supports an optional “Delete” button per comment for admins; AssetDetailPage wires it to the existing `DELETE /api/assets/:assetId/comments/:commentId` and refreshes the list after delete.
+- **Version edit: add/remove attachment:** In the Versions tab, when an admin edits a version they can replace the attachment (file input) or remove it (checkbox). Backend: `updateAssetVersion(assetId, versionId, { label?, notes?, file?, removeFile? })`, `deleteAssetVersionById`, `listVersionAudit`; new routes `PATCH` and `DELETE /api/assets/:assetId/versions/:versionId` and `GET /api/assets/:assetId/version-audit` (admin). Frontend: `patchAssetVersion` accepts optional `file` or `removeFile`; VersionList edit form includes file replace and “Remove attachment”; apiClient has `patchForm` for multipart PATCH.
+- **Schema and API:** Added `asset_version_audit` table in `database/setup.sql` for version audit trail. Backend `getAssetById` and `listAssets` now return `current_version_id` and join to the current version’s file correctly; `createAssetVersion` sets `current_version_id` on the asset. Frontend Asset type and `toAsset` include `currentVersionId`; Version type and version API include `label`, `notes`, `createdBy`.
+
+**Challenges:**
+- Keeping PATCH version flexible for both JSON (metadata only) and multipart (file replace) and ensuring the frontend could send either.
+
+**Next Steps:**
+- Run `CREATE TABLE asset_version_audit` (from setup.sql) on existing DBs that don’t have it yet so version-audit endpoint works.
+- Consider allowing multiple files per asset later with a designated “main” one for card preview.

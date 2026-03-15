@@ -6,7 +6,7 @@
 
 ---
 
-## Sprint 1 - Week 1 (February 10-16, 2026)
+## Sprint 0 - Week 1 (February 10-16, 2026)
 
 ### February 16, 2026
 
@@ -26,7 +26,7 @@
   - Configured Vite proxy
   - Updated login page to fetch roles from backend
   - Demonstrated GUI → Service → Database flow
-- Updated all documentation for Sprint 1 Review
+- Updated all documentation for Sprint 0 Review
 
 **Challenges:**
 - Initial Jest configuration issue with ES modules (resolved)
@@ -40,16 +40,16 @@
 - Professional project structure
 
 **Next Steps:**
-- Prepare for Sprint 1 Review presentation
+- Prepare for Sprint 0 Review presentation
 - Address any feedback from review team
-- Plan Sprint 2 features (authentication, additional endpoints)
+- Plan Sprint 1 features (authentication, additional endpoints)
 
 **Reflections:**
 Successfully transitioned from planning to implementation. We have a working full-stack application with database integration that exceeds Sprint 1 requirements. The foundation is solid for building out additional features in Sprint 2.
 
 ---
 
-## Sprint 1 - Individual Tasks
+## Sprint 0 - Individual Tasks
 
 ### Completed Tasks
 - [x] Repository setup and branch management
@@ -64,7 +64,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 - [x] Initial unit tests
 - [x] Code examples for review
 - [x] Frontend-backend integration
-- [x] Sprint 1 Review preparation
+- [x] Sprint 0 Review preparation
 
 ---
 
@@ -81,7 +81,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ---
 
-## Sprint 2 - Week 1 (Feb 24 - Mar 2, 2026)
+## Sprint 1 - Week 1 (Feb 24 - Mar 2, 2026)
 
 ### February 27, 2026
 
@@ -91,7 +91,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 - Reviewed teammate code for frontend routing and merged small fixes
 
 **Challenges:**
-- Authentication design decisions to finalize in Sprint 2 planning
+- Authentication design decisions to finalize in Sprint 1 planning
 
 **Next Steps:**
 - Finalize authentication design and begin implementing login flow
@@ -117,7 +117,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ---
 
-### March 19, 2026 — Sprint 2 Review Prep (Backend, Admin, Versioning)
+### March 19, 2026 — Sprint 1 Review Prep (Backend, Admin, Versioning)
 
 **Tasks Completed:**
 - **Authentication & roles**
@@ -152,7 +152,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 **Reflections:**
 - The system now feels much closer to a real SaaS admin experience: Admins can see live counts, recent activity, and manage users/assets/comments directly.  
-- Designers and reviewers have clearer, role-based flows (upload vs review) and comments/versions are now tied to real users and database-backed history, which will make Sprint 2’s review much easier to demonstrate.
+- Designers and reviewers have clearer, role-based flows (upload vs review) and comments/versions are now tied to real users and database-backed history, which will make Sprint 1’s review much easier to demonstrate.
 
 ---
 
@@ -194,18 +194,28 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 **Next Steps:**
 - Prepare final review materials and ensure all docs are up to date
-
 ---
 
-## Final Prep
+## Sprint 2 - Week 1 (Mar 15 - Mar 21, 2026)
 
-### April 30, 2026
+### March 15, 2026
 
 **Tasks Completed:**
-- Finalized demo walkthrough
-- Added final notes to `assets/docs/project-management/project-follow-up.md`
+- Created feature branch `jj-sprint-2` from `main` and merged Landon’s latest Sprint 2 backend/frontend work (`lw-sprint-2`) into it.
+- Helped align the backend database with the latest asset versioning schema by re-running the init script so columns like `original_file_name` exist and the admin dashboard can query without errors.
+- Tightened frontend role-based access so the **Admin** navigation and page are completely hidden and inaccessible for non-admin users (dashboard, upload, and admin areas now fully respect role state).
+- Renamed and reorganized sprint documentation folders so the original baseline lives under `sprint-0/`, the reimplementation work under `sprint-1/`, and created a new empty `sprint-2/` folder for this current sprint.
+- Updated cross-references in the root README, doc versioning guide, project-management docs, and this personal journal so sprint numbers and paths match the new structure.
+- Added a small “logged in as” pill in the header that shows the current user’s email so reviewers can immediately confirm which seeded account they’re using (designer, reviewer, or admin) during demos.
+
+**Challenges:**
+- Keeping the sprint renumbering consistent across many linked docs (root README, project-management files, and journals) without breaking any paths.
+- Making sure the database migrations and asset versioning columns were applied correctly so existing admin queries didn’t fail in subtle ways.
+
+**Next Steps:**
+- Fill in `assets/docs/sprint-2/` with a clear Sprint 2 overview and any new technical docs created as we implement changes from the `jj-sprint-2` branch.
+- Continue tightening permissions and UX on the admin and upload flows, and verify everything with end-to-end tests before the Sprint 2 review meeting.
 
 **Reflections:**
-- The project reached a stable state ready for final review; main items remaining are deployment notes and final polish.
-
-**Last Updated:** February 23, 2026
+- Today’s work cleaned up both **infrastructure** (DB schema alignment) and **experience** (role-based visibility and documentation), so the project feels more production-ready going into Sprint 2.
+- Renaming the sprints to use a baseline `sprint-0/` and dedicated `sprint-1/` / `sprint-2/` folders makes the history of the project and the reimplementation phases much easier to explain at review time.

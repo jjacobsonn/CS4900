@@ -53,10 +53,12 @@ export function useAuth() {
 
 function AppLayout({
   role,
+  user,
   onLogout,
   children
 }: {
   role: Role;
+  user: AuthUser | null;
   onLogout: () => void;
   children: React.ReactNode;
 }) {
@@ -125,6 +127,11 @@ function AppLayout({
           </button>
         </nav>
         <div className="header-actions">
+          {user && (
+            <div className="user-pill" aria-label="Current user">
+              <span className="user-email">{user.email}</span>
+            </div>
+          )}
           <button type="button" onClick={onLogout}>
             Logout
           </button>
@@ -151,7 +158,7 @@ export default function App() {
   }
 
   return (
-    <AppLayout role={auth.role} onLogout={auth.logout}>
+    <AppLayout role={auth.role} user={auth.user} onLogout={auth.logout}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />

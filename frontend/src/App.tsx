@@ -64,6 +64,7 @@ function AppLayout({
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
   const allowReview = canReview(role);
+  const isAdmin = role === "admin";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const activeSection = location.pathname.startsWith("/assets")
     ? "review"
@@ -101,22 +102,24 @@ function AppLayout({
           <button type="button" onClick={() => goTo("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
             Dashboard
           </button>
-          <button
-            type="button"
-            onClick={() => goTo("/upload")}
-            className={location.pathname === "/upload" ? "active" : ""}
-            disabled={!allowUpload}
-          >
-            Upload
-          </button>
-          <button
-            type="button"
-            onClick={() => goTo("/admin")}
-            className={location.pathname === "/admin" ? "active" : ""}
-            disabled={role !== "admin"}
-          >
-            Admin
-          </button>
+          {allowUpload && (
+            <button
+              type="button"
+              onClick={() => goTo("/upload")}
+              className={location.pathname === "/upload" ? "active" : ""}
+            >
+              Upload
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => goTo("/admin")}
+              className={location.pathname === "/admin" ? "active" : ""}
+            >
+              Admin
+            </button>
+          )}
           <button type="button" className="mobile-logout" onClick={onLogout}>
             Logout
           </button>
@@ -131,8 +134,8 @@ function AppLayout({
       <footer className="permissions-note">
         <span className={`dot ${activeSection === "dashboard" ? "active" : ""}`} aria-hidden />
         <span className={`dot ${activeSection === "review" ? "active" : ""}`} aria-hidden />
-        <span className={`dot ${activeSection === "upload" ? "active" : ""}`} aria-hidden />
-        <span className={`dot ${activeSection === "admin" ? "active" : ""}`} aria-hidden />
+        {allowUpload && <span className={`dot ${activeSection === "upload" ? "active" : ""}`} aria-hidden />}
+        {isAdmin && <span className={`dot ${activeSection === "admin" ? "active" : ""}`} aria-hidden />}
         <span className="footnote">Review: {allowReview ? "on" : "off"} | Upload: {allowUpload ? "on" : "off"}</span>
       </footer>
     </div>

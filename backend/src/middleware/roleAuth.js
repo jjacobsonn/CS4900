@@ -8,7 +8,7 @@
  * - requireRole(allowedRoles): returns 403 if req.role is missing or not in allowedRoles.
  */
 
-const VALID_ROLES = ["designer", "reviewer", "admin"];
+const VALID_ROLES = ["designer", "reviewer", "manager", "admin"];
 
 /**
  * Attach req.role from the X-Vellum-Role header.

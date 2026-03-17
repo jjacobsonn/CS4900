@@ -23,6 +23,8 @@ function mapAssetRow(row) {
   if (!row) return null;
   return {
     ...row,
+    asset_type: row.asset_type ?? null,
+    external_url: row.external_url ?? null,
     file_url: getPublicFileUrl(row.file_path),
     file_name: row.original_file_name ?? null,
     mime_type: row.mime_type ?? null,
@@ -43,6 +45,8 @@ export async function listAssets() {
     `SELECT a.id,
             a.title,
             a.description,
+            a.asset_type,
+            a.external_url,
             s.status_name AS status,
             a.current_version,
             a.current_version_id,
@@ -70,7 +74,7 @@ export async function listAssets() {
  * This function inserts a new asset and defaults it to Draft status. When a
  * createdByUserId is provided, that user is recorded as the asset owner.
  *
- * @param {{ title: string, description?: string, createdByUserId?: number|null, file?: Object|null }} payload - Asset create payload
+ * @param {{ title: string, description?: string, assetType?: string|null, externalUrl?: string|null, createdByUserId?: number|null, projectId?: number|null, file?: Object|null }} payload - Asset create payload
  * @returns {Promise<Object>} Created asset response object (raw DB row)
  */
 export async function createAsset(payload) {
@@ -79,10 +83,18 @@ export async function createAsset(payload) {
   );
   const statusId = status.rows[0]?.id;
   const created = await query(
-    `INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
-     VALUES ($1, $2, $3, 'v1.0', $4)
+    `INSERT INTO assets (title, description, asset_type, external_url, status_id, current_version, created_by_user_id, project_id)
+     VALUES ($1, $2, $3, $4, $5, 'v1.0', $6, $7)
      RETURNING id`,
-    [payload.title, payload.description ?? null, statusId, payload.createdByUserId ?? null]
+    [
+      payload.title,
+      payload.description ?? null,
+      payload.assetType ?? null,
+      payload.externalUrl ?? null,
+      statusId,
+      payload.createdByUserId ?? null,
+      payload.projectId ?? null
+    ]
   );
   const row = created.rows[0];
   if (!row) return null;
@@ -125,6 +137,8 @@ export async function getAssetById(assetId) {
     `SELECT a.id,
             a.title,
             a.description,
+            a.asset_type,
+            a.external_url,
             s.status_name AS status,
             a.current_version,
             a.current_version_id,
@@ -341,22 +355,72 @@ export async function createAssetVersion(assetId, payload) {
 }
 
 /**
- * Update asset status
- * 
- * This function validates the provided status value against the lookup table
- * before applying the update.
- * 
- * @param {number} assetId - Asset ID
- * @param {string} statusName - New status label
- * @returns {Promise<Object|null|{invalidStatus: boolean}>} Updated asset, null if not found, or invalidStatus marker
+ * Internal-only workflow statuses for Sprint 2 (initial slice).
+ *
+ * These are enforced at the service layer to avoid arbitrary status values.
  */
-export async function updateAssetStatus(assetId, statusName) {
+const INTERNAL_STATUS_MAP = {
+  // key           // canonical DB status_name
+  draft: "Draft",
+  in_progress: "In Progress",
+  ready_for_internal_review: "Ready for Internal Review",
+  in_internal_review: "In Internal Review",
+  changes_requested_internal: "Changes Requested (Internal)",
+  approved_internal: "Approved (Internal)"
+};
+
+// Allowed state transitions for the initial internal-only workflow slice.
+const INTERNAL_STATUS_TRANSITIONS = {
+  Draft: new Set(["In Progress", "Ready for Internal Review"]),
+  "In Progress": new Set(["Ready for Internal Review"]),
+  "Ready for Internal Review": new Set(["In Internal Review"]),
+  "In Internal Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
+  "Changes Requested (Internal)": new Set(["In Progress", "Ready for Internal Review"]),
+  "Approved (Internal)": new Set([]) // terminal for internal-only slice
+};
+
+/**
+ * Update asset status
+ *
+ * For Sprint 2's internal-only slice, this function:
+ * - Accepts a normalized internal status key (e.g., "in_progress").
+ * - Maps it to the canonical status_name in asset_status_lookup.
+ * - Enforces allowed transitions based on current status.
+ *
+ * @param {number} assetId - Asset ID
+ * @param {string} statusKey - New internal status key
+ * @returns {Promise<Object|null|{invalidStatus: boolean, reason?: string}>}
+ *          Updated asset, null if not found, or invalidStatus marker
+ */
+export async function updateAssetStatus(assetId, statusKey) {
+  const canonicalName = INTERNAL_STATUS_MAP[statusKey];
+  if (!canonicalName) {
+    return { invalidStatus: true, reason: "Unknown internal status key" };
+  }
+
+  // Load current status for this asset to enforce transitions.
+  const current = await query(
+    `SELECT s.status_name
+     FROM assets a
+     JOIN asset_status_lookup s ON s.id = a.status_id
+     WHERE a.id = $1`,
+    [assetId]
+  );
+  if (current.rows.length === 0) {
+    return null;
+  }
+  const currentStatusName = current.rows[0].status_name;
+  const allowedNext = INTERNAL_STATUS_TRANSITIONS[currentStatusName];
+  if (!allowedNext || !allowedNext.has(canonicalName)) {
+    return { invalidStatus: true, reason: "Illegal status transition" };
+  }
+
   const valid = await query(
     "SELECT id, status_name FROM asset_status_lookup WHERE status_name = $1",
-    [statusName]
+    [canonicalName]
   );
   if (valid.rows.length === 0) {
-    return { invalidStatus: true };
+    return { invalidStatus: true, reason: "Status not configured in lookup" };
   }
 
   const updated = await query(

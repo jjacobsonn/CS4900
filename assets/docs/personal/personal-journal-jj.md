@@ -252,3 +252,49 @@ Successfully transitioned from planning to implementation. We have a working ful
 **Next Steps:**
 - Run `CREATE TABLE asset_version_audit` (from setup.sql) on existing DBs that don’t have it yet so version-audit endpoint works.
 - Consider allowing multiple files per asset later with a designated “main” one for card preview.
+
+---
+
+### March 17, 2026 — Sprint 2 Architecture, Workflow, and Projects (Backend Focus)
+
+**Tasks Completed:**
+- **Sprint 2 product vision & docs**
+  - Authored a comprehensive Sprint 2 spec under `assets/docs/sprint-2/`, including:
+    - `vision-and-purpose.md` (single-tenant org → clients → projects, multi-role workflow).
+    - `personas-and-roles.md` (Admin, Manager, Designer, Internal Reviewer, Client Reviewer).
+    - `user-flows-and-sequences.md` (request → creation → internal review → client review → publish).
+    - `information-architecture-and-entities.md` (Organization, Client, Project, Asset, Version, Workflow, Comment, ApprovalRecord).
+    - Updated `functional-requirements.md` / `nonfunctional-requirements.md` aligned to the richer workflow.
+    - Testing docs: `test-strategy.md`, `test-cases-functional.md`, `traceability-matrix.md`.
+  - Added `asset-types-and-content.md` to define how assets can be files, links (Figma, Jira, GitHub, Discord, Salesforce, etc.), or pure notes using `asset_type` + `external_url`.
+- **Backend internal workflow slice**
+  - Extended `asset_status_lookup` with internal-only statuses: In Progress, Ready for Internal Review, In Internal Review, Changes Requested (Internal), Approved (Internal).
+  - Implemented an internal workflow state machine in `assetService.updateAssetStatus` that:
+    - Accepts normalized keys (`draft`, `in_progress`, `ready_for_internal_review`, `in_internal_review`, `changes_requested_internal`, `approved_internal`).
+    - Enforces legal transitions (e.g., Draft → In Progress → Ready for Internal Review → In Internal Review → Approved (Internal)).
+  - Updated `PATCH /api/assets/:assetId/status` to use the new keys and return detailed error reasons for illegal transitions.
+- **Projects and clients**
+  - Added `clients` and `projects` tables via migrations; linked `assets.project_id` to projects.
+  - Implemented `/api/clients` (list + create) with `manager`/`admin` role checks.
+  - Implemented `/api/projects` (list + create) and `GET /api/projects/:projectId` that returns a project plus a summary of its assets and statuses.
+  - Verified the full flow by:
+    - Creating a client and project.
+    - Creating an asset attached to the project.
+    - Walking the asset through the internal status pipeline and confirming the project view updates (`Approved (Internal)`).
+- **Asset content model upgrades**
+  - Added `asset_type` and `external_url` columns to `assets` plus wiring in `assetService` and `assets` routes.
+  - Documented creative `asset_type` values (e.g., `figma`, `mockup`, `brief`, `ticket`, `repo`, `chat`, `crm`, `analytics`, `research`, `note`, `decision`, etc.) so the frontend can render different views and icons per type.
+
+**Challenges:**
+- Getting the status state machine and existing lookup data to line up so new assets starting in `Draft` could move cleanly through the internal workflow without breaking old statuses like `In Review`.
+- Making sure cURL commands in zsh were correct (line continuations and quotes) so I could reliably exercise the new endpoints while iterating on the service logic.
+- Keeping the growing Sprint 2 documentation coherent (vision → flows → entities → requirements → tests) while simultaneously updating the backend to match.
+
+**Next Steps:**
+- Add a simple “debug” or helper endpoint to surface an asset’s current status and allowed next transitions for easier manual testing and UI wiring.
+- Begin wiring frontend dashboards to the new `/api/clients`, `/api/projects`, and project-scoped asset list, with role-specific views (Designer “My work”, Reviewer queue, Manager project overview).
+- Extend the workflow to include client review stages and eventually multiple workflow templates, building on the internal slice implemented today.
+
+**Reflections:**
+- Today’s work took the system from “flat asset list with comments” to something much closer to a real project/asset workflow product: there are now clients, projects, asset types, and a governed internal review pipeline.
+- Having a solid doc set for Sprint 2 (personas, flows, IA, requirements, tests) made the backend changes feel purposeful rather than ad hoc; it also sets up the frontend work for a cleaner, more story-driven demo in future sprints.

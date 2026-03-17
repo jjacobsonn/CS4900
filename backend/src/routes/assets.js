@@ -78,7 +78,7 @@ router.get('/summary', async (_req, res, next) => {
 router.post("/", requireRole(["designer", "admin"]), async (req, res, next) => {
   const handleCreate = async () => {
     try {
-      const { title, description, createdByUserId } = req.body ?? {};
+      const { title, description, assetType, externalUrl, createdByUserId, projectId } = req.body ?? {};
       if (!title || typeof title !== "string") {
         return res.status(400).json({ error: "title is required" });
       }
@@ -86,10 +86,14 @@ router.post("/", requireRole(["designer", "admin"]), async (req, res, next) => {
         return res.status(400).json({ error: "file is required" });
       }
       const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
+      const project_id = projectId != null ? Number(projectId) : null;
       const created = await createAsset({
         title,
         description,
+        assetType: typeof assetType === "string" ? assetType : null,
+        externalUrl: typeof externalUrl === "string" ? externalUrl : null,
         createdByUserId: Number.isFinite(creatorId) ? creatorId : null,
+        projectId: Number.isFinite(project_id) ? project_id : null,
         file: toStoredAssetFile(req.file)
       });
       return res.status(201).json(created);
@@ -407,7 +411,11 @@ router.delete("/:assetId", requireRole(["admin"]), async (req, res, next) => {
 /**
  * PATCH /api/assets/:assetId/status
  *
- * Update asset status (approve / request changes). Requires role reviewer or admin.
+ * Update asset status (internal workflow approve / request changes).
+ * Requires role reviewer or admin.
+ *
+ * Expects a normalized internal status key in the request body, e.g.:
+ * { "status": "ready_for_internal_review" }
  */
 router.patch("/:assetId/status", requireRole(["reviewer", "admin"]), async (req, res, next) => {
   try {
@@ -418,7 +426,10 @@ router.patch("/:assetId/status", requireRole(["reviewer", "admin"]), async (req,
     }
     const updated = await updateAssetStatus(assetId, status);
     if (updated?.invalidStatus) {
-      return res.status(400).json({ error: "Invalid status" });
+      return res.status(400).json({
+        error: "Invalid status",
+        reason: updated.reason ?? "Unknown"
+      });
     }
     if (!updated) {
       return res.status(404).json({ error: "Asset not found" });

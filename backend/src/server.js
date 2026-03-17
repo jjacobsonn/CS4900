@@ -4,6 +4,8 @@ import express from "express";
 import path from "path";
 import { testConnection } from "./config/database.js";
 import adminRouter from "./routes/admin.js";
+import clientsRouter from "./routes/clients.js";
+import projectsRouter from "./routes/projects.js";
 import assetsRouter from "./routes/assets.js";
 import authRouter from "./routes/auth.js";
 import userRolesRouter from "./routes/userRoles.js";
@@ -33,6 +35,8 @@ app.use("/api/user-roles", userRolesRouter);
 app.use("/api/assets", assetsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/clients", clientsRouter);
+app.use("/api/projects", projectsRouter);
 
 app.get("/", (_req, res) => {
   res.json({
@@ -40,6 +44,8 @@ app.get("/", (_req, res) => {
     endpoints: {
       health: "/api/health",
       assets: "/api/assets",
+      clients: "/api/clients",
+      projects: "/api/projects",
       userRoles: "/api/user-roles",
       auth: "/api/auth",
       users: "/api/users",

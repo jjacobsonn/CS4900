@@ -75,7 +75,7 @@ router.get('/summary', async (_req, res, next) => {
  *
  * Create a new asset record. Requires role designer or admin.
  */
-router.post("/", requireRole(["designer", "admin"]), async (req, res, next) => {
+router.post("/", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   const handleCreate = async () => {
     try {
       const { title, description, assetType, externalUrl, createdByUserId, projectId } = req.body ?? {};
@@ -141,14 +141,14 @@ router.get("/:assetId", async (req, res, next) => {
  *
  * Update asset title and/or description. Admin only.
  */
-router.patch("/:assetId", requireRole(["admin"]), async (req, res, next) => {
+router.patch("/:assetId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
       return res.status(400).json({ error: "Invalid asset id" });
     }
-    const { title, description } = req.body ?? {};
-    const updated = await updateAsset(assetId, { title, description });
+    const { title, description, assetType, externalUrl } = req.body ?? {};
+    const updated = await updateAsset(assetId, { title, description, assetType, externalUrl });
     if (!updated) {
       return res.status(404).json({ error: "Asset not found" });
     }
@@ -163,7 +163,7 @@ router.patch("/:assetId", requireRole(["admin"]), async (req, res, next) => {
  *
  * Update the primary owner (created_by_user_id) for an asset. Admin only.
  */
-router.patch("/:assetId/owner", requireRole(["admin"]), async (req, res, next) => {
+router.patch("/:assetId/owner", requireRole(["manager", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -225,7 +225,7 @@ router.get("/:assetId/comments", async (req, res, next) => {
  *
  * Delete a single comment on an asset. Admin only.
  */
-router.delete("/:assetId/comments/:commentId", requireRole(["admin"]), async (req, res, next) => {
+router.delete("/:assetId/comments/:commentId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   try {
     const commentId = Number(req.params.commentId);
     if (!Number.isFinite(commentId)) {
@@ -246,7 +246,7 @@ router.delete("/:assetId/comments/:commentId", requireRole(["admin"]), async (re
  *
  * List audit log for version actions. Admin only.
  */
-router.get("/:assetId/version-audit", requireRole(["admin"]), async (req, res, next) => {
+router.get("/:assetId/version-audit", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -282,7 +282,7 @@ router.get("/:assetId/versions", async (req, res, next) => {
  *
  * Create a new version for an asset. Requires role designer or admin.
  */
-router.post("/:assetId/versions", requireRole(["designer", "admin"]), async (req, res, next) => {
+router.post("/:assetId/versions", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   const handleVersionCreate = async () => {
     try {
       const assetId = Number(req.params.assetId);
@@ -327,7 +327,7 @@ router.post("/:assetId/versions", requireRole(["designer", "admin"]), async (req
  *
  * Update version metadata and/or replace or remove file. Admin only.
  */
-router.patch("/:assetId/versions/:versionId", requireRole(["admin"]), (req, res, next) => {
+router.patch("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin"]), (req, res, next) => {
   const handleUpdate = async () => {
     try {
       const assetId = Number(req.params.assetId);
@@ -370,7 +370,7 @@ router.patch("/:assetId/versions/:versionId", requireRole(["admin"]), (req, res,
  *
  * Delete a version. Admin only.
  */
-router.delete("/:assetId/versions/:versionId", requireRole(["admin"]), async (req, res, next) => {
+router.delete("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     const versionId = Number(req.params.versionId);
@@ -392,7 +392,7 @@ router.delete("/:assetId/versions/:versionId", requireRole(["admin"]), async (re
  *
  * Delete an asset and its related records. Admin only.
  */
-router.delete("/:assetId", requireRole(["admin"]), async (req, res, next) => {
+router.delete("/:assetId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -417,14 +417,14 @@ router.delete("/:assetId", requireRole(["admin"]), async (req, res, next) => {
  * Expects a normalized internal status key in the request body, e.g.:
  * { "status": "ready_for_internal_review" }
  */
-router.patch("/:assetId/status", requireRole(["reviewer", "admin"]), async (req, res, next) => {
+router.patch("/:assetId/status", requireRole(["designer", "reviewer", "manager", "client_reviewer", "admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     const { status } = req.body ?? {};
     if (!status || typeof status !== "string") {
       return res.status(400).json({ error: "status is required" });
     }
-    const updated = await updateAssetStatus(assetId, status);
+    const updated = await updateAssetStatus(assetId, status, req.role);
     if (updated?.invalidStatus) {
       return res.status(400).json({
         error: "Invalid status",

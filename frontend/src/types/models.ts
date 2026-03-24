@@ -47,7 +47,7 @@ export interface UserAccount {
   id: string;
   email: string;
   displayName?: string | null;
-  role: "designer" | "reviewer" | "admin";
+  role: "designer" | "reviewer" | "manager" | "client_reviewer" | "admin";
   isActive: boolean;
 }
 

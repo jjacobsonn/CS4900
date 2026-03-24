@@ -30,7 +30,7 @@ function getRoleHeader(): string | undefined {
   try {
     if (typeof localStorage !== "undefined") {
       const role = localStorage.getItem("vellum_role");
-      if (role && ["designer", "reviewer", "admin"].includes(role)) return role;
+      if (role && ["designer", "reviewer", "manager", "client_reviewer", "admin"].includes(role)) return role;
     }
   } catch {
     // ignore
@@ -55,8 +55,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body || `Request failed with status ${response.status}`);
+    let message = `Request failed with status ${response.status}`;
+    const raw = await response.text();
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { error?: string; message?: string };
+        message = parsed.error || parsed.message || raw;
+      } catch {
+        message = raw;
+      }
+    }
+    throw new Error(message);
   }
 
   if (response.status === 204) {

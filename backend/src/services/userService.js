@@ -13,6 +13,10 @@ function toRoleCode(role) {
       return "DESIGNER";
     case "reviewer":
       return "REVIEWER";
+    case "manager":
+      return "MANAGER";
+    case "client_reviewer":
+      return "CLIENT_REVIEWER";
     default:
       return null;
   }

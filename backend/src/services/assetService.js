@@ -78,6 +78,15 @@ export async function listAssets() {
  * @returns {Promise<Object>} Created asset response object (raw DB row)
  */
 export async function createAsset(payload) {
+  if (payload.projectId != null) {
+    const projectCheck = await query("SELECT id FROM projects WHERE id = $1 LIMIT 1", [payload.projectId]);
+    if (projectCheck.rows.length === 0) {
+      const error = new Error("Invalid projectId: project not found");
+      error.status = 400;
+      throw error;
+    }
+  }
+
   const status = await query(
     "SELECT id FROM asset_status_lookup WHERE status_name = 'Draft' LIMIT 1"
   );
@@ -366,7 +375,11 @@ const INTERNAL_STATUS_MAP = {
   ready_for_internal_review: "Ready for Internal Review",
   in_internal_review: "In Internal Review",
   changes_requested_internal: "Changes Requested (Internal)",
-  approved_internal: "Approved (Internal)"
+  approved_internal: "Approved (Internal)",
+  ready_for_client_review: "Ready for Client Review",
+  in_client_review: "In Client Review",
+  client_changes_requested: "Client Changes Requested",
+  approved_client: "Approved (Client)"
 };
 
 // Allowed state transitions for the initial internal-only workflow slice.
@@ -376,8 +389,28 @@ const INTERNAL_STATUS_TRANSITIONS = {
   "Ready for Internal Review": new Set(["In Internal Review"]),
   "In Internal Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
   "Changes Requested (Internal)": new Set(["In Progress", "Ready for Internal Review"]),
-  "Approved (Internal)": new Set([]) // terminal for internal-only slice
+  "Approved (Internal)": new Set(["Ready for Client Review"]),
+  "Ready for Client Review": new Set(["In Client Review"]),
+  "In Client Review": new Set(["Client Changes Requested", "Approved (Client)"]),
+  "Client Changes Requested": new Set(["In Progress", "Ready for Internal Review"]),
+  "Approved (Client)": new Set([]) // terminal state
 };
+
+const INTERNAL_REVIEW_KEYS = new Set([
+  "draft",
+  "in_progress",
+  "ready_for_internal_review",
+  "in_internal_review",
+  "changes_requested_internal",
+  "approved_internal"
+]);
+
+const CLIENT_REVIEW_KEYS = new Set([
+  "ready_for_client_review",
+  "in_client_review",
+  "client_changes_requested",
+  "approved_client"
+]);
 
 /**
  * Update asset status
@@ -388,14 +421,22 @@ const INTERNAL_STATUS_TRANSITIONS = {
  * - Enforces allowed transitions based on current status.
  *
  * @param {number} assetId - Asset ID
- * @param {string} statusKey - New internal status key
+ * @param {string} statusKey - New status key
+ * @param {string|null} actorRole - Request role from middleware
  * @returns {Promise<Object|null|{invalidStatus: boolean, reason?: string}>}
  *          Updated asset, null if not found, or invalidStatus marker
  */
-export async function updateAssetStatus(assetId, statusKey) {
+export async function updateAssetStatus(assetId, statusKey, actorRole = null) {
   const canonicalName = INTERNAL_STATUS_MAP[statusKey];
   if (!canonicalName) {
     return { invalidStatus: true, reason: "Unknown internal status key" };
+  }
+
+  if (CLIENT_REVIEW_KEYS.has(statusKey) && !["client_reviewer", "manager", "admin"].includes(actorRole || "")) {
+    return { invalidStatus: true, reason: "Role cannot perform client review transitions" };
+  }
+  if (INTERNAL_REVIEW_KEYS.has(statusKey) && !["designer", "reviewer", "manager", "admin"].includes(actorRole || "")) {
+    return { invalidStatus: true, reason: "Role cannot perform internal transitions" };
   }
 
   // Load current status for this asset to enforce transitions.

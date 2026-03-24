@@ -42,7 +42,10 @@ export async function loginWithEmailPassword(email, password) {
     throw error;
   }
 
-  const role = row.role === "admin" ? "admin" : row.role === "designer" ? "designer" : "reviewer";
+  // Return the exact normalized role from DB for Model B support.
+  // Supported roles currently include: admin, designer, reviewer, manager, client_reviewer.
+  const supportedRoles = new Set(["admin", "designer", "reviewer", "manager", "client_reviewer"]);
+  const role = supportedRoles.has(row.role) ? row.role : "reviewer";
 
   return {
     id: String(row.id),

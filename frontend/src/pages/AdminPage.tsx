@@ -269,6 +269,8 @@ export function AdminPage() {
               <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
                 <option value="designer">designer</option>
                 <option value="reviewer">reviewer</option>
+                <option value="manager">manager</option>
+                <option value="client_reviewer">client_reviewer</option>
                 <option value="admin">admin</option>
               </select>
             </label>
@@ -311,6 +313,8 @@ export function AdminPage() {
                           >
                             <option value="designer">designer</option>
                             <option value="reviewer">reviewer</option>
+                            <option value="manager">manager</option>
+                            <option value="client_reviewer">client_reviewer</option>
                             <option value="admin">admin</option>
                           </select>
                         </td>

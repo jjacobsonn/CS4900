@@ -64,14 +64,26 @@ export async function getAsset(id: string): Promise<Asset> {
 export async function createAsset(payload: {
   title: string;
   description?: string;
-  createdByUserId?: string;
+  createdByUserId?: string | number;
+  projectId?: string | number;
+  assetType?: string;
+  externalUrl?: string;
   file?: File;
 }): Promise<Asset> {
   const body = new FormData();
   body.set("title", payload.title);
   body.set("description", payload.description ?? "");
-  if (payload.createdByUserId) {
-    body.set("createdByUserId", payload.createdByUserId);
+  if (payload.createdByUserId != null && String(payload.createdByUserId).trim() !== "") {
+    body.set("createdByUserId", String(payload.createdByUserId));
+  }
+  if (payload.projectId != null && String(payload.projectId).trim() !== "") {
+    body.set("projectId", String(payload.projectId).trim());
+  }
+  if (payload.assetType) {
+    body.set("assetType", payload.assetType);
+  }
+  if (payload.externalUrl) {
+    body.set("externalUrl", payload.externalUrl);
   }
   if (payload.file) {
     body.set("file", payload.file);

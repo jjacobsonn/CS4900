@@ -39,7 +39,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="admin@vellum.test (or designer/reviewer)"
+            placeholder="admin@vellum.test (or designer/reviewer/manager/client reviewer)"
           />
         </label>
         <label>

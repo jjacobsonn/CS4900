@@ -20,13 +20,6 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canUpload = canAccessUpload(role);
-  const allowedTypes = new Set([
-    "image/png",
-    "image/jpeg",
-    "image/webp",
-    "image/gif",
-    "application/pdf"
-  ]);
 
   useEffect(() => {
     const requestedProjectId = (searchParams.get("projectId") ?? "").trim();
@@ -65,10 +58,6 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
     }
     if (!title.trim()) {
       setError("Title is required.");
-      return;
-    }
-    if (!allowedTypes.has(file.type)) {
-      setError("Unsupported file type. Use PNG, JPG, WEBP, GIF, or PDF.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -113,7 +102,6 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
           File
           <input
             type="file"
-            accept=".png,.jpg,.jpeg,.webp,.gif,.pdf"
             onChange={(event) => {
               const selected = event.target.files?.[0];
               setFile(selected ?? null);
@@ -145,6 +133,12 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
             <option value="figma">Figma</option>
             <option value="brief">Brief</option>
             <option value="spec">Spec</option>
+            <option value="document">Document</option>
+            <option value="markdown">Markdown</option>
+            <option value="code">Code</option>
+            <option value="spreadsheet">Spreadsheet</option>
+            <option value="dataset">Dataset</option>
+            <option value="archive">Archive</option>
             <option value="ticket">Ticket</option>
             <option value="repo">Repo</option>
             <option value="chat">Chat</option>
@@ -154,6 +148,9 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
             <option value="decision">Decision</option>
           </select>
         </label>
+        <small>
+          Suggested: `.md` -&gt; markdown, code files -&gt; code, `.csv/.xlsx` -&gt; spreadsheet or dataset, docs -&gt; document.
+        </small>
         <label>
           External URL
           <input

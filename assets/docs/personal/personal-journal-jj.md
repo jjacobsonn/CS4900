@@ -198,6 +198,38 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ## Sprint 2 - Week 1 (Mar 15 - Mar 21, 2026)
 
+### March 24, 2026 — Upload reliability + file type support + preview improvements
+
+**Tasks Completed:**
+- Fixed a branch-integration regression where `UploadPage` imported `../api/projects` but the file did not exist on `jj-sprint-2`; added `frontend/src/api/projects.ts` (`getProjects`) so Upload renders and compiles.
+- Stabilized project-linked upload flow:
+  - `ProjectDetailPage` now deep-links to Upload with `?projectId=<id>`.
+  - Upload validates that query param against live `/api/projects` results and warns if the ID is stale.
+  - Replaced raw Project ID text entry with a project dropdown to reduce invalid IDs.
+- Improved API error display so frontend surfaces clean server messages (for example, `Invalid projectId: project not found`) instead of raw JSON blobs.
+- Removed image/PDF-only upload constraints so the app now accepts broader file types (while keeping the 10 MB size limit):
+  - Backend: removed strict MIME whitelist in `backend/src/config/upload.js`.
+  - Frontend: removed restrictive `accept` and MIME checks in upload/edit forms.
+- Expanded preview behavior in asset detail:
+  - Inline preview for images and PDFs (existing).
+  - Added inline support for audio/video and text-like MIME types where browser can render.
+  - Kept direct "Open file" links for all file types when inline preview is unavailable.
+- Updated Upload "Asset Type" choices to better match real files used by teams:
+  - Added `document`, `markdown`, `code`, `spreadsheet`, `dataset`, `archive`.
+  - Added inline guidance for mapping common file types to asset type values.
+
+**Challenges:**
+- Cherry-picking between `sprint-2-jj` and `jj-sprint-2` introduced conflicts in upload-related files; had to resolve without reintroducing deleted/branch-specific pages.
+- Keeping "allow any file type" practical while still providing useful preview behavior despite browser MIME/rendering limits.
+
+**Next Steps:**
+- Add optional backend extension blacklist (for executable binaries) if needed for policy/security.
+- Add a small "Preview not available; use Open file" hint in version rows for non-previewable MIME types.
+- Add tests covering non-image uploads (`.md`, `.csv`, `.js`) and project-linked upload query param handling.
+
+**Reflections:**
+- The upload flow now behaves closer to real production usage: users can upload mixed asset formats (design files, docs, code, data), categorize them consistently, and still open/preview them from a single review surface.
+
 ### March 15, 2026
 
 **Tasks Completed:**

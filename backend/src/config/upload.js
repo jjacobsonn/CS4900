@@ -5,14 +5,6 @@ import multer from "multer";
 const configuredUploadDir = process.env.UPLOAD_DIR || "backend/uploads";
 const uploadRoot = path.resolve(process.cwd(), configuredUploadDir);
 
-const allowedMimeTypes = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-  "application/pdf"
-]);
-
 function ensureUploadRoot() {
   fs.mkdirSync(uploadRoot, { recursive: true });
 }
@@ -51,13 +43,6 @@ export const uploadAssetFile = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024
-  },
-  fileFilter: (_req, file, cb) => {
-    if (!allowedMimeTypes.has(file.mimetype)) {
-      cb(new Error("Unsupported file type."));
-      return;
-    }
-    cb(null, true);
   }
 });
 

@@ -22,6 +22,16 @@ import type { AuthUser } from "../App";
 
 type Tab = "comments" | "versions";
 
+function supportsInlinePreview(mimeType?: string | null) {
+  if (!mimeType) return false;
+  if (mimeType.startsWith("image/")) return true;
+  if (mimeType === "application/pdf") return true;
+  if (mimeType.startsWith("text/")) return true;
+  if (mimeType.startsWith("audio/")) return true;
+  if (mimeType.startsWith("video/")) return true;
+  return ["application/json", "application/xml", "application/javascript"].includes(mimeType);
+}
+
 function renderAssetPreview(asset: Asset) {
   if (!asset.fileUrl) {
     return <div className="asset-preview empty">No file uploaded yet</div>;
@@ -36,6 +46,30 @@ function renderAssetPreview(asset: Asset) {
   }
 
   if (asset.mimeType === "application/pdf") {
+    return (
+      <div className="asset-preview media-frame">
+        <iframe src={asset.fileUrl} title={`${asset.name} preview`} className="asset-preview-pdf" />
+      </div>
+    );
+  }
+
+  if (asset.mimeType?.startsWith("audio/")) {
+    return (
+      <div className="asset-preview media-frame">
+        <audio controls src={asset.fileUrl} style={{ width: "100%" }} />
+      </div>
+    );
+  }
+
+  if (asset.mimeType?.startsWith("video/")) {
+    return (
+      <div className="asset-preview media-frame">
+        <video controls src={asset.fileUrl} style={{ width: "100%", maxHeight: "28rem" }} />
+      </div>
+    );
+  }
+
+  if (asset.mimeType?.startsWith("text/") || ["application/json", "application/xml", "application/javascript"].includes(asset.mimeType || "")) {
     return (
       <div className="asset-preview media-frame">
         <iframe src={asset.fileUrl} title={`${asset.name} preview`} className="asset-preview-pdf" />
@@ -225,6 +259,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   };
 
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
+  const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset?.mimeType));
 
   if (loading) return <section className="panel"><p>Loading asset...</p></section>;
   if (error || !asset) return <section className="panel"><p role="alert">{error || "Asset not found."}</p></section>;
@@ -258,6 +293,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               <button type="button" className="secondary-btn" onClick={() => setIsPreviewOpen(true)}>
                 Enlarge preview
               </button>
+            ) : null}
+            {canInlinePreview && asset.fileUrl ? (
+              <a className="secondary-btn file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
+                Open preview in new tab
+              </a>
             ) : null}
             {asset.fileUrl ? (
               <a className="secondary-btn file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
@@ -314,7 +354,6 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                       Replace preview file (optional)
                       <input
                         type="file"
-                        accept="image/*,.pdf"
                         onChange={(e) => setReplaceMainFile(e.target.files?.[0] ?? null)}
                       />
                     </label>

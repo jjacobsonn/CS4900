@@ -155,7 +155,6 @@ export function VersionList({
                     Replace attachment
                     <input
                       type="file"
-                      accept="image/*,.pdf"
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         setEditFile(f ?? null);

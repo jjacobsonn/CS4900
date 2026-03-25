@@ -36,7 +36,7 @@ backend/
 2. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials
+   # Edit .env with your database credentials and set JWT_SECRET (required).
    ```
 
 3. **Ensure database is set up:**
@@ -64,20 +64,24 @@ Server will start on `http://localhost:3000` (or PORT from .env)
 ### Health Check
 - `GET /api/health` - Server health status
 
-### User Roles
+### User Roles (requires JWT)
 - `GET /api/user-roles` - Get all user roles
 - `GET /api/user-roles/:code` - Get role by code (DESIGNER, REVIEWER, ADMIN)
 - `GET /api/user-roles/id/:id` - Get role by ID
 
-### Assets (role-protected)
-- `GET /api/assets` - List all assets (any authenticated role)
+### Authentication
+- `POST /api/auth/login` — email/password; returns `{ token, user }`. Send `Authorization: Bearer <token>` on other `/api/*` routes (except `/api/health` and this login).
+- Protected routes return `401` without a valid JWT, and `403` when the JWT role is not allowed for that action.
+
+### Assets (JWT + role-protected)
+- `GET /api/assets` - List all assets (requires valid JWT)
 - `GET /api/assets/:id` - Get asset by ID
-- `POST /api/assets` - Create asset (designer or admin; accepts multipart upload; requires `X-Vellum-Role`)
-- `PATCH /api/assets/:id/status` - Update asset status (reviewer or admin)
-- `POST /api/assets/:id/comments` - Add comment to asset
+- `POST /api/assets` - Create asset (designer, manager, admin, or super_admin; multipart supported)
+- `PATCH /api/assets/:id/status` - Update asset status (reviewer-capable roles)
+- `POST /api/assets/:id/comments` - Add comment (actor is the authenticated user)
 - `GET /api/assets/:id/comments` - List comments for asset
 - `GET /api/assets/:id/versions` - List asset versions
-- `POST /api/assets/:id/versions` - Create a new asset version (designer or admin; multipart supported)
+- `POST /api/assets/:id/versions` - Create a new asset version (designer-capable roles; multipart supported)
 
 ### Uploaded Files
 - `GET /uploads/:filename` - Serve uploaded asset files stored on the backend server

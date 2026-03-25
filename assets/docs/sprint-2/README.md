@@ -12,4 +12,6 @@
 - API and schema changes for versioning and admin
 - Admin user list and (later) company/tenant flow
 
-**See also:** [Re-Implementation Plan](../project-management/reimplementation-plan.md) | [Architecture revision ideas](../architecture-revise.md) | [Doc versioning](../DOC-VERSIONING.md) | [Review prep & cadence](../project-management/review-prep-and-cadence.md) | [Project Follow-up](../project-management/project-follow-up.md)
+**See also:** [Re-Implementation Plan](../project-management/reimplementation-plan.md) | [Code left to do](./CODE-LEFT-TO-DO.md) (includes JWT/session auth backlog) | [Architecture revision ideas](../architecture-revise.md) | [Doc versioning](../DOC-VERSIONING.md) | [Review prep & cadence](../project-management/review-prep-and-cadence.md) | [Project Follow-up](../project-management/project-follow-up.md)
+
+**Roles & workflow (Sprint 2):** [Role permission matrix](./role-permission-matrix.md) · [Workflow, roles, and project-level history](./workflow-roles-and-project-history.md) (status keys, who approves what, audit/event log plan) · [Deployment, seeding & super admin](./deployment-and-super-admin.md).

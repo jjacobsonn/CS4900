@@ -1,5 +1,5 @@
 import express from "express";
-import { attachRole, requireRole } from "../middleware/roleAuth.js";
+import { attachAuth, requireAuth, requireRole } from "../middleware/roleAuth.js";
 import {
   createUserAccount,
   deleteUserById,
@@ -10,8 +10,9 @@ import {
 
 const router = express.Router();
 
-router.use(attachRole);
-router.use(requireRole(["admin"]));
+router.use(attachAuth);
+router.use(requireAuth);
+router.use(requireRole(["admin", "super_admin"]));
 
 // GET /api/users - list all users
 router.get("/", async (_req, res, next) => {

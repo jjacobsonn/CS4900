@@ -1,11 +1,11 @@
 import express from "express";
-import { attachRole, requireRole } from "../middleware/roleAuth.js";
+import { attachAuth, requireAuth, requireRole } from "../middleware/roleAuth.js";
 import { query } from "../config/database.js";
 
 const router = express.Router();
 
-// Attach role for all client routes
-router.use(attachRole);
+router.use(attachAuth);
+router.use(requireAuth);
 
 /**
  * GET /api/clients
@@ -30,7 +30,7 @@ router.get("/", async (_req, res, next) => {
  *
  * Create a new client. Requires manager or admin.
  */
-router.post("/", requireRole(["admin", "manager"]), async (req, res, next) => {
+router.post("/", requireRole(["admin", "manager", "super_admin"]), async (req, res, next) => {
   try {
     const { name, description } = req.body ?? {};
     if (!name || typeof name !== "string") {

@@ -74,6 +74,11 @@ export async function startServer() {
     console.error("Failed to connect to database. Server not started.");
     process.exit(1);
   }
+  const { getJwtSecret } = await import("./services/jwtService.js");
+  if (!getJwtSecret()) {
+    console.error("JWT_SECRET is required. Copy backend/.env.example to .env and set JWT_SECRET.");
+    process.exit(1);
+  }
   app.listen(PORT, () => {
     console.log(`Vellum API running on http://localhost:${PORT}`);
   });

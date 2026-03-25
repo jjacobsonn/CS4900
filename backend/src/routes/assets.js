@@ -4,13 +4,13 @@
  * This module defines RESTful API endpoints for asset review workflows.
  * Role enforcement: upload (POST /) requires designer or admin;
  * status change (PATCH /:id/status) requires reviewer or admin.
- * Client must send X-Vellum-Role header.
+ * Client must send Authorization: Bearer <jwt> from POST /api/auth/login.
  */
 
 import express from "express";
 import multer from "multer";
 import { toStoredAssetFile, uploadAssetFile } from "../config/upload.js";
-import { attachRole, requireRole } from "../middleware/roleAuth.js";
+import { attachAuth, requireAuth, requireRole, parseAuthUserId } from "../middleware/roleAuth.js";
 import {
   addAssetComment,
   createAsset,
@@ -32,8 +32,8 @@ import {
 const router = express.Router();
 const singleAssetUpload = uploadAssetFile.single("file");
 
-// Attach req.role from X-Vellum-Role for all asset routes
-router.use(attachRole);
+router.use(attachAuth);
+router.use(requireAuth);
 
 /**
  * GET /api/assets
@@ -75,24 +75,23 @@ router.get('/summary', async (_req, res, next) => {
  *
  * Create a new asset record. Requires role designer or admin.
  */
-router.post("/", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.post("/", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   const handleCreate = async () => {
     try {
-      const { title, description, assetType, externalUrl, createdByUserId, projectId } = req.body ?? {};
+      const { title, description, assetType, externalUrl, projectId } = req.body ?? {};
       if (!title || typeof title !== "string") {
         return res.status(400).json({ error: "title is required" });
       }
       if (req.is("multipart/form-data") && !req.file) {
         return res.status(400).json({ error: "file is required" });
       }
-      const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
       const project_id = projectId != null ? Number(projectId) : null;
       const created = await createAsset({
         title,
         description,
         assetType: typeof assetType === "string" ? assetType : null,
         externalUrl: typeof externalUrl === "string" ? externalUrl : null,
-        createdByUserId: Number.isFinite(creatorId) ? creatorId : null,
+        createdByUserId: parseAuthUserId(req),
         projectId: Number.isFinite(project_id) ? project_id : null,
         file: toStoredAssetFile(req.file)
       });
@@ -141,7 +140,7 @@ router.get("/:assetId", async (req, res, next) => {
  *
  * Update asset title and/or description. Admin only.
  */
-router.patch("/:assetId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.patch("/:assetId", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -163,7 +162,7 @@ router.patch("/:assetId", requireRole(["designer", "manager", "admin"]), async (
  *
  * Update the primary owner (created_by_user_id) for an asset. Admin only.
  */
-router.patch("/:assetId/owner", requireRole(["manager", "admin"]), async (req, res, next) => {
+router.patch("/:assetId/owner", requireRole(["manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -189,15 +188,14 @@ router.patch("/:assetId/owner", requireRole(["manager", "admin"]), async (req, r
 router.post("/:assetId/comments", async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
-    const { message, commentType, authorUserId } = req.body ?? {};
+    const { message, commentType } = req.body ?? {};
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "message is required" });
     }
-    const authorId = authorUserId != null ? Number(authorUserId) : null;
     const created = await addAssetComment(assetId, {
       message,
       commentType,
-      authorUserId: Number.isFinite(authorId) ? authorId : null
+      authorUserId: parseAuthUserId(req)
     });
     return res.status(201).json(created);
   } catch (error) {
@@ -225,7 +223,7 @@ router.get("/:assetId/comments", async (req, res, next) => {
  *
  * Delete a single comment on an asset. Admin only.
  */
-router.delete("/:assetId/comments/:commentId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.delete("/:assetId/comments/:commentId", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const commentId = Number(req.params.commentId);
     if (!Number.isFinite(commentId)) {
@@ -246,7 +244,7 @@ router.delete("/:assetId/comments/:commentId", requireRole(["designer", "manager
  *
  * List audit log for version actions. Admin only.
  */
-router.get("/:assetId/version-audit", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.get("/:assetId/version-audit", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -282,19 +280,18 @@ router.get("/:assetId/versions", async (req, res, next) => {
  *
  * Create a new version for an asset. Requires role designer or admin.
  */
-router.post("/:assetId/versions", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.post("/:assetId/versions", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   const handleVersionCreate = async () => {
     try {
       const assetId = Number(req.params.assetId);
       if (!Number.isFinite(assetId)) {
         return res.status(400).json({ error: "Invalid asset id" });
       }
-      const { label, notes, createdByUserId } = req.body ?? {};
-      const creatorId = createdByUserId != null ? Number(createdByUserId) : null;
+      const { label, notes } = req.body ?? {};
       const version = await createAssetVersion(assetId, {
         label: typeof label === "string" ? label : undefined,
         notes: typeof notes === "string" ? notes : undefined,
-        createdByUserId: Number.isFinite(creatorId) ? creatorId : null,
+        createdByUserId: parseAuthUserId(req),
         file: toStoredAssetFile(req.file)
       });
       if (!version) {
@@ -327,7 +324,7 @@ router.post("/:assetId/versions", requireRole(["designer", "manager", "admin"]),
  *
  * Update version metadata and/or replace or remove file. Admin only.
  */
-router.patch("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin"]), (req, res, next) => {
+router.patch("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin", "super_admin"]), (req, res, next) => {
   const handleUpdate = async () => {
     try {
       const assetId = Number(req.params.assetId);
@@ -340,12 +337,11 @@ router.patch("/:assetId/versions/:versionId", requireRole(["designer", "manager"
       const notes = typeof body.notes === "string" ? body.notes : undefined;
       const removeFile = body.removeFile === true || body.removeFile === "true";
       const file = toStoredAssetFile(req.file);
-      const performedByUserId = body.performedByUserId != null ? Number(body.performedByUserId) : null;
       const updated = await updateAssetVersion(
         assetId,
         versionId,
         { label, notes, file: file || undefined, removeFile: removeFile || undefined },
-        Number.isFinite(performedByUserId) ? performedByUserId : null
+        parseAuthUserId(req)
       );
       if (!updated) {
         return res.status(404).json({ error: "Version not found" });
@@ -370,7 +366,7 @@ router.patch("/:assetId/versions/:versionId", requireRole(["designer", "manager"
  *
  * Delete a version. Admin only.
  */
-router.delete("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.delete("/:assetId/versions/:versionId", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     const versionId = Number(req.params.versionId);
@@ -392,7 +388,7 @@ router.delete("/:assetId/versions/:versionId", requireRole(["designer", "manager
  *
  * Delete an asset and its related records. Admin only.
  */
-router.delete("/:assetId", requireRole(["designer", "manager", "admin"]), async (req, res, next) => {
+router.delete("/:assetId", requireRole(["designer", "manager", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     if (!Number.isFinite(assetId)) {
@@ -417,14 +413,14 @@ router.delete("/:assetId", requireRole(["designer", "manager", "admin"]), async 
  * Expects a normalized internal status key in the request body, e.g.:
  * { "status": "ready_for_internal_review" }
  */
-router.patch("/:assetId/status", requireRole(["designer", "reviewer", "manager", "client_reviewer", "admin"]), async (req, res, next) => {
+router.patch("/:assetId/status", requireRole(["designer", "reviewer", "manager", "client_reviewer", "admin", "super_admin"]), async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
     const { status } = req.body ?? {};
     if (!status || typeof status !== "string") {
       return res.status(400).json({ error: "status is required" });
     }
-    const updated = await updateAssetStatus(assetId, status, req.role);
+    const updated = await updateAssetStatus(assetId, status, req.role, parseAuthUserId(req));
     if (updated?.invalidStatus) {
       return res.status(400).json({
         error: "Invalid status",

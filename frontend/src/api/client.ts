@@ -1,4 +1,7 @@
 const DEFAULT_BASE_URL = "/api";
+const TOKEN_KEY = "vellum_token";
+const ROLE_KEY = "vellum_role";
+const USER_KEY = "vellum_user";
 
 // Resolve API base URL for both Vite runtime and Jest tests.
 function resolveApiBaseUrl(): string {
@@ -24,18 +27,36 @@ function buildUrl(path: string): string {
   return `${normalizedBase}${normalizedPath}`;
 }
 
-const ROLE_HEADER = "X-Vellum-Role";
-
-function getRoleHeader(): string | undefined {
+function getBearerToken(): string | undefined {
   try {
     if (typeof localStorage !== "undefined") {
-      const role = localStorage.getItem("vellum_role");
-      if (role && ["designer", "reviewer", "manager", "client_reviewer", "admin"].includes(role)) return role;
+      const t = localStorage.getItem(TOKEN_KEY);
+      if (t?.trim()) return t.trim();
     }
   } catch {
     // ignore
   }
   return undefined;
+}
+
+function clearSessionAndGoLogin(): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(ROLE_KEY);
+      localStorage.removeItem(USER_KEY);
+    }
+  } catch {
+    // ignore
+  }
+  if (typeof window !== "undefined") {
+    window.location.assign("/");
+  }
+}
+
+function isLoginPost(path: string, init?: RequestInit): boolean {
+  const method = (init?.method ?? "GET").toUpperCase();
+  return method === "POST" && (path === "/auth/login" || path.endsWith("/auth/login"));
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -46,13 +67,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!isFormData && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const role = getRoleHeader();
-  if (role) headers[ROLE_HEADER] = role;
+  const token = getBearerToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const response = await fetch(buildUrl(path), {
     ...init,
     headers
   });
+
+  if (response.status === 401 && !isLoginPost(path, init)) {
+    clearSessionAndGoLogin();
+    throw new Error("Session expired or not authenticated.");
+  }
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;

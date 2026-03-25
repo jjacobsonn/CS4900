@@ -66,8 +66,8 @@ To verify the full app including **login** and backend auth:
 1. **Database**
    - PostgreSQL running, database `vellum` created.
    - Schema and seeds applied: from project root run  
-     `npm run init-db`  
-     (or `psql -U postgres -d postgres -f database/setup.sql`).
+     `npm run db:setup` (or `npm run init-db` — same script).  
+     Configure `backend/.env` first; see [database/README.md](../database/README.md).
 
 2. **Backend**
    - In `backend/`: copy `.env.example` to `.env` and set `DB_*` and `PORT` if needed.

@@ -215,26 +215,21 @@ Or using a GUI tool like pgAdmin:
 4. Name it `vellum`
 5. Click "Save"
 
-#### 3.2 Run Database Setup Script
+#### 3.2 Run database setup (schema + migrations)
 
-From the project root directory:
+Configure **`backend/.env`** from `backend/.env.example` (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, etc.).
+
+From the **project root**:
 
 ```bash
-# Preferred project command
-npm run init-db
-
-# Equivalent direct psql command
-psql -U postgres -d postgres -f database/setup.sql
+npm run db:setup
 ```
 
-**Full guide (prerequisites, verification, troubleshooting):** [database/README.md](database/README.md)
+Same as `npm run init-db` (alias). This runs `database/setup.sql` (creates `vellum` and core schema) **and** every file in `backend/db/migrations/*.sql` in order.
 
-The setup script will:
-- Create all required tables (users, files, file_versions, comments, approval_history)
-- Create normalized lookup tables (user_roles, approval_statuses)
-- Insert default/initial records (roles and statuses)
-- Create indexes for performance
-- Set up triggers for automatic timestamp updates
+**Full guide:** [database/README.md](database/README.md)
+
+The combined run creates tables, lookups, seeds, Sprint 2 project/activity migrations, and indexes/triggers as defined in those SQL files.
 
 #### 3.3 Verify Database Setup
 

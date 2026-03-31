@@ -20,7 +20,7 @@
 |------|------------|
 | **Cloud/object storage** | Move binaries to S3/Azure Blob; signed URLs for downloads. |
 | **Integration tests** | Backend against test DB; frontend against test API. |
-| **Versioning (Phase 2)** | `sprint-2/versioning-spec.md` then implement. |
+| **Versioning (Phase 2)** | Design in `engineering/versioning-spec.md` (add when drafting Phase 2), then implement (versions list, submit for review, revert, etc.). |
 | **Company/tenant (Phase 3)** | Scoped admin, project members. |
 
 ---
@@ -37,7 +37,7 @@
 
 - Login (DB-backed) with bcrypt verification for real hashes + dev fallback for placeholders.
 - Create/list/update/deactivate users (admin); persisted in DB (new users still get placeholder password until Phase 1 optional password work).
-- Role checks on mutating asset/admin/user routes (still header-based until JWT track completes).
+- Role checks on mutating asset/admin/user routes via JWT claims + middleware (see §3).
 - Admin overview + activity; assets CRUD + comments + status; projects/clients slices.
 - Reviewer upload disabled; Admin user table with real API; MSW opt-in.
 
@@ -52,4 +52,4 @@
 - [ ] **Versioning** — Phase 2 (optional).
 - [ ] **Company/tenant** — Phase 3 (later).
 
-**Minimum to say “API auth matches a real app”:** complete §3 (JWT + attach to routes + frontend Bearer + drop `X-Vellum-Role`).
+**API auth:** §3 (JWT + Bearer + route protection) is in place; optional hardening is listed under §3 **Still optional / later**.

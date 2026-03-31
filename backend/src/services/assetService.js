@@ -387,6 +387,8 @@ const INTERNAL_STATUS_TRANSITIONS = {
   Draft: new Set(["In Progress", "Ready for Internal Review"]),
   "In Progress": new Set(["Ready for Internal Review"]),
   "Ready for Internal Review": new Set(["In Internal Review"]),
+  // Legacy seed status from setup.sql — same reviewer outcomes as "In Internal Review"
+  "In Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
   "In Internal Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
   "Changes Requested (Internal)": new Set(["In Progress", "Ready for Internal Review"]),
   "Approved (Internal)": new Set(["Ready for Client Review"]),

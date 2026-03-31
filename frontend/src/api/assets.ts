@@ -1,5 +1,6 @@
 import { apiClient } from "./client";
 import { Asset, Version } from "../types/models";
+import { normalizeWorkflowDisplayStatus } from "../utils/assetStatus";
 
 // Raw API payload shape returned by backend /api/assets endpoints.
 interface RawAsset {
@@ -21,25 +22,15 @@ interface RawAsset {
   size_bytes?: number | null;
 }
 
-function normalizeStatus(status: string | undefined): Asset["status"] {
-  // Normalize legacy or mock status variants into the UI's canonical status labels.
-  const value = (status || "").trim().toLowerCase();
-
-  if (value === "draft") return "Draft";
-  if (value === "in review" || value === "pending_review" || value === "pending") return "In Review";
-  if (value === "approved") return "Approved";
-  if (value === "changes requested" || value === "changes_requested") return "Changes Requested";
-
-  return "Draft";
-}
-
 // Maps backend fields to frontend view model used by pages/components.
 function toAsset(raw: RawAsset): Asset {
+  const backendName = (raw.status || "").trim();
   return {
     id: raw.id,
     name: raw.title,
     owner: raw.owner ?? "Unassigned",
-    status: normalizeStatus(raw.status),
+    status: normalizeWorkflowDisplayStatus(raw.status),
+    backendStatus: backendName || undefined,
     updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     currentVersion: raw.current_version ?? raw.currentVersion ?? "v1.0",
     currentVersionId: raw.current_version_id ?? undefined,
@@ -92,6 +83,7 @@ export async function createAsset(payload: {
   return toAsset(data);
 }
 
+/** `status` must be a backend internal key, e.g. `approved_internal`, `changes_requested_internal`. */
 export async function patchAssetStatus(id: string, status: string): Promise<Asset> {
   const data = await apiClient.patch<RawAsset>(`/assets/${id}/status`, { status });
   return toAsset(data);

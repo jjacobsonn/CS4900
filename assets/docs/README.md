@@ -1,7 +1,7 @@
 # Documentation — Vellum
 
 **Project:** Vellum - Digital Asset Review & Approval Platform  
-**Last Updated:** February 16, 2026
+**Last Updated:** March 30, 2026
 
 ---
 
@@ -19,6 +19,13 @@ assets/docs/
 │   │   └── personal-journal-jj.md
 │   ├── testing-guide.md        # Testing documentation
 │   └── README.md                # Sprint 1 documentation index
+├── sprint-2/                    # Sprint 2 — modular specs & QA
+│   ├── README.md                # Index and shipped-features summary
+│   ├── requirements/          # FR/NFR, personas, flows, traceability
+│   ├── roles-and-workflow/      # Role matrix, workflow templates
+│   ├── engineering/             # Implementation notes, backlog
+│   ├── operations/             # Review / demo checklists
+│   └── qa/                      # Test strategy and functional cases
 ├── Core Documentation            # Technical and design documentation
 │   ├── elevator-pitch.md
 │   ├── achitecture.md
@@ -63,6 +70,11 @@ Sprint-specific documentation is organized by sprint number:
 - **[Sprint 1 Review Checklist](sprint-1/project-management/sprint1-review-checklist.md)** - Review preparation checklist
 - **[Testing Guide](sprint-1/testing-guide.md)** - How to run tests and test coverage
 
+### Sprint 2
+
+- **[Sprint 2 documentation index](sprint-2/README.md)** — requirements, workflow, engineering, operations, QA
+- **[Review checklist](sprint-2/operations/sprint-review-checklist.md)** — environment, code paths, tests, demo
+
 ---
 
 ## Organization Principles
@@ -72,4 +84,4 @@ Sprint-specific documentation is organized by sprint number:
 
 ---
 
-**Last Updated:** February 16, 2026
+**Last Updated:** March 30, 2026

@@ -124,12 +124,13 @@ describe("Assets API", () => {
     expect(response.status).toBe(403);
   });
 
-  test("PATCH /api/assets/:id/status returns 400 for unknown status key (designer)", async () => {
+  test("PATCH /api/assets/:id/status returns 400 for non-internal status key (e.g. legacy label)", async () => {
     const response = await request(app)
       .patch("/api/assets/1/status")
       .set(bearerAuth("designer"))
       .send({ status: "Approved" });
     expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Invalid status");
   });
 
   test("POST /api/assets/:id/comments returns 401 without token", async () => {

@@ -1,5 +1,6 @@
 export type AssetStatus =
   | "Draft"
+  | "In Progress"
   | "In Review"
   | "Approved"
   | "Changes Requested";
@@ -14,6 +15,8 @@ export interface Asset {
   mimeType?: string | null;
   sizeBytes?: number | null;
   status: AssetStatus;
+  /** Exact `asset_status_lookup.status_name` from API — used for workflow actions */
+  backendStatus?: string;
   updatedAt: string;
   currentVersion: string;
   currentVersionId?: string | number;

@@ -266,7 +266,8 @@ h1 {
 }
 
 .status-badge.draft,
-.status-badge.in_review {
+.status-badge.in_review,
+.status-badge.in_progress {
   background: #e9e9e9;
 }
 

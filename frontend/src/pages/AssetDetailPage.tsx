@@ -17,6 +17,7 @@ import { getUsers } from "../api/users";
 import { CommentList } from "../components/CommentList";
 import { StatusBadge } from "../components/StatusBadge";
 import { sanitizeFileName } from "../utils/format";
+import { getWorkflowReviewActions } from "../utils/workflowReview";
 import { VersionList } from "../components/VersionList";
 import type { AuthUser } from "../App";
 
@@ -375,14 +376,24 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           <p>
             Status: <StatusBadge status={asset.status} />
           </p>
-          <div className="row-actions">
-            <button type="button" className="primary-btn" onClick={() => changeStatus("Approved")}>
-              Approve
-            </button>
-            <button type="button" className="secondary-btn" onClick={() => changeStatus("Changes Requested")}>
-              Request Changes
-            </button>
-          </div>
+          {(() => {
+            const actions = getWorkflowReviewActions(asset.backendStatus, currentUser?.role);
+            if (!actions) return null;
+            return (
+              <div className="row-actions">
+                <button type="button" className="primary-btn" onClick={() => void changeStatus(actions.approveKey)}>
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => void changeStatus(actions.requestChangesKey)}
+                >
+                  Request changes
+                </button>
+              </div>
+            );
+          })()}
         </div>
         <div className="panel">
           <div className="toolbar tabs">

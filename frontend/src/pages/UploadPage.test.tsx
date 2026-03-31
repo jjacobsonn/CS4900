@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { jest } from "@jest/globals";
 import { UploadPage } from "./UploadPage";
 import { createAsset } from "../api/assets";
@@ -9,8 +10,20 @@ jest.mock("../api/assets", () => ({
   createAsset: jest.fn()
 }));
 
+jest.mock("../api/projects", () => ({
+  getProjects: jest.fn().mockResolvedValue([])
+}));
+
+function renderUpload() {
+  return render(
+    <MemoryRouter>
+      <UploadPage role="admin" currentUser={{ id: "7", email: "admin@vellum.test", role: "admin" }} />
+    </MemoryRouter>
+  );
+}
+
 test("upload form validation requires file and title", async () => {
-  render(<UploadPage role="admin" currentUser={{ id: "7", email: "admin@vellum.test", role: "admin" }} />);
+  renderUpload();
 
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Please select a file.");
@@ -32,7 +45,7 @@ test("upload submits when valid", async () => {
     currentVersion: "v1.0"
   });
 
-  render(<UploadPage role="admin" currentUser={{ id: "7", email: "admin@vellum.test", role: "admin" }} />);
+  renderUpload();
 
   const file = new File(["hello"], "design.png", { type: "image/png" });
   await userEvent.upload(screen.getByLabelText("File"), file);

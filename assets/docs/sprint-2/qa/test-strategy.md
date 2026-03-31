@@ -9,9 +9,9 @@ It covers unit, integration, end-to-end (E2E), and user acceptance testing (UAT)
 ### 1. Testing Goals
 
 - Validate that the expanded workflows, roles, and versioning behave as specified in:
-  - `functional-requirements.md`
-  - `nonfunctional-requirements.md`
-  - `user-flows-and-sequences.md`
+  - [functional-requirements.md](../requirements/functional-requirements.md)
+  - [nonfunctional-requirements.md](../requirements/nonfunctional-requirements.md)
+  - [user-flows-and-sequences.md](../requirements/user-flows-and-sequences.md)
 - Ensure critical business logic (permissions, versioning, workflow transitions) is robust and regression-resistant.
 - Provide enough coverage that future changes can be made confidently.
 
@@ -121,7 +121,7 @@ Specific tools shall be documented in the project’s `README` and test configur
 
 ### 5. Mapping Requirements to Tests
 
-Mapping is captured in `test-cases-functional.md` and `traceability-matrix.md`:
+Mapping is captured in [test-cases-functional.md](./test-cases-functional.md) and [traceability-matrix.md](../requirements/traceability-matrix.md):
 
 - Each functional requirement (e.g., FR-5.3) corresponds to one or more test cases.
 - Each test case specifies:
@@ -148,7 +148,7 @@ To keep tests reliable and maintainable:
 ### 7. Regression Testing
 
 - When a bug is discovered, add a regression test that reproduces the issue before fixing it.
-- Ensure regression tests are linked to the corresponding requirements in `traceability-matrix.md`.
+- Ensure regression tests are linked to the corresponding requirements in [traceability-matrix.md](../requirements/traceability-matrix.md).
 
 ---
 

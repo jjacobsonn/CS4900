@@ -47,10 +47,12 @@ This runs backend tests, then frontend tests. No database or server needs to be 
 | File | What it covers |
 |------|----------------|
 | **pages/DashboardPage.test.tsx** | Dashboard loads asset list (mocked `getAssets`), shows assets, and **status filter** (e.g. select "Draft" hides others). |
-| **pages/AssetDetailPage.test.tsx** | Detail page loads asset and comments (mocked `getAsset`, `getComments`, `getAssetVersions`), **Approve** button calls `patchAssetStatus`, and **Post Comment** calls `addComment` with correct payload. |
+| **pages/AssetDetailPage.test.tsx** | Detail page loads asset and comments (mocked `getAsset`, `getComments`, `getAssetVersions`); **Approve** sends `approved_internal`; **Request changes** sends `changes_requested_internal`; **Post Comment** calls `addComment` with correct payload. |
 | **pages/UploadPage.test.tsx** | **Validation:** submit without file shows "Please select a file"; with file but no title shows "Title is required." **Submit:** with file + title calls `createAsset` with correct payload. |
 | **utils/format.test.ts** | `statusLabel` and `formatDate` return expected strings. |
-| **utils/permissions.test.ts** | **Role permissions:** `canReview("reviewer")` true, `canReview("designer")` false; `canAccessUpload("designer")` true, `canAccessUpload("reviewer")` false. |
+| **utils/permissions.test.ts** | **Role permissions:** `canReview` for reviewer and designer; `canAccessUpload("designer")` true, `canAccessUpload("reviewer")` false. |
+| **utils/assetStatus.test.ts** | Maps API / lookup statuses to dashboard display buckets. |
+| **utils/workflowReview.test.ts** | Reviewer actions and internal status keys for approve / request changes. |
 
 **Details:**
 

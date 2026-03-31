@@ -3,7 +3,7 @@
 **Primary purpose:** Satisfy the course’s **four-week project review** process. You will follow up with the project review team every four weeks (3rd Wednesday of each month and on the final exam date). Each individual must keep **Personal Journal**, **Schedule**, and **Project Follow-up** up to date; before each meeting, update the Project Follow-up with current date, schedule status, completed items, and red flags; during the meeting, capture code review notes, action items, and suggestions.
 
 **Master checklist:** For every sprint review (and the final), the team must complete setup from the README, show service→DB and GUI→service code, have unit tests (classes, business logic, mock DB for API, mock API for GUI), demo new features and bug fixes, and compare actual vs planned status.  
-→ **[SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md](SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** — use this to ensure **everything is being done**.
+→ **[Sprint 2 review checklist](../sprint-2/operations/sprint-review-checklist.md)** and **[Sprint 2 doc index](../sprint-2/README.md)** — use these to ensure **everything is being done**.
 
 **Also in Sprint 2 (technical):** Revised architecture, versioning, admin, and UX. Sprint 1 docs in `sprint-1/` remain the baseline.
 

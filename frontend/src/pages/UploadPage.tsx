@@ -148,9 +148,6 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
             <option value="decision">Decision</option>
           </select>
         </label>
-        <small>
-          Suggested: `.md` -&gt; markdown, code files -&gt; code, `.csv/.xlsx` -&gt; spreadsheet or dataset, docs -&gt; document.
-        </small>
         <label>
           External URL
           <input

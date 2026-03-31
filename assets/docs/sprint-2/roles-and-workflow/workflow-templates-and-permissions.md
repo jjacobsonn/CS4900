@@ -2,7 +2,7 @@
 
 This document defines example workflow templates and summarizes key permission rules that govern how roles interact with stages and asset versions.
 
-It complements `functional-requirements.md`, `personas-and-roles.md`, and `user-flows-and-sequences.md`.
+It complements [functional requirements](../requirements/functional-requirements.md), [personas and roles](../requirements/personas-and-roles.md), and [user flows](../requirements/user-flows-and-sequences.md).
 
 ---
 

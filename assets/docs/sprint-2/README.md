@@ -3,6 +3,8 @@
 **Product:** Vellum — digital asset review and approval (mobile-first).  
 **Run & test:** [README.md](../../../README.md), [tests/README.md](../../../tests/README.md), `npm test`.
 
+**Sprint overview (high level):** [feb-mar-2026-ship-log.md](feb-mar-2026-ship-log.md) — what we added since Sprint 1, by feature area.
+
 ---
 
 ## Shipped in this line of work

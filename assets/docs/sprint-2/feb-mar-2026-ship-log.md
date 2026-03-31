@@ -34,13 +34,15 @@ The app now uses **token-based authentication** for protected APIs, closer to ho
 
 ## Quality and documentation
 
-**Automated tests** were expanded around assets, the dashboard, detail pages, upload flows, permissions, and workflow/status behavior. **Documentation** was reorganized into clear areas—requirements, workflow, engineering, QA, and operations—so Sprint 2 is easier to review and hand off.
+**Automated tests** were expanded around assets, the dashboard, detail pages, upload flows, permissions, and workflow/status behavior. The backend suite also includes **JWT signing and verification** tests (`jwtService`) so token behavior stays aligned with session-based API auth without needing a running database. **Documentation** was reorganized into clear areas—requirements, workflow, engineering, QA, and operations—so Sprint 2 is easier to review and hand off. The canonical **inventory of test files and how to run them** lives in the repo [test guide](../../../tests/README.md).
 
 ---
 
 ## Testing in one line
 
 Run **all unit tests** from the repo root with **`npm test`**. Full **end-to-end login** is still exercised through **manual smoke** checks as described in the repo test guide.
+
+**Automated coverage (unit, mocked):** backend **assets API** (including JWT 401/403 and multipart upload), **user role service**, **JWT helpers**; frontend **dashboard, asset detail, upload** pages plus **format, permissions, asset status, and workflow review** utilities. Login, admin CRUD, and most non-asset routes are **not** covered by automated tests yet—see the test guide and [engineering gaps](./engineering/CODE-LEFT-TO-DO.md).
 
 ---
 
@@ -55,4 +57,4 @@ Run **all unit tests** from the repo root with **`npm test`**. Full **end-to-end
 
 ---
 
-**Last updated:** March 2026
+**Last updated:** March 2026 — aligned with repo test guide (backend JWT helper tests + suite inventory).

@@ -27,14 +27,15 @@ This runs backend tests, then frontend tests. No database or server needs to be 
 
 | File | What it covers |
 |------|----------------|
-| **assetsApi.test.js** | Assets API routes with **mocked DB**. Tests: POST create asset (full flow: status lookup → insert asset → insert version → getAssetById), PATCH status (valid + invalid status), GET list, **role checks** (403 without `X-Vellum-Role`, 403 for wrong role on create vs status), POST comment. |
+| **assetsApi.test.js** | Assets API routes with **mocked DB**. Tests: POST create asset (full flow: status lookup → insert asset → insert version → getAssetById), PATCH status (valid + invalid status), GET list, **JWT** (401 without Bearer, 403 for wrong role on create), POST comment, multipart upload. |
+| **jwtService.test.js** | **JWT helpers** only (no HTTP/DB). Tests: sign/verify roundtrip (`sub`, lowercased `role`, optional `email`), missing `JWT_SECRET`, malformed token, wrong signing secret. |
 | **userRoleService.test.js** | User role service with **mocked DB**. Tests: `getAllUserRoles` (success + error path), `getUserRoleByCode`, `getUserRoleById` (found, not found, error). |
 
 **Details:**
 
-- The database module (`config/database.js`) is mocked in both files, so no real PostgreSQL is required.
-- Assets tests use Supertest against the Express `app`; each test sets up the exact query sequence the service expects (e.g. four mocks for createAsset).
-- Role-protected routes require the `X-Vellum-Role` header (designer/reviewer/admin) as used by the frontend.
+- The database module (`config/database.js`) is mocked for **assets** and **userRole** tests, so no real PostgreSQL is required. **jwtService** tests do not touch the DB.
+- Assets tests use Supertest against the Express `app`; each test sets up the exact query sequence the service expects (e.g. four mocks for createAsset). Protected routes expect an **`Authorization: Bearer <JWT>`** header (same as the browser after login).
+- **Three** backend test files: `assetsApi.test.js`, `jwtService.test.js`, `userRoleService.test.js`.
 
 ---
 

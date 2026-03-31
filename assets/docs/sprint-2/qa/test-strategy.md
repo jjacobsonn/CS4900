@@ -34,6 +34,11 @@ It covers unit, integration, end-to-end (E2E), and user acceptance testing (UAT)
 - Use mocks or in-memory implementations for dependencies.
 - Fast to execute and suitable for CI.
 
+**Implemented examples (see repo [test guide](../../../../tests/README.md)):**
+
+- Frontend: page and utility tests with mocked API modules (dashboard, asset detail, upload; permissions, workflow, formatting).
+- Backend: mocked-database tests for assets routes and user-role service; **pure JWT tests** for `signAuthToken` / `verifyAuthToken` (roundtrip claims, missing secret, invalid or wrong-secret tokens).
+
 #### 2.2 Integration Tests
 
 **Scope:**
@@ -46,7 +51,7 @@ It covers unit, integration, end-to-end (E2E), and user acceptance testing (UAT)
 **Characteristics:**
 
 - Use a real or test database (e.g., ephemeral or in-memory).
-+- Verify that API contracts (`api-and-contracts` documentation) are satisfied.
+- Verify that API contracts (`api-and-contracts` documentation) are satisfied.
 - Validate error handling and edge cases that depend on persistence.
 
 #### 2.3 End-to-End (E2E) Tests

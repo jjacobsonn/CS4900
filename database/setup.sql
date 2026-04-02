@@ -271,8 +271,11 @@ CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT,
+    asset_type TEXT,
+    external_url TEXT,
     status_id INTEGER NOT NULL REFERENCES asset_status_lookup(id),
     current_version VARCHAR(20) NOT NULL DEFAULT 'v1.0',
+    current_version_id INTEGER,
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -303,6 +306,21 @@ ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS stored_file_name VARCHAR(255
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_assets_current_version'
+    ) THEN
+        ALTER TABLE assets
+        ADD CONSTRAINT fk_assets_current_version
+        FOREIGN KEY (current_version_id) REFERENCES asset_versions(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_assets_current_version_id ON assets(current_version_id);
 
 -- Audit log for admin actions on versions (delete, edit metadata)
 CREATE TABLE IF NOT EXISTS asset_version_audit (
@@ -391,6 +409,13 @@ FROM assets a
 WHERE NOT EXISTS (
   SELECT 1 FROM asset_versions v WHERE v.asset_id = a.id
 );
+
+UPDATE assets a
+SET current_version_id = v.id
+FROM asset_versions v
+WHERE v.asset_id = a.id
+  AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)
+  AND (a.current_version_id IS NULL OR a.current_version_id <> v.id);
 
 -- ============================================================================
 -- STEP 10: Verification Queries

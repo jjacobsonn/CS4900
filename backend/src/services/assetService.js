@@ -108,7 +108,7 @@ export async function createAsset(payload) {
   const row = created.rows[0];
   if (!row) return null;
   // Seed an initial version row for this asset (v1)
-  await query(
+  const seededVersion = await query(
     `INSERT INTO asset_versions (
        asset_id,
        version_number,
@@ -119,7 +119,8 @@ export async function createAsset(payload) {
        size_bytes,
        file_path
      )
-     VALUES ($1, 1, $2, $3, $4, $5, $6, $7)`,
+     VALUES ($1, 1, $2, $3, $4, $5, $6, $7)
+     RETURNING id`,
     [
       row.id,
       payload.createdByUserId ?? null,
@@ -130,6 +131,16 @@ export async function createAsset(payload) {
       payload.file?.filePath ?? null
     ]
   );
+  const versionId = seededVersion.rows[0]?.id ?? null;
+  if (versionId != null) {
+    await query(
+      `UPDATE assets
+       SET current_version_id = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2`,
+      [versionId, row.id]
+    );
+  }
   // Re-load via getAssetById so owner/status fields match list/get endpoints.
   const refreshed = await getAssetById(row.id);
   return refreshed;
@@ -504,6 +515,14 @@ export async function updateAsset(assetId, payload) {
   if (payload.description !== undefined) {
     updates.push(`description = $${i++}`);
     values.push(payload.description === "" || payload.description == null ? null : String(payload.description));
+  }
+  if (payload.assetType !== undefined) {
+    updates.push(`asset_type = $${i++}`);
+    values.push(payload.assetType === "" || payload.assetType == null ? null : String(payload.assetType));
+  }
+  if (payload.externalUrl !== undefined) {
+    updates.push(`external_url = $${i++}`);
+    values.push(payload.externalUrl === "" || payload.externalUrl == null ? null : String(payload.externalUrl));
   }
   if (updates.length === 0) return getAssetById(assetId);
   values.push(assetId);

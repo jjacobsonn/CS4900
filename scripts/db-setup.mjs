@@ -55,7 +55,7 @@ const dbName = process.env.DB_NAME || "vellum";
 const setupSql = join(ROOT, "database", "setup.sql");
 const migrationsDir = join(ROOT, "backend", "db", "migrations");
 
-function runPsql(database, filePath) {
+function runPsql(database, filePath, extraVars = {}) {
   const label = filePath.replace(ROOT + "/", "");
   console.log(`\n→ psql -d ${database} -f ${label}`);
   const env = { ...process.env };
@@ -64,11 +64,12 @@ function runPsql(database, filePath) {
   } else {
     delete env.PGPASSWORD;
   }
-  const r = spawnSync(
-    "psql",
-    ["-v", "ON_ERROR_STOP=1", "-h", host, "-p", port, "-U", user, "-d", database, "-f", filePath],
-    { cwd: ROOT, stdio: "inherit", env }
-  );
+  const args = ["-v", "ON_ERROR_STOP=1"];
+  for (const [k, v] of Object.entries(extraVars)) {
+    args.push("-v", `${k}=${v}`);
+  }
+  args.push("-h", host, "-p", port, "-U", user, "-d", database, "-f", filePath);
+  const r = spawnSync("psql", args, { cwd: ROOT, stdio: "inherit", env });
   if (r.error) {
     console.error(r.error.message);
     process.exit(1);
@@ -89,7 +90,7 @@ if (!existsSync(join(ROOT, "backend", ".env"))) {
   console.warn("  (tip: create backend/.env from backend/.env.example to set DB_PASSWORD etc.)");
 }
 
-runPsql("postgres", setupSql);
+runPsql("postgres", setupSql, { dbname: dbName });
 
 if (!existsSync(migrationsDir)) {
   console.log("\nNo migrations directory; done.");

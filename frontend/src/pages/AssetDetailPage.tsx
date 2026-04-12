@@ -1,5 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   createAssetVersionApi,
   deleteAssetVersion,
@@ -17,7 +17,7 @@ import { getUsers } from "../api/users";
 import { CommentList } from "../components/CommentList";
 import { StatusBadge } from "../components/StatusBadge";
 import { sanitizeFileName } from "../utils/format";
-import { getWorkflowReviewActions } from "../utils/workflowReview";
+import { getWorkflowStatusButtons, isApproveRequestPair } from "../utils/workflowReview";
 import { VersionList } from "../components/VersionList";
 import type { AuthUser } from "../App";
 
@@ -106,6 +106,10 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [replaceMainFile, setReplaceMainFile] = useState<File | null>(null);
   const [savingAsset, setSavingAsset] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+
+  const isStaffAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin";
 
   const loadData = async () => {
     if (!id) return;
@@ -113,8 +117,8 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
       getAsset(id),
       getComments(id),
       getAssetVersions(id),
-      currentUser?.role === "admin" ? getUsers() : Promise.resolve(null),
-      currentUser?.role === "admin" ? getVersionAudit(id) : Promise.resolve([])
+      isStaffAdmin ? getUsers() : Promise.resolve(null),
+      isStaffAdmin ? getVersionAudit(id) : Promise.resolve([])
     ]);
     setAsset(assetData);
     setComments(
@@ -132,30 +136,44 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         status: assetData.status
       }))
     );
-    if (currentUser?.role === "admin" && Array.isArray(usersData)) {
+    if (isStaffAdmin && Array.isArray(usersData)) {
       setOwnerCandidates(usersData as UserAccount[]);
       const currentOwner = (usersData as UserAccount[]).find(
         (u) => u.email === assetData.owner || u.displayName === assetData.owner
       );
       setOwnerSelectId(currentOwner?.id ?? "");
     }
-    if (currentUser?.role === "admin" && Array.isArray(auditData)) {
+    if (isStaffAdmin && Array.isArray(auditData)) {
       setAuditEntries(auditData);
     }
   };
 
   useEffect(() => {
     if (!id) return;
+    setLoading(true);
     loadData()
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, currentUser?.role]);
 
-  const changeStatus = async (status: "Approved" | "Changes Requested") => {
+  const applyWorkflowStatus = async (statusKey: string) => {
     if (!asset) return;
-    const updated = await patchAssetStatus(String(asset.id), status);
-    setAsset(updated);
+    setWorkflowError(null);
+    setWorkflowBusy(true);
+    try {
+      const updated = await patchAssetStatus(String(asset.id), statusKey);
+      setAsset(updated);
+      await loadData();
+    } catch (err) {
+      setWorkflowError(err instanceof Error ? err.message : "Could not update status.");
+    } finally {
+      setWorkflowBusy(false);
+    }
   };
+
+  useEffect(() => {
+    setWorkflowError(null);
+  }, [asset?.id, asset?.backendStatus]);
 
   const submitComment = async (event: FormEvent) => {
     event.preventDefault();
@@ -262,6 +280,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
   const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset?.mimeType));
 
+  const workflowButtons = useMemo(
+    () => (asset ? getWorkflowStatusButtons(asset.backendStatus, currentUser?.role) : []),
+    [asset, currentUser?.role]
+  );
+
   if (loading) return <section className="panel"><p>Loading asset...</p></section>;
   if (error || !asset) return <section className="panel"><p role="alert">{error || "Asset not found."}</p></section>;
 
@@ -307,6 +330,12 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
             ) : null}
           </div>
           <p>Owner: {asset.owner}</p>
+          {asset.projectName != null && asset.projectName !== "" && asset.projectId != null ? (
+            <p>
+              Project:{" "}
+              <Link to={`/dashboard?projectId=${asset.projectId}`}>{asset.projectName}</Link>
+            </p>
+          ) : null}
           {asset.fileUrl && asset.fileName ? (
             <p>
               Current file:{" "}
@@ -315,7 +344,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </a>
             </p>
           ) : null}
-          {currentUser?.role === "admin" && (
+          {isStaffAdmin && (
             <>
               {!editAssetOpen ? (
                 <button type="button" className="secondary-btn" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
@@ -376,24 +405,53 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           <p>
             Status: <StatusBadge status={asset.status} />
           </p>
-          {(() => {
-            const actions = getWorkflowReviewActions(asset.backendStatus, currentUser?.role);
-            if (!actions) return null;
-            return (
-              <div className="row-actions">
-                <button type="button" className="primary-btn" onClick={() => void changeStatus(actions.approveKey)}>
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => void changeStatus(actions.requestChangesKey)}
-                >
-                  Request changes
-                </button>
-              </div>
-            );
-          })()}
+          {workflowButtons.length > 0 ? (
+            <div className="row-actions asset-workflow-actions">
+              {workflowError ? (
+                <p role="alert" className="asset-workflow-error">
+                  {workflowError}
+                </p>
+              ) : null}
+              {isApproveRequestPair(workflowButtons) ? (
+                <>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={workflowBusy}
+                    onClick={() => {
+                      const approve = workflowButtons.find((b) => b.statusKey.startsWith("approved_"));
+                      if (approve) void applyWorkflowStatus(approve.statusKey);
+                    }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={workflowBusy}
+                    onClick={() => {
+                      const req = workflowButtons.find((b) => b.statusKey.includes("changes_requested"));
+                      if (req) void applyWorkflowStatus(req.statusKey);
+                    }}
+                  >
+                    Request changes
+                  </button>
+                </>
+              ) : (
+                workflowButtons.map((btn) => (
+                  <button
+                    key={btn.statusKey}
+                    type="button"
+                    className={btn.variant === "primary" ? "primary-btn" : "secondary-btn"}
+                    disabled={workflowBusy}
+                    onClick={() => void applyWorkflowStatus(btn.statusKey)}
+                  >
+                    {btn.label}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
         </div>
         <div className="panel">
           <div className="toolbar tabs">
@@ -415,15 +473,15 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </form>
               <CommentList
                 comments={comments}
-                isAdmin={currentUser?.role === "admin"}
-                onDeleteComment={currentUser?.role === "admin" ? handleDeleteComment : undefined}
+                isAdmin={isStaffAdmin}
+                onDeleteComment={isStaffAdmin ? handleDeleteComment : undefined}
                 deletingCommentId={deletingCommentId}
               />
             </>
           )}
           {activeTab === "versions" && (
             <>
-              {(currentUser?.role === "designer" || currentUser?.role === "admin") && (
+              {(currentUser?.role === "designer" || isStaffAdmin) && (
                 <form
                   key={versionFormKey}
                   style={{ marginBottom: "0.6rem", display: "grid", gap: "0.4rem" }}
@@ -469,10 +527,10 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               <VersionList
                 versions={versions}
                 currentVersionId={asset.currentVersionId}
-                isAdmin={currentUser?.role === "admin"}
+                isAdmin={isStaffAdmin}
                 auditEntries={auditEntries}
-                onEditVersion={currentUser?.role === "admin" ? handleEditVersion : undefined}
-                onDeleteVersion={currentUser?.role === "admin" ? handleDeleteVersion : undefined}
+                onEditVersion={isStaffAdmin ? handleEditVersion : undefined}
+                onDeleteVersion={isStaffAdmin ? handleDeleteVersion : undefined}
                 onRefresh={loadData}
               />
             </>

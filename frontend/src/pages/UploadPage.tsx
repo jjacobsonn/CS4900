@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { createAsset } from "../api/assets";
 import { getProjects, Project } from "../api/projects";
@@ -19,7 +19,41 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const canUpload = canAccessUpload(role);
+
+  const pickFile = (selected: File | null) => {
+    if (selected && selected.size > 10 * 1024 * 1024) {
+      setError("File must be 10 MB or smaller.");
+      setFile(null);
+      return;
+    }
+    setError(null);
+    setFile(selected);
+  };
+
+  const onDropZoneDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    if (!canUpload) return;
+    const dropped = event.dataTransfer.files?.[0];
+    if (dropped) pickFile(dropped);
+  };
+
+  const onDropZoneDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (canUpload) setDragActive(true);
+  };
+
+  const onDropZoneDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+      setDragActive(false);
+    }
+  };
 
   useEffect(() => {
     const requestedProjectId = (searchParams.get("projectId") ?? "").trim();
@@ -94,20 +128,44 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
     <section className="panel upload-panel">
       <h1>Upload Asset</h1>
       <form onSubmit={handleSubmit}>
-        <div className="upload-dropzone">
+        <input
+          ref={fileInputRef}
+          id="upload-asset-file"
+          type="file"
+          className="upload-file-input-hidden"
+          aria-label="Choose file to upload"
+          onChange={(event) => {
+            const selected = event.target.files?.[0];
+            pickFile(selected ?? null);
+          }}
+        />
+        <div
+          className={`upload-dropzone${dragActive ? " upload-dropzone-active" : ""}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (canUpload) fileInputRef.current?.click();
+          }}
+          onKeyDown={(event) => {
+            if (!canUpload) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          onDrop={onDropZoneDrop}
+          onDragOver={onDropZoneDragOver}
+          onDragLeave={onDropZoneDragLeave}
+        >
           <p>Upload Area</p>
-          <small>{file ? `${file.name} selected` : "Click to choose a supported file"}</small>
+          <small>
+            {file
+              ? `${file.name} selected`
+              : canUpload
+                ? "Click or drag a file here"
+                : "Your role cannot upload files"}
+          </small>
         </div>
-        <label>
-          File
-          <input
-            type="file"
-            onChange={(event) => {
-              const selected = event.target.files?.[0];
-              setFile(selected ?? null);
-            }}
-          />
-        </label>
         <label>
           Title
           <input type="text" value={title} onChange={(event) => setTitle(event.target.value)} />

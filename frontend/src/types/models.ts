@@ -9,6 +9,8 @@ export interface Asset {
   id: string | number;
   name: string;
   owner: string;
+  projectId?: number | null;
+  projectName?: string | null;
   thumbnailUrl?: string;
   fileUrl?: string | null;
   fileName?: string | null;

@@ -8,6 +8,8 @@ interface RawAsset {
   title: string;
   description?: string;
   status: string;
+  project_id?: number | null;
+  project_name?: string | null;
   owner?: string;
   current_version?: string;
   currentVersion?: string;
@@ -29,6 +31,8 @@ function toAsset(raw: RawAsset): Asset {
     id: raw.id,
     name: raw.title,
     owner: raw.owner ?? "Unassigned",
+    projectId: raw.project_id ?? null,
+    projectName: raw.project_name ?? null,
     status: normalizeWorkflowDisplayStatus(raw.status),
     backendStatus: backendName || undefined,
     updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),

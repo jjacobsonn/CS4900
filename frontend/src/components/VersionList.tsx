@@ -189,18 +189,22 @@ export function VersionList({
           );
         })}
       </ul>
-      {isAdmin && auditEntries.length > 0 && (
+      {isAdmin && (
         <div className="version-audit">
-          <h3>Admin actions (audit trail)</h3>
-          <ul>
-            {auditEntries.map((entry) => (
-              <li key={entry.id}>
-                <strong>{entry.performed_by}</strong> — {entry.action === "deleted" ? "Deleted version" : "Updated version metadata"}
-                {entry.details && `: ${entry.details}`}
-                <span> {formatDate(entry.performed_at)}</span>
-              </li>
-            ))}
-          </ul>
+          <h3>Version audit trail</h3>
+          {auditEntries.length === 0 ? (
+            <p className="version-audit-empty">No version edits or deletes have been recorded for this asset yet.</p>
+          ) : (
+            <ul>
+              {auditEntries.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{entry.performed_by}</strong> — {entry.action === "deleted" ? "Deleted version" : "Updated version metadata"}
+                  {entry.details && `: ${entry.details}`}
+                  <span> {formatDate(entry.performed_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </>

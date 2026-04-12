@@ -6,10 +6,16 @@
 -- ============================================================================
 -- BOOTSTRAP: Create and connect to database
 -- ============================================================================
+-- Target DB name comes from psql -v dbname=... (see scripts/db-setup.mjs).
+-- If unset, default to vellum so manual runs still work.
+\if :{?dbname}
+\else
+\set dbname vellum
+\endif
 
-SELECT 'CREATE DATABASE vellum'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vellum')\gexec
-\connect vellum;
+SELECT format('CREATE DATABASE %I', :'dbname')
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname')\gexec
+\connect :"dbname"
 
 -- ============================================================================
 -- STEP 1: Create Database Schema

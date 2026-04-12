@@ -1,9 +1,19 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getAdminActivity, getAdminOverview } from "../api/admin";
 import { deleteAsset } from "../api/assets";
 import { deleteComment } from "../api/comments";
 import type { AdminActivity } from "../api/admin";
+import { getClients, type Client } from "../api/clients";
+import {
+  createProject,
+  deleteProject,
+  getProject,
+  getProjects,
+  updateProject,
+  type Project,
+  type ProjectDetail
+} from "../api/projects";
 import { createUser, getUsers, updateUserActive, updateUserRole } from "../api/users";
 import { AdminOverview, UserAccount } from "../types/models";
 import { Role } from "../utils/permissions";
@@ -42,22 +52,46 @@ export function AdminPage() {
   const [role, setRole] = useState<Role>("designer");
   const [showAssets, setShowAssets] = useState(true);
   const [showComments, setShowComments] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const [newProjectClientId, setNewProjectClientId] = useState("");
+  const [newProjectStatus, setNewProjectStatus] = useState("Active");
+  const [newProjectPriority, setNewProjectPriority] = useState("");
+  const [newProjectDue, setNewProjectDue] = useState("");
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [projectDetail, setProjectDetail] = useState<ProjectDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [savingProject, setSavingProject] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editStatus, setEditStatus] = useState("Active");
+  const [editPriority, setEditPriority] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editClientId, setEditClientId] = useState("");
 
   const load = async () => {
     setLoading(true);
     setUsersError(null);
     try {
-      const [overviewData, usersData, activityData] = await Promise.all([
+      const [overviewData, usersData, activityData, projectsData, clientsData] = await Promise.all([
         getAdminOverview().catch(() => defaultOverview),
         getUsers().catch((err: Error) => {
           setUsersError(err.message || "Could not load users");
           return [];
         }),
-        getAdminActivity().catch(() => defaultActivity)
+        getAdminActivity().catch(() => defaultActivity),
+        getProjects().catch(() => [] as Project[]),
+        getClients().catch(() => [] as Client[])
       ]);
       setOverview(overviewData);
       setUsers(usersData);
       setActivity(activityData);
+      setProjects(Array.isArray(projectsData) ? projectsData : []);
+      setClients(Array.isArray(clientsData) ? clientsData : []);
     } finally {
       setLoading(false);
     }
@@ -104,6 +138,101 @@ export function AdminPage() {
     await deleteComment(assetId, commentId);
     await load();
   };
+
+  const handleCreateProject = async (event: FormEvent) => {
+    event.preventDefault();
+    setProjectError(null);
+    if (!projectName.trim()) return;
+    try {
+      await createProject({
+        name: projectName.trim(),
+        description: projectDescription.trim() || undefined,
+        clientId: newProjectClientId ? Number(newProjectClientId) : undefined,
+        status: newProjectStatus,
+        priority: newProjectPriority.trim() || undefined,
+        dueDate: newProjectDue.trim() || undefined
+      });
+      setProjectName("");
+      setProjectDescription("");
+      setNewProjectClientId("");
+      setNewProjectStatus("Active");
+      setNewProjectPriority("");
+      setNewProjectDue("");
+      await load();
+    } catch (err) {
+      setProjectError(err instanceof Error ? err.message : "Could not create project.");
+    }
+  };
+
+  const openProjectDetail = async (id: number) => {
+    setSelectedProjectId(id);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      const d = await getProject(id);
+      setProjectDetail(d);
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : "Failed to load project");
+      setProjectDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!projectDetail) return;
+    setEditName(projectDetail.name);
+    setEditDescription(projectDetail.description ?? "");
+    setEditStatus(projectDetail.status);
+    setEditPriority(projectDetail.priority ?? "");
+    setEditDueDate(projectDetail.dueDate ? projectDetail.dueDate.slice(0, 10) : "");
+    setEditClientId(projectDetail.clientId != null ? String(projectDetail.clientId) : "");
+  }, [projectDetail]);
+
+  const closeProjectDetail = () => {
+    setSelectedProjectId(null);
+    setProjectDetail(null);
+    setDetailError(null);
+  };
+
+  const handleSaveProject = async () => {
+    if (selectedProjectId == null) return;
+    setSavingProject(true);
+    setDetailError(null);
+    try {
+      await updateProject(selectedProjectId, {
+        name: editName.trim(),
+        description: editDescription.trim() || null,
+        status: editStatus,
+        priority: editPriority.trim() || null,
+        dueDate: editDueDate.trim() || null,
+        clientId: editClientId === "" ? null : Number(editClientId)
+      });
+      await load();
+      await openProjectDetail(selectedProjectId);
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (selectedProjectId == null) return;
+    const ok = window.confirm(
+      "Delete this project? Linked assets remain in the system but will no longer be assigned to this project."
+    );
+    if (!ok) return;
+    try {
+      await deleteProject(selectedProjectId);
+      closeProjectDetail();
+      await load();
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  const projectStatusOptions = ["Active", "On hold", "Archived", "Completed"];
 
   return (
     <section className="page-grid admin-page">
@@ -247,7 +376,228 @@ export function AdminPage() {
         )}
       </div>
 
-      <div className="panel admin-wide-panel">
+      <div className="panel admin-wide-panel admin-section-panel admin-projects-section">
+        <div className="admin-content">
+          <h1>Projects</h1>
+          <p className="admin-subtitle">Create and manage projects. Uploads and assets can be linked to a project.</p>
+          <form onSubmit={(e) => void handleCreateProject(e)} className="admin-form admin-project-create-form">
+            <label>
+              Name
+              <input
+                type="text"
+                value={projectName}
+                onChange={(event) => setProjectName(event.target.value)}
+                placeholder="Project name"
+                required
+              />
+            </label>
+            <label>
+              Description
+              <textarea value={projectDescription} onChange={(event) => setProjectDescription(event.target.value)} rows={2} />
+            </label>
+            <label>
+              Client
+              <select value={newProjectClientId} onChange={(event) => setNewProjectClientId(event.target.value)}>
+                <option value="">None</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Status
+              <select value={newProjectStatus} onChange={(event) => setNewProjectStatus(event.target.value)}>
+                {projectStatusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Priority
+              <input
+                type="text"
+                value={newProjectPriority}
+                onChange={(event) => setNewProjectPriority(event.target.value)}
+                placeholder="Optional"
+              />
+            </label>
+            <label>
+              Due date
+              <input type="date" value={newProjectDue} onChange={(event) => setNewProjectDue(event.target.value)} />
+            </label>
+            <button className="primary-btn" type="submit">
+              Create project
+            </button>
+          </form>
+          {projectError && <p role="alert" className="admin-error">{projectError}</p>}
+
+          <div className="admin-scroll-table" style={{ marginTop: "1rem" }}>
+            <table className="admin-table compact">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Client</th>
+                  <th>Assets</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {projects.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>No projects yet.</td>
+                  </tr>
+                ) : (
+                  projects.map((p) => (
+                    <tr key={p.id} className={selectedProjectId === p.id ? "admin-row-selected" : undefined}>
+                      <td data-label="ID">{p.id}</td>
+                      <td data-label="Name">{p.name}</td>
+                      <td data-label="Status">{p.status}</td>
+                      <td data-label="Client">{p.clientName ?? "—"}</td>
+                      <td data-label="Assets">{p.assetCount ?? 0}</td>
+                      <td data-label="Actions" className="actions-cell">
+                        <button type="button" className="secondary-btn small" onClick={() => void openProjectDetail(p.id)}>
+                          Open
+                        </button>
+                        <Link className="secondary-btn file-link-btn small" to={`/upload?projectId=${p.id}`}>
+                          Upload
+                        </Link>
+                        <Link className="secondary-btn file-link-btn small" to={`/dashboard?projectId=${p.id}`}>
+                          Queue
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {selectedProjectId != null && (
+            <div className="admin-project-detail">
+              <div className="admin-split-header">
+                <h2>Project #{selectedProjectId}</h2>
+                <button type="button" className="secondary-btn" onClick={closeProjectDetail}>
+                  Close
+                </button>
+              </div>
+              {detailLoading && <p>Loading…</p>}
+              {detailError && <p role="alert" className="admin-error">{detailError}</p>}
+              {!detailLoading && projectDetail && (
+                <>
+                  <div className="admin-form admin-project-edit-form">
+                    <label>
+                      Name
+                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </label>
+                    <label>
+                      Description
+                      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} />
+                    </label>
+                    <label>
+                      Client
+                      <select value={editClientId} onChange={(e) => setEditClientId(e.target.value)}>
+                        <option value="">None</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={String(c.id)}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Status
+                      <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                        {projectStatusOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                        {!projectStatusOptions.includes(editStatus) ? (
+                          <option value={editStatus}>{editStatus}</option>
+                        ) : null}
+                      </select>
+                    </label>
+                    <label>
+                      Priority
+                      <input type="text" value={editPriority} onChange={(e) => setEditPriority(e.target.value)} />
+                    </label>
+                    <label>
+                      Due date
+                      <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
+                    </label>
+                    <div className="admin-project-detail-actions">
+                      <button
+                        type="button"
+                        className="primary-btn"
+                        disabled={savingProject}
+                        onClick={() => void handleSaveProject()}
+                      >
+                        {savingProject ? "Saving…" : "Save changes"}
+                      </button>
+                      <button type="button" className="secondary-btn danger-outline" onClick={() => void handleDeleteProject()}>
+                        Delete project
+                      </button>
+                    </div>
+                  </div>
+
+                  <h3 className="admin-section-title">Contributors</h3>
+                  {projectDetail.contributors.length === 0 ? (
+                    <p>No contributors yet.</p>
+                  ) : (
+                    <ul className="admin-contributor-list">
+                      {projectDetail.contributors.map((c) => (
+                        <li key={c.id}>
+                          {c.displayName} <span className="admin-muted">({c.email})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <h3 className="admin-section-title">Linked assets</h3>
+                  {projectDetail.assets.length === 0 ? (
+                    <p>No linked assets.</p>
+                  ) : (
+                    <div className="admin-scroll-table">
+                      <table className="admin-table compact">
+                        <thead>
+                          <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Owner</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {projectDetail.assets.map((a) => (
+                            <tr key={a.id}>
+                              <td data-label="Title">{a.title}</td>
+                              <td data-label="Status">{a.status}</td>
+                              <td data-label="Owner">{a.owner}</td>
+                              <td data-label="Actions" className="actions-cell">
+                                <button type="button" className="secondary-btn small" onClick={() => navigate(`/assets/${a.id}`)}>
+                                  Open
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel admin-wide-panel admin-section-panel admin-users-section">
         <div className="admin-content">
           <h1>User Management</h1>
           <form onSubmit={handleCreateUser} className="admin-form">

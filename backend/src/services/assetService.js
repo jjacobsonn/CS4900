@@ -50,6 +50,8 @@ export async function listAssets() {
             s.status_name AS status,
             a.current_version,
             a.current_version_id,
+            a.project_id,
+            p.name AS project_name,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
@@ -60,6 +62,7 @@ export async function listAssets() {
      FROM assets a
      JOIN asset_status_lookup s ON s.id = a.status_id
      LEFT JOIN users u ON u.id = a.created_by_user_id
+     LEFT JOIN projects p ON p.id = a.project_id
      LEFT JOIN asset_versions v
        ON v.asset_id = a.id
       AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))
@@ -151,6 +154,8 @@ export async function getAssetById(assetId) {
             s.status_name AS status,
             a.current_version,
             a.current_version_id,
+            a.project_id,
+            p.name AS project_name,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
@@ -161,6 +166,7 @@ export async function getAssetById(assetId) {
      FROM assets a
      JOIN asset_status_lookup s ON s.id = a.status_id
      LEFT JOIN users u ON u.id = a.created_by_user_id
+     LEFT JOIN projects p ON p.id = a.project_id
      LEFT JOIN asset_versions v
        ON v.asset_id = a.id
       AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))

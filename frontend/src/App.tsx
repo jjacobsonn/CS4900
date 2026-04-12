@@ -66,7 +66,7 @@ function AppLayout({
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
   const allowReview = canReview(role);
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "super_admin";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const activeSection = location.pathname.startsWith("/assets")
     ? "review"
@@ -162,7 +162,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<DashboardPage role={auth.role} />} />
         <Route path="/assets/:id" element={<AssetDetailPage currentUser={auth.user} />} />
         <Route
           path="/upload"
@@ -174,7 +174,10 @@ export default function App() {
             )
           }
         />
-        <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
+        <Route
+          path="/admin"
+          element={auth.role === "admin" || auth.role === "super_admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />}
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>

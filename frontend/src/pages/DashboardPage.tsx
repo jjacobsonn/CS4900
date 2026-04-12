@@ -1,22 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getAssets } from "../api/assets";
+import { getProjects, type Project } from "../api/projects";
 import { Asset, AssetStatus } from "../types/models";
 import { AssetCard } from "../components/AssetCard";
+import type { Role } from "../utils/permissions";
 
 type Filter = "queue" | "all" | AssetStatus;
 
-export function DashboardPage() {
+function isQueueStatus(status: AssetStatus): boolean {
+  if (status === "Changes Requested") return false;
+  return status === "Draft" || status === "In Review" || status === "In Progress";
+}
+
+export function DashboardPage({ role }: { role: Role }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Filter>("queue");
+  const [statusFilter, setStatusFilter] = useState<Filter>(() => (role === "admin" ? "all" : "queue"));
+  const [projectFilter, setProjectFilter] = useState(() => (searchParams.get("projectId") ?? "").trim());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getAssets()
-      .then((data) => setAssets(data))
+    const fromUrl = (searchParams.get("projectId") ?? "").trim();
+    setProjectFilter(fromUrl);
+  }, [searchParams]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([getAssets(), getProjects().catch(() => [] as Project[])])
+      .then(([assetRows, projectRows]) => {
+        setAssets(assetRows);
+        setProjects(Array.isArray(projectRows) ? projectRows : []);
+      })
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -29,11 +48,14 @@ export function DashboardPage() {
         statusFilter === "all"
           ? true
           : statusFilter === "queue"
-            ? asset.status === "In Review" || asset.status === "Changes Requested"
+            ? isQueueStatus(asset.status)
             : asset.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesProject =
+        projectFilter === "" ||
+        (asset.projectId != null && String(asset.projectId) === projectFilter);
+      return matchesSearch && matchesStatus && matchesProject;
     });
-  }, [assets, search, statusFilter]);
+  }, [assets, search, statusFilter, projectFilter]);
 
   const summary = useMemo(
     () => ({
@@ -44,6 +66,14 @@ export function DashboardPage() {
     }),
     [assets]
   );
+
+  const onProjectFilterChange = (value: string) => {
+    setProjectFilter(value);
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set("projectId", value);
+    else next.delete("projectId");
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <section className="page-grid dashboard-page">
@@ -74,12 +104,24 @@ export function DashboardPage() {
           <label className="dashboard-primary-filter">
             Queue Scope
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Filter)}>
-              <option value="queue">Needs Review</option>
+              <option value="queue">Needs review</option>
               <option value="In Review">In Review</option>
+              <option value="In Progress">In Progress</option>
               <option value="Changes Requested">Changes Requested</option>
               <option value="Draft">Draft</option>
               <option value="Approved">Approved</option>
               <option value="all">All Assets</option>
+            </select>
+          </label>
+          <label>
+            Project
+            <select value={projectFilter} onChange={(event) => onProjectFilterChange(event.target.value)}>
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  #{p.id} — {p.name}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -92,9 +134,6 @@ export function DashboardPage() {
             />
           </label>
         </div>
-        <p className="dashboard-filter-note">
-          Default view shows only assets that still need reviewer attention.
-        </p>
       </div>
       <div className="panel dashboard-results">
         <div className="dashboard-results-header">
@@ -110,7 +149,7 @@ export function DashboardPage() {
         {!loading && !error && (
           <div className="asset-grid">
             {filteredAssets.map((asset) => (
-              <AssetCard key={String(asset.id)} asset={asset} onOpen={(id) => navigate(`/assets/${id}`)} />
+              <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
             ))}
             {filteredAssets.length === 0 && <p>No assets found.</p>}
           </div>

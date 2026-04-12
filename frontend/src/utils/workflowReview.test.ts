@@ -1,39 +1,86 @@
-import { getWorkflowReviewActions } from "./workflowReview";
+import { getWorkflowReviewActions, getWorkflowStatusButtons, isApproveRequestPair } from "./workflowReview";
 
-describe("getWorkflowReviewActions", () => {
-  test("internal review: reviewer/designer/manager/admin get approve + request changes keys", () => {
-    for (const role of ["reviewer", "designer", "manager", "admin"] as const) {
-      expect(getWorkflowReviewActions("In Internal Review", role)).toEqual({
-        approveKey: "approved_internal",
-        requestChangesKey: "changes_requested_internal"
-      });
-      expect(getWorkflowReviewActions("In Review", role)).toEqual({
-        approveKey: "approved_internal",
-        requestChangesKey: "changes_requested_internal"
-      });
+describe("getWorkflowStatusButtons", () => {
+  test("Ready for Internal Review: internal roles get Start internal review", () => {
+    for (const role of ["reviewer", "designer", "manager", "admin", "super_admin"] as const) {
+      expect(getWorkflowStatusButtons("Ready for Internal Review", role)).toEqual([
+        { statusKey: "in_internal_review", label: "Start internal review", variant: "primary" }
+      ]);
     }
   });
 
-  test("internal review: client_reviewer cannot act", () => {
-    expect(getWorkflowReviewActions("In Internal Review", "client_reviewer")).toBeNull();
-  });
-
-  test("client review: client_reviewer/manager/admin only", () => {
-    for (const role of ["client_reviewer", "manager", "admin"] as const) {
-      expect(getWorkflowReviewActions("In Client Review", role)).toEqual({
-        approveKey: "approved_client",
-        requestChangesKey: "client_changes_requested"
-      });
+  test("In Internal Review / legacy In Review: internal roles get approve + request changes", () => {
+    for (const role of ["reviewer", "designer", "manager", "admin", "super_admin"] as const) {
+      expect(getWorkflowStatusButtons("In Internal Review", role)).toEqual([
+        { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
+        { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
+      ]);
+      expect(getWorkflowStatusButtons("In Review", role)).toEqual([
+        { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
+        { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
+      ]);
     }
   });
 
-  test("client review: reviewer cannot act", () => {
-    expect(getWorkflowReviewActions("In Client Review", "reviewer")).toBeNull();
+  test("In Internal Review: client_reviewer cannot act", () => {
+    expect(getWorkflowStatusButtons("In Internal Review", "client_reviewer")).toEqual([]);
   });
 
-  test("returns null when status or role missing", () => {
-    expect(getWorkflowReviewActions(undefined, "reviewer")).toBeNull();
-    expect(getWorkflowReviewActions("In Internal Review", null)).toBeNull();
-    expect(getWorkflowReviewActions("Draft", "reviewer")).toBeNull();
+  test("In Client Review: client actors get approve + request", () => {
+    for (const role of ["client_reviewer", "manager", "admin", "super_admin"] as const) {
+      expect(getWorkflowStatusButtons("In Client Review", role)).toEqual([
+        { statusKey: "approved_client", label: "Approve (client)", variant: "primary" },
+        { statusKey: "client_changes_requested", label: "Request client changes", variant: "secondary" }
+      ]);
+    }
+  });
+
+  test("Draft: designer-like roles can submit", () => {
+    expect(getWorkflowStatusButtons("Draft", "designer").map((b) => b.statusKey)).toContain("ready_for_internal_review");
+  });
+
+  test("Draft: reviewer alone cannot submit", () => {
+    expect(getWorkflowStatusButtons("Draft", "reviewer")).toEqual([]);
+  });
+
+  test("returns empty when status or role missing", () => {
+    expect(getWorkflowStatusButtons(undefined, "reviewer")).toEqual([]);
+    expect(getWorkflowStatusButtons("In Internal Review", null)).toEqual([]);
+  });
+});
+
+describe("isApproveRequestPair", () => {
+  test("detects internal and client decision pairs", () => {
+    expect(
+      isApproveRequestPair([
+        { statusKey: "approved_internal", label: "", variant: "primary" },
+        { statusKey: "changes_requested_internal", label: "", variant: "secondary" }
+      ])
+    ).toBe(true);
+    expect(
+      isApproveRequestPair([
+        { statusKey: "approved_client", label: "", variant: "primary" },
+        { statusKey: "client_changes_requested", label: "", variant: "secondary" }
+      ])
+    ).toBe(true);
+    expect(
+      isApproveRequestPair([
+        { statusKey: "ready_for_internal_review", label: "", variant: "primary" },
+        { statusKey: "in_progress", label: "", variant: "secondary" }
+      ])
+    ).toBe(false);
+  });
+});
+
+describe("getWorkflowReviewActions (compat)", () => {
+  test("still maps approve/request pair for active internal review", () => {
+    expect(getWorkflowReviewActions("In Internal Review", "reviewer")).toEqual({
+      approveKey: "approved_internal",
+      requestChangesKey: "changes_requested_internal"
+    });
+  });
+
+  test("returns null when only begin-review step exists", () => {
+    expect(getWorkflowReviewActions("Ready for Internal Review", "reviewer")).toBeNull();
   });
 });

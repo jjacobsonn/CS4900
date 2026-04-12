@@ -77,7 +77,7 @@ Successfully transitioned from planning to implementation. We have a working ful
 
 ---
 
-**Last Updated:** February 16, 2026
+*(Older sprint-0 snapshot; see **Last Updated** at end of file for the current date.)*
 
 ---
 
@@ -330,3 +330,87 @@ Successfully transitioned from planning to implementation. We have a working ful
 **Reflections:**
 - Today’s work took the system from “flat asset list with comments” to something much closer to a real project/asset workflow product: there are now clients, projects, asset types, and a governed internal review pipeline.
 - Having a solid doc set for Sprint 2 (personas, flows, IA, requirements, tests) made the backend changes feel purposeful rather than ad hoc; it also sets up the frontend work for a cleaner, more story-driven demo in future sprints.
+
+---
+
+## April 12, 2026 — Branch `jj-sprint-3`: database setup, login, workflow UX, projects admin, layout
+
+### Summary
+
+Consolidated fixes and features developed on **`jj-sprint-3`** (from `jj-sprint-2`): local dev database alignment, clearer review workflow actions without tutorial copy, full **Projects** management on the Admin page (wired to existing `assets.project_id`), upload dropzone behavior, dashboard queue/projects filters, and separate CSS grid rows so **Projects** and **User Management** render as two distinct panels.
+
+### Tasks completed
+
+**Database bootstrap (`npm run db:setup`)**
+- **`database/setup.sql`** now takes the target database name from psql variable `dbname` (defaults to `vellum` if unset). **`scripts/db-setup.mjs`** passes `-v dbname=<DB_NAME>` from `backend/.env` so schema + seeds land in the **same** database migrations use. This fixes “login works for designer but not admin” / missing seed users when `DB_NAME` was e.g. `vellum_development` while setup only populated `vellum`.
+- **Reminder:** `backend/.env` must set `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, etc. consistently for both `db:setup` and `npm start` (backend).
+
+**Authentication / roles**
+- Seeded logins still use **`TestPass123!`** with emails like `admin@vellum.test` (see README / login hint) until bcrypt-backed seed hashes are standardized.
+- Frontend **`super_admin`** aligned in nav, `/admin` route, and asset admin actions where **`admin`** was previously assumed alone.
+
+**Upload (`UploadPage`)**
+- Dropzone is functional: **click**, **keyboard**, and **drag-and-drop** set the file via a single hidden input; `upload-file-input-hidden` + `upload-dropzone-active` styles in `styles.css`.
+
+**Dashboard**
+- **Needs review** queue (default for non-admin): **Draft**, **In Progress**, and **In Review** buckets; **excludes** **Changes Requested** so rework sits behind its own filter.
+- **Admin** default filter: **All assets**.
+- **Project** filter + URL sync `?projectId=`; **`getProjects`** loaded with assets.
+- Removed long instructional copy and the expandable “what each role can do” block (production-style UI).
+
+**Workflow (`frontend/src/utils/workflowReview.ts` + asset detail)**
+- **`getWorkflowStatusButtons`**: returns allowed `PATCH /api/assets/:id/status` keys per **`asset.backendStatus`** and role (internal + client stages), aligned with **`INTERNAL_STATUS_MAP`** / **`INTERNAL_STATUS_TRANSITIONS`** in `backend/src/services/assetService.js`.
+- **UI:** When the pair is internal or client **approve + request changes**, show only **Approve** and **Request changes** (Landon-style). Otherwise show up to two labeled action buttons (e.g. **Start internal review**, **Submit for internal review**) with **no** workflow explainer panel or empty-state essay.
+- **`isApproveRequestPair`**: unit-tested; used to map to short button labels.
+
+**Assets API / UI**
+- **`listAssets`** / **`getAssetById`** include **`project_id`**, **`project_name`** (join `projects`). Frontend **`Asset`** / **`toAsset`** map to **`projectId`**, **`projectName`**; cards and detail link to **`/dashboard?projectId=`**.
+
+**Projects (backend)**
+- **`backend/src/services/projectService.js`**: **`getProjectDetail`** (project + assets with **owner** + **contributors** from project creator ∪ distinct asset owners), **`updateProjectById`** (partial PATCH).
+- **`GET /api/projects`**: subquery **`asset_count`** per project.
+- **`POST /api/projects`**: optional **`status`**; validates **`clientId`** when present.
+- **`PATCH /api/projects/:projectId`**: admin / manager / `super_admin`; updates name, description, status, priority, due date, client.
+- **`DELETE /api/projects/:projectId`**: **admin** or **`super_admin`** (assets keep **`project_id` NULL** via FK).
+- **`GET /api/projects/:projectId`**: uses service; returns **`assets`** and **`contributors`**.
+
+**Projects (frontend Admin)**
+- **`frontend/src/api/clients.ts`**: **`getClients`**, **`createClient`** (for dropdowns / future use).
+- **`frontend/src/api/projects.ts`**: **`getProject`**, **`updateProject`**, **`deleteProject`**, **`ProjectDetail`**, types for contributors and asset summaries.
+- **Admin page:** Create form (client, status, priority, due date); table with **asset count**, **Open** (detail), **Upload**, **Queue**; detail block: edit, save, delete, **Contributors**, **Linked assets** with open to asset.
+- **Layout:** **`admin-projects-section`** and **`admin-users-section`** use separate grid areas (**`projects`** / **`users`**) so the two **`panel`** blocks are not merged in one grid cell; margin between them.
+
+### Challenges
+
+- Explaining why **`Ready for Internal Review`** required a **Start internal review** step before **Approve** appeared (backend state machine); addressed by implementing all steps as buttons and then stripping instructional copy per product preference.
+- Grid layout: two elements sharing **`grid-area: users`** stacked in one cell until areas were split.
+
+### Next steps (optional)
+
+- Bcrypt for seed users and login verification against **`password_hash`**.
+- **`POST /api/users`** optional initial password for new accounts.
+- Project **membership** table if “who’s on the project” must go beyond creator + asset owners.
+- Push **`jj-sprint-3`** to **`origin`** when ready and open PR.
+
+### Reflections
+
+- Aligning **`setup.sql`** with **`DB_NAME`** removes a whole class of “empty users table / wrong DB” confusion during local onboarding.
+- Admin **Projects** now matches how **`assets.project_id`** is actually used: create → upload/assign → see contributors and linked assets in one place.
+
+---
+
+## Reference — current local configuration (quick)
+
+| Item | Notes |
+|------|--------|
+| **Branch** | Active dev: **`jj-sprint-3`** (from **`jj-sprint-2`**). |
+| **DB** | PostgreSQL; name from **`backend/.env`** → **`DB_NAME`** (default **`vellum`** in example). **`npm run db:setup`** seeds that same DB. |
+| **API** | Backend default **`PORT=3000`**; frontend Vite proxies **`/api`** and **`/uploads`** to **`http://localhost:3000`**. |
+| **Auth** | JWT in **`Authorization: Bearer`**; **`JWT_SECRET`** required. |
+| **Seed passwords** | **`TestPass123!`** for seeded accounts (until bcrypt migration). |
+| **Workflow** | Status transitions enforced in **`assetService.updateAssetStatus`**; frontend sends keys like **`in_internal_review`**, **`approved_internal`**, **`changes_requested_internal`**, etc. |
+| **Projects** | **`projects`** + **`clients`** tables; **`assets.project_id`** FK **`ON DELETE SET NULL`**. |
+
+---
+
+**Last Updated:** April 12, 2026

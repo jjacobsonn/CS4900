@@ -370,6 +370,20 @@ h1 {
   margin-top: 0.5rem;
 }
 
+.asset-workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.asset-workflow-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #8b0000;
+}
+
 .comment-list,
 .version-list {
   list-style: none;
@@ -526,6 +540,12 @@ h1 {
   gap: 0.25rem;
 }
 
+.version-audit-empty {
+  margin: 0;
+  color: #555;
+  font-size: 0.9rem;
+}
+
 .version-audit li {
   font-size: 0.78rem;
   color: #555;
@@ -667,6 +687,18 @@ button:disabled {
   color: #fff;
 }
 
+.upload-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .upload-dropzone {
   border: 2px dashed #555;
   background: #f0f0f0;
@@ -675,6 +707,19 @@ button:disabled {
   place-items: center;
   margin-bottom: 0.6rem;
   text-align: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.upload-dropzone:focus {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+.upload-dropzone-active {
+  border-color: #111;
+  background: #e4e4e4;
 }
 
 .upload-dropzone p {
@@ -726,6 +771,7 @@ button:disabled {
   grid-template-areas:
     "overview activity"
     "aside activity"
+    "projects projects"
     "users users";
 }
 
@@ -733,6 +779,19 @@ button:disabled {
   grid-column: 1 / -1;
   display: flex;
   justify-content: center;
+}
+
+.admin-section-panel {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-projects-section {
+  grid-area: projects;
+  margin-bottom: 1.5rem;
+}
+
+.admin-users-section {
   grid-area: users;
 }
 
@@ -740,6 +799,7 @@ button:disabled {
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .admin-subtitle {
@@ -811,6 +871,59 @@ button:disabled {
 
 .actions-cell {
   text-align: right;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.secondary-btn.small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.admin-row-selected {
+  background: #f3f3f3;
+}
+
+.admin-project-detail {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.admin-project-detail .admin-scroll-table {
+  max-height: 260px;
+}
+
+.admin-project-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.admin-contributor-list {
+  margin: 0.35rem 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.admin-muted {
+  color: #666;
+  font-size: 0.88em;
+}
+
+.danger-outline {
+  border-color: #8b0000;
+  color: #8b0000;
+}
+
+.danger-outline:hover {
+  background: #fff5f5;
 }
 
 .admin-aside-panel {
@@ -921,7 +1034,17 @@ button:disabled {
     grid-template-areas:
       "overview"
       "activity"
+      "projects"
       "users";
+  }
+
+  .admin-projects-section {
+    grid-area: projects;
+    margin-bottom: 1rem;
+  }
+
+  .admin-users-section {
+    grid-area: users;
   }
 
   .dashboard-filters {

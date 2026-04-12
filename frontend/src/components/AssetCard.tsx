@@ -22,6 +22,7 @@ export function AssetCard({ asset, onOpen }: { asset: Asset; onOpen: (id: string
         <h3>{displayName}</h3>
         <p className="asset-card-queue-label">{queueLabel}</p>
         <p>Owner: {asset.owner}</p>
+        {asset.projectName ? <p>Project: {asset.projectName}</p> : null}
         <p>Updated: {formatDate(asset.updatedAt)}</p>
         <StatusBadge status={asset.status} />
       </div>

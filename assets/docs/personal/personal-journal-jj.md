@@ -399,6 +399,26 @@ Consolidated fixes and features developed on **`jj-sprint-3`** (from `jj-sprint-
 
 ---
 
+## April 13, 2026 — Branch `jj-sprint-3`: asset comments `asset_version_id` fix
+
+### Summary
+
+Production and local databases require **`asset_comments.asset_version_id`** (NOT NULL), but inserts did not always set it, causing **`null value in column "asset_version_id"`** errors when posting comments. Comments are now inserted with **`INSERT … SELECT`** so PostgreSQL resolves the version from **`assets.current_version_id`** or the latest **`asset_versions`** row; invalid/missing assets return **404**/**400** with clear messages. The asset detail form shows **comment errors** and a **posting** state instead of failing silently. **`CommentList`** shows **display name** (or email) and **date + time** via **`formatDateTime`**. Added migration **`backend/db/migrations/20260413_asset_comments_asset_version.sql`** for backfilling **`asset_version_id`** where missing; extended **`assetsApi`** tests.
+
+### Tasks completed
+
+- **`backend/src/services/assetService.js`**: `addAssetComment` uses SQL-side version resolution; numeric **`author_user_id`**; follow-up author lookup unchanged.
+- **`backend/src/routes/assets.js`**: Validate numeric **`assetId`** on comment POST.
+- **`frontend`**: `AssetDetailPage` comment error/posting UI; `CommentList` + `formatDateTime`; `format.test.ts` coverage.
+- **Tests**: `backend/src/__tests__/assetsApi.test.js` updated for new query flow.
+
+### Reflections
+
+- Binding **`asset_version_id` only in SQL** avoids subtle **`pg`**/`undefined` issues and matches the migrated schema.
+- Surfacing API errors next to **Post Comment** makes regressions visible immediately instead of looking like a no-op.
+
+---
+
 ## Reference — current local configuration (quick)
 
 | Item | Notes |
@@ -413,4 +433,4 @@ Consolidated fixes and features developed on **`jj-sprint-3`** (from `jj-sprint-
 
 ---
 
-**Last Updated:** April 12, 2026
+**Last Updated:** April 13, 2026

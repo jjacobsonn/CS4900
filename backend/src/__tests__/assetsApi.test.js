@@ -162,6 +162,21 @@ describe("Assets API", () => {
     expect(response.body.id).toBe(500);
   });
 
+  test("POST /api/assets/:id/comments returns 400 when asset has no version row", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 10 }] });
+
+    const response = await request(app)
+      .post("/api/assets/10/comments")
+      .set(bearerAuth("reviewer", "99"))
+      .send({ message: "No version to attach to.", commentType: "General" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatch(/no file version/i);
+  });
+
   test("POST /api/assets accepts multipart upload and persists file metadata", async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })

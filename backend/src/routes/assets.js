@@ -188,6 +188,9 @@ router.patch("/:assetId/owner", requireRole(["manager", "admin", "super_admin"])
 router.post("/:assetId/comments", async (req, res, next) => {
   try {
     const assetId = Number(req.params.assetId);
+    if (!Number.isFinite(assetId)) {
+      return res.status(400).json({ error: "Invalid asset id" });
+    }
     const { message, commentType } = req.body ?? {};
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "message is required" });

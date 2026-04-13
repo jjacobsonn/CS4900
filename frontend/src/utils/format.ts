@@ -8,6 +8,17 @@ export function formatDate(isoDate: string): string {
   });
 }
 
+/** Date + time for comments and activity timestamps */
+export function formatDateTime(isoDate: string): string {
+  return new Date(isoDate).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 export function statusLabel(status: AssetStatus): string {
   return status;
 }

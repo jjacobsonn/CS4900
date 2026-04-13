@@ -1,4 +1,4 @@
-import { formatDate, statusLabel } from "./format";
+import { formatDate, formatDateTime, statusLabel } from "./format";
 
 test("status label mapping returns expected labels", () => {
   expect(statusLabel("Draft")).toBe("Draft");
@@ -8,4 +8,9 @@ test("status label mapping returns expected labels", () => {
 
 test("formatDate returns readable value", () => {
   expect(formatDate("2026-02-10T00:00:00.000Z")).toContain("2026");
+});
+
+test("formatDateTime includes date and time", () => {
+  const s = formatDateTime("2026-02-10T15:30:00.000Z");
+  expect(s).toContain("2026");
 });

@@ -108,6 +108,8 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [commentPosting, setCommentPosting] = useState(false);
 
   const isStaffAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin";
 
@@ -178,23 +180,31 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const submitComment = async (event: FormEvent) => {
     event.preventDefault();
     if (!id || !commentInput.trim()) return;
-    const authorUserId = currentUser?.id ?? undefined;
-    const row = await addComment(id, {
-      message: commentInput.trim(),
-      commentType: "General",
-      authorUserId
-    });
-    setComments((prev) => [
-      ...prev,
-      {
-        id: String(row.id),
-        assetId: String(row.asset_id),
-        author: (row as { author?: string }).author ?? currentUser?.email ?? "Unknown",
-        message: row.message,
-        createdAt: row.created_at
-      }
-    ]);
-    setCommentInput("");
+    setCommentError(null);
+    setCommentPosting(true);
+    try {
+      const authorUserId = currentUser?.id ?? undefined;
+      const row = await addComment(id, {
+        message: commentInput.trim(),
+        commentType: "General",
+        authorUserId
+      });
+      setComments((prev) => [
+        ...prev,
+        {
+          id: String(row.id),
+          assetId: String(row.asset_id),
+          author: (row as { author?: string }).author ?? currentUser?.email ?? "Unknown",
+          message: row.message,
+          createdAt: row.created_at
+        }
+      ]);
+      setCommentInput("");
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : "Could not post comment.");
+    } finally {
+      setCommentPosting(false);
+    }
   };
 
   const createNewVersion = async () => {
@@ -464,12 +474,19 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           </div>
           {activeTab === "comments" && (
             <>
-              <form onSubmit={submitComment}>
+              <form onSubmit={(e) => void submitComment(e)}>
                 <label>
                   Add Comment
                   <textarea value={commentInput} onChange={(event) => setCommentInput(event.target.value)} />
                 </label>
-                <button type="submit" className="primary-btn">Post Comment</button>
+                {commentError ? (
+                  <p role="alert" className="asset-workflow-error">
+                    {commentError}
+                  </p>
+                ) : null}
+                <button type="submit" className="primary-btn" disabled={commentPosting}>
+                  {commentPosting ? "Posting…" : "Post Comment"}
+                </button>
               </form>
               <CommentList
                 comments={comments}

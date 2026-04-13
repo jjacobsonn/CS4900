@@ -226,25 +226,55 @@ export async function deleteAssetById(assetId) {
  * @returns {Promise<Object>} Inserted comment row
  */
 export async function addAssetComment(assetId, payload) {
+  const aid = Number(assetId);
+  if (!Number.isFinite(aid)) {
+    const err = new Error("Invalid asset id");
+    err.status = 400;
+    throw err;
+  }
+
   const commentType = await query(
     "SELECT id FROM comment_type_lookup WHERE type_name = $1 LIMIT 1",
     [payload.commentType ?? "General"]
   );
   const typeId = commentType.rows[0]?.id;
-  const authorUserId = payload.authorUserId ?? null;
+  const authorUserId = payload.authorUserId != null ? Number(payload.authorUserId) : null;
+  const authorIdParam = Number.isFinite(authorUserId) ? authorUserId : null;
+
+  // Resolve asset_version_id inside SQL so it cannot be omitted or passed as undefined to pg.
   const inserted = await query(
-    `INSERT INTO asset_comments (asset_id, author_user_id, comment_type_id, message)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO asset_comments (asset_id, author_user_id, comment_type_id, message, asset_version_id)
+     SELECT $1::integer, $2::integer, $3::integer, $4::text,
+            COALESCE(
+              a.current_version_id,
+              (SELECT v.id FROM asset_versions v WHERE v.asset_id = a.id ORDER BY v.version_number DESC LIMIT 1)
+            )
+     FROM assets a
+     WHERE a.id = $1::integer
+       AND COALESCE(
+             a.current_version_id,
+             (SELECT v.id FROM asset_versions v WHERE v.asset_id = a.id ORDER BY v.version_number DESC LIMIT 1)
+           ) IS NOT NULL
      RETURNING id, asset_id, message, created_at`,
-    [assetId, authorUserId, typeId, payload.message]
+    [aid, authorIdParam, typeId, payload.message]
   );
   const row = inserted.rows[0];
-  if (!row) return null;
+  if (!row) {
+    const exists = await query("SELECT id FROM assets WHERE id = $1 LIMIT 1", [aid]);
+    if (exists.rows.length === 0) {
+      const err = new Error("Asset not found");
+      err.status = 404;
+      throw err;
+    }
+    const err = new Error("This asset has no file version yet. Upload a version before commenting.");
+    err.status = 400;
+    throw err;
+  }
   let author = "Unknown";
-  if (authorUserId) {
+  if (authorIdParam != null) {
     const u = await query(
       "SELECT COALESCE(display_name, email, 'Unknown') AS author FROM users WHERE id = $1",
-      [authorUserId]
+      [authorIdParam]
     );
     author = u.rows[0]?.author ?? "Unknown";
   }

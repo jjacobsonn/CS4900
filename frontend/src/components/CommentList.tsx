@@ -1,5 +1,5 @@
 import { Comment } from "../types/models";
-import { formatDate } from "../utils/format";
+import { formatDateTime } from "../utils/format";
 
 type Props = {
   comments: Comment[];
@@ -18,7 +18,10 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
       {comments.map((comment) => (
         <li key={comment.id} className="comment-item">
           <div className="comment-meta">
-            <strong>{comment.author}</strong> <span>{formatDate(comment.createdAt)}</span>
+            <strong>{comment.author}</strong>{" "}
+            <span className="comment-date" title={comment.createdAt}>
+              {formatDateTime(comment.createdAt)}
+            </span>
             {isAdmin && onDeleteComment && (
               <button
                 type="button"

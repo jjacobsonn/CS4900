@@ -27,17 +27,21 @@ router.get("/", async (_req, res, next) => {
 // POST /api/users - create user (or reactivate/update role on conflict)
 router.post("/", async (req, res, next) => {
   try {
-    const { email, role, displayName } = req.body ?? {};
+    const { email, role, displayName, password } = req.body ?? {};
     if (!email || typeof email !== "string") {
       return res.status(400).json({ error: "email is required" });
     }
     if (!role || typeof role !== "string") {
       return res.status(400).json({ error: "role is required" });
     }
+    if (password !== undefined && typeof password !== "string") {
+      return res.status(400).json({ error: "password must be a string when provided" });
+    }
     const created = await createUserAccount({
       email: email.trim(),
       role,
-      displayName: typeof displayName === "string" ? displayName : undefined
+      displayName: typeof displayName === "string" ? displayName : undefined,
+      password
     });
     return res.status(201).json(created);
   } catch (error) {

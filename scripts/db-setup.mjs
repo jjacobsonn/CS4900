@@ -51,6 +51,8 @@ const port = String(process.env.DB_PORT || "5432");
 const user = process.env.DB_USER || "postgres";
 const password = process.env.DB_PASSWORD ?? "";
 const dbName = process.env.DB_NAME || "vellum";
+const shouldReset = process.argv.includes("--reset");
+const migrationsOnly = process.argv.includes("--migrations-only");
 
 const setupSql = join(ROOT, "database", "setup.sql");
 const migrationsDir = join(ROOT, "backend", "db", "migrations");
@@ -79,6 +81,52 @@ function runPsql(database, filePath, extraVars = {}) {
   }
 }
 
+function runPsqlCommand(database, sql) {
+  const env = { ...process.env };
+  if (password !== "") {
+    env.PGPASSWORD = password;
+  } else {
+    delete env.PGPASSWORD;
+  }
+  const args = ["-v", "ON_ERROR_STOP=1", "-h", host, "-p", port, "-U", user, "-d", database, "-c", sql];
+  const r = spawnSync("psql", args, { cwd: ROOT, stdio: "inherit", env });
+  if (r.error) {
+    console.error(r.error.message);
+    process.exit(1);
+  }
+  if (r.status !== 0) {
+    process.exit(r.status ?? 1);
+  }
+}
+
+function databaseExists(databaseName) {
+  const env = { ...process.env };
+  if (password !== "") {
+    env.PGPASSWORD = password;
+  } else {
+    delete env.PGPASSWORD;
+  }
+  const args = [
+    "-t",
+    "-A",
+    "-h",
+    host,
+    "-p",
+    port,
+    "-U",
+    user,
+    "-d",
+    "postgres",
+    "-c",
+    `SELECT 1 FROM pg_database WHERE datname = '${databaseName}' LIMIT 1;`
+  ];
+  const r = spawnSync("psql", args, { cwd: ROOT, stdio: "pipe", env, encoding: "utf8" });
+  if (r.error || r.status !== 0) {
+    return false;
+  }
+  return String(r.stdout || "").trim() === "1";
+}
+
 if (!existsSync(setupSql)) {
   console.error(`Missing ${setupSql}`);
   process.exit(1);
@@ -86,11 +134,40 @@ if (!existsSync(setupSql)) {
 
 console.log("Vellum DB setup");
 console.log(`  host=${host} port=${port} user=${user} database=${dbName}`);
+if (shouldReset) {
+  console.log("  mode=reset (drop and recreate target database)");
+}
+if (migrationsOnly) {
+  console.log("  mode=migrations-only (deployment-safe)");
+}
 if (!existsSync(join(ROOT, "backend", ".env"))) {
   console.warn("  (tip: create backend/.env from backend/.env.example to set DB_PASSWORD etc.)");
 }
 
-runPsql("postgres", setupSql, { dbname: dbName });
+if (shouldReset && migrationsOnly) {
+  console.error("Cannot use --reset and --migrations-only together.");
+  process.exit(1);
+}
+
+if (migrationsOnly && !databaseExists(dbName)) {
+  console.error(`Database "${dbName}" does not exist.`);
+  console.error("Run `npm run db:setup` once to create it, then re-run `npm run db:deploy`.");
+  process.exit(1);
+}
+
+if (shouldReset) {
+  runPsqlCommand(
+    "postgres",
+    `SELECT pg_terminate_backend(pid)
+     FROM pg_stat_activity
+     WHERE datname = '${dbName}' AND pid <> pg_backend_pid();`
+  );
+  runPsqlCommand("postgres", `DROP DATABASE IF EXISTS "${dbName}";`);
+}
+
+if (!migrationsOnly) {
+  runPsql("postgres", setupSql, { dbname: dbName });
+}
 
 if (!existsSync(migrationsDir)) {
   console.log("\nNo migrations directory; done.");

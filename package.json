@@ -9,6 +9,10 @@
   "scripts": {
     "install:all": "npm install --workspaces",
     "db:setup": "node scripts/db-setup.mjs",
+    "db:reset": "node scripts/db-setup.mjs --reset",
+    "db:sync": "npm run db:reset",
+    "db:migrate": "node scripts/db-setup.mjs --migrations-only",
+    "db:deploy": "npm run db:migrate",
     "init-db": "npm run db:setup",
     "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",
     "start": "concurrently \"npm run start -w backend\" \"npm run dev -w frontend\"",

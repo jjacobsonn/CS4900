@@ -1,4 +1,8 @@
 import { query } from "../config/database.js";
+import bcrypt from "bcrypt";
+
+const BCRYPT_SALT_ROUNDS = 10;
+const PLACEHOLDER_HASH = "$2b$10$example_hash_replace_in_production";
 
 /**
  * Map a lowercase role string used by the frontend to the canonical
@@ -52,11 +56,10 @@ export async function listUsers() {
 /**
  * Create a new user account with the given email and role.
  *
- * Note: Password handling is intentionally simplified for this capstone sprint;
- * a placeholder hash is stored. In a production system, you would hash the
- * password using bcrypt or argon2 and never return it from the API.
+ * If a password is provided, it is hashed with bcrypt before persistence.
+ * If omitted, a legacy placeholder hash is stored for invite-style provisioning.
  */
-export async function createUserAccount({ email, role, displayName }) {
+export async function createUserAccount({ email, role, displayName, password }) {
   const roleCode = toRoleCode(role);
   if (!roleCode) {
     const error = new Error("Invalid role");
@@ -75,8 +78,18 @@ export async function createUserAccount({ email, role, displayName }) {
     throw error;
   }
 
-  const placeholderHash = "$2b$10$example_hash_replace_in_production";
   const name = displayName && String(displayName).trim() ? String(displayName).trim() : null;
+  const normalizedPassword = typeof password === "string" ? password.trim() : "";
+  let passwordHash = PLACEHOLDER_HASH;
+
+  if (normalizedPassword) {
+    if (normalizedPassword.length < 10) {
+      const error = new Error("Password must be at least 10 characters.");
+      error.status = 400;
+      throw error;
+    }
+    passwordHash = await bcrypt.hash(normalizedPassword, BCRYPT_SALT_ROUNDS);
+  }
 
   const insert = await query(
     `INSERT INTO users (email, password_hash, role_id, is_active, display_name)
@@ -86,7 +99,7 @@ export async function createUserAccount({ email, role, displayName }) {
            is_active = TRUE,
            display_name = COALESCE(EXCLUDED.display_name, users.display_name)
      RETURNING id, email, display_name, is_active`,
-    [email, placeholderHash, roleRow.id, name]
+    [email, passwordHash, roleRow.id, name]
   );
 
   const row = insert.rows[0];

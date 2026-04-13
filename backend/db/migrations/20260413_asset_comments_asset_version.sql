@@ -7,9 +7,8 @@ UPDATE asset_comments c
 SET asset_version_id = sub.vid
 FROM (
   SELECT c2.id AS cid,
-         COALESCE(a.current_version_id, v.id) AS vid
+         v.id AS vid
   FROM asset_comments c2
-  JOIN assets a ON a.id = c2.asset_id
   LEFT JOIN LATERAL (
     SELECT id FROM asset_versions WHERE asset_id = c2.asset_id ORDER BY version_number DESC LIMIT 1
   ) v ON true

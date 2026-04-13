@@ -174,17 +174,15 @@ ON CONFLICT (status_code) DO NOTHING;
 -- STEP 7: Insert Test/Seed Data (Optional - for development)
 -- ============================================================================
 
--- Insert Test Users (passwords are hashed - these are examples)
--- In production, use proper password hashing (bcrypt, argon2, etc.)
+-- Insert Test Users (bcrypt-hashed)
 -- Password for all test users: TestPass123!
--- These are example hashes - replace with actual bcrypt hashes in implementation
 
 INSERT INTO users (email, password_hash, role_id, is_active) VALUES
-    ('admin@vellum.test', '$2b$10$example_hash_replace_in_production', 
+    ('admin@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa', 
      (SELECT id FROM user_roles WHERE role_code = 'ADMIN'), TRUE),
-    ('designer@vellum.test', '$2b$10$example_hash_replace_in_production',
+    ('designer@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa',
      (SELECT id FROM user_roles WHERE role_code = 'DESIGNER'), TRUE),
-    ('reviewer@vellum.test', '$2b$10$example_hash_replace_in_production',
+    ('reviewer@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa',
      (SELECT id FROM user_roles WHERE role_code = 'REVIEWER'), TRUE)
 ON CONFLICT (email) DO NOTHING;
 
@@ -279,6 +277,7 @@ CREATE TABLE IF NOT EXISTS assets (
     description TEXT,
     status_id INTEGER NOT NULL REFERENCES asset_status_lookup(id),
     current_version VARCHAR(20) NOT NULL DEFAULT 'v1.0',
+    current_version_id INTEGER REFERENCES asset_versions(id),
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -309,6 +308,8 @@ ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS stored_file_name VARCHAR(255
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+
+CREATE INDEX IF NOT EXISTS idx_assets_current_version_id ON assets(current_version_id);
 
 -- Audit log for admin actions on versions (delete, edit metadata)
 CREATE TABLE IF NOT EXISTS asset_version_audit (

@@ -115,6 +115,8 @@ export function VersionList({
                   ) : (
                     <span className="version-no-file">No file</span>
                   )}
+                  {version.label ? <p><strong>Label:</strong> {version.label}</p> : null}
+                  {version.notes ? <p><strong>Change notes:</strong> {version.notes}</p> : null}
                 </div>
                 {isAdmin && !isEditing && (
                   <div className="version-actions">
@@ -140,7 +142,7 @@ export function VersionList({
               {isEditing && (
                 <div className="version-edit-inline">
                   <label>
-                    Label
+                    Label (milestone tag)
                     <input
                       type="text"
                       value={editLabel}
@@ -148,7 +150,7 @@ export function VersionList({
                     />
                   </label>
                   <label>
-                    Notes
+                    Notes (what changed in this version)
                     <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
                   </label>
                   <label>

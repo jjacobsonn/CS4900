@@ -127,6 +127,7 @@ This screenshot shows:
 
 - **[Testing Plan (Whitebox)](tests/testing-plan-whitebox.md)** - Unit and integration testing strategy
 - **[User Acceptance Test Plan](assets/docs/sprint-1/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
+- **[Verification guide (Sprint 3)](assets/docs/sprint-3/VERIFICATION-GUIDE.md)** - Automated tests, `db:deploy`, role matrix, and real-world manual scenarios
 
 ### Project Management
 
@@ -230,6 +231,14 @@ Same as `npm run init-db` (alias). This runs `database/setup.sql` (creates `vell
 **Full guide:** [database/README.md](database/README.md)
 
 The combined run creates tables, lookups, seeds, Sprint 2 project/activity migrations, and indexes/triggers as defined in those SQL files.
+
+**Already have a database and only need new migrations?** From the project root:
+
+```bash
+npm run db:deploy
+```
+
+(`npm run db:migrate` and `npm run migrate` are the same.) Requires `psql` on your PATH and `backend/.env`. See [Backend runbook](assets/docs/sprint-3/backend/BACKEND-RUNBOOK.md) for details.
 
 #### 3.3 Verify Database Setup
 

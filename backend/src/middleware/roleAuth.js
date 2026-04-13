@@ -9,7 +9,7 @@
 
 import { verifyAuthToken, getJwtSecret } from "../services/jwtService.js";
 
-export const VALID_ROLES = ["designer", "reviewer", "manager", "client_reviewer", "admin", "super_admin"];
+export const VALID_ROLES = ["designer", "reviewer", "manager", "admin", "owner"];
 
 /**
  * @param {import("express").Request} req

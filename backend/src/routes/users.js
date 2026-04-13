@@ -4,7 +4,7 @@ import {
   createUserAccount,
   deleteUserById,
   listUsers,
-  setUserActiveById,
+  patchUserById,
   updateUserRoleById
 } from "../services/userService.js";
 
@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.use(attachAuth);
 router.use(requireAuth);
-router.use(requireRole(["admin", "super_admin"]));
+router.use(requireRole(["admin"]));
 
 // GET /api/users - list all users
 router.get("/", async (_req, res, next) => {
@@ -67,27 +67,37 @@ router.put("/:id", async (req, res, next) => {
   }
 });
 
-// PATCH /api/users/:id - update role and/or is_active
+// PATCH /api/users/:id — partial update: role, is_active, email, displayName (or display_name), password
 router.patch("/:id", async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) {
       return res.status(400).json({ error: "Invalid user id" });
     }
-    const { role, is_active: isActive } = req.body ?? {};
-    if (typeof isActive === "boolean") {
-      const updated = await setUserActiveById(id, isActive);
-      if (role && typeof role === "string") {
-        const withRole = await updateUserRoleById(id, role);
-        return res.json(withRole);
-      }
-      return res.json(updated);
+    const body = req.body ?? {};
+    const patch = {};
+    if (body.role !== undefined && typeof body.role === "string") {
+      patch.role = body.role;
     }
-    if (role && typeof role === "string") {
-      const updated = await updateUserRoleById(id, role);
-      return res.json(updated);
+    if (typeof body.is_active === "boolean") {
+      patch.isActive = body.is_active;
     }
-    return res.status(400).json({ error: "Provide role and/or is_active" });
+    if (body.email !== undefined && typeof body.email === "string") {
+      patch.email = body.email;
+    }
+    if (body.displayName !== undefined) {
+      patch.displayName = body.displayName;
+    } else if (body.display_name !== undefined) {
+      patch.displayName = body.display_name;
+    }
+    if (body.password !== undefined && typeof body.password === "string") {
+      patch.password = body.password;
+    }
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+    const updated = await patchUserById(id, patch);
+    return res.json(updated);
   } catch (error) {
     next(error);
   }

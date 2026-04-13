@@ -1,5 +1,6 @@
 import { query } from "../config/database.js";
 import bcrypt from "bcrypt";
+import { resolveEffectiveJwtRole } from "./organizationService.js";
 
 const LEGACY_TEST_PASSWORD = "TestPass123!";
 const PLACEHOLDER_HASH = "$2b$10$example_hash_replace_in_production";
@@ -49,10 +50,9 @@ export async function loginWithEmailPassword(email, password) {
     throw error;
   }
 
-  // Return the exact normalized role from DB for Model B support.
-  // Supported roles currently include: admin, designer, reviewer, manager, client_reviewer.
-  const supportedRoles = new Set(["admin", "designer", "reviewer", "manager", "client_reviewer"]);
-  const role = supportedRoles.has(row.role) ? row.role : "reviewer";
+  const supportedRoles = new Set(["admin", "designer", "reviewer", "manager", "owner"]);
+  const globalRole = supportedRoles.has(row.role) ? row.role : "reviewer";
+  const role = await resolveEffectiveJwtRole(globalRole, row.id);
 
   return {
     id: String(row.id),

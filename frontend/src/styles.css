@@ -771,6 +771,7 @@ button:disabled {
   grid-template-areas:
     "overview activity"
     "aside activity"
+    "organizations organizations"
     "projects projects"
     "users users";
 }
@@ -784,6 +785,11 @@ button:disabled {
 .admin-section-panel {
   width: 100%;
   box-sizing: border-box;
+}
+
+.admin-organizations-section {
+  grid-area: organizations;
+  margin-bottom: 1.5rem;
 }
 
 .admin-projects-section {
@@ -828,6 +834,61 @@ button:disabled {
   max-height: 220px;
   overflow: auto;
   margin-top: 0.5rem;
+}
+
+.admin-users-table-wrap {
+  margin-top: 0.5rem;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-user-table {
+  min-width: 520px;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.admin-modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: min(90vh, 640px);
+  overflow: auto;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-sizing: border-box;
+}
+
+.admin-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+}
+
+.admin-checkbox-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.88;
 }
 
 .admin-table {
@@ -1034,8 +1095,14 @@ button:disabled {
     grid-template-areas:
       "overview"
       "activity"
+      "organizations"
       "projects"
       "users";
+  }
+
+  .admin-organizations-section {
+    grid-area: organizations;
+    margin-bottom: 1rem;
   }
 
   .admin-projects-section {
@@ -1157,6 +1224,14 @@ button:disabled {
   }
 
   .actions-cell button {
+    width: 100%;
+  }
+
+  .admin-user-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-user-actions button {
     width: 100%;
   }
 

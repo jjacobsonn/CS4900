@@ -2,6 +2,36 @@
 
 This is the backend source-of-truth for how the API starts, authenticates, reads/writes data, and gets deployed safely.
 
+## Apply database migrations (one command, always the same)
+
+Use this whenever the repo adds new files under `backend/db/migrations/` (or when you pull main and the API errors on missing columns).
+
+**From the repository root** (recommended):
+
+```bash
+npm run db:deploy
+```
+
+These are equivalent aliases:
+
+- `npm run db:deploy`
+- `npm run db:migrate`
+- `npm run migrate`
+
+**From the `backend/` folder only:**
+
+```bash
+npm run db:migrate
+```
+
+(same script: runs `../scripts/db-setup.mjs --migrations-only`)
+
+**Requirements:** `psql` on your PATH (PostgreSQL client), `backend/.env` configured (`DB_*`), and the target database must already exist. If the database does not exist yet, run **`npm run db:setup`** once from the repo root instead (creates DB + schema + all migrations).
+
+Migrations are applied in **sorted filename order** and are written to be safe to re-run (`IF NOT EXISTS`, etc.).
+
+---
+
 ## Stack and entrypoint
 
 - Runtime: Node.js + Express (`backend/src/server.js`)
@@ -35,13 +65,16 @@ If DB or JWT secret is missing, server exits by design.
 - `requireAuth` enforces authenticated user.
 - `requireRole([...])` enforces role-specific authorization.
 
-Supported roles:
+Supported roles (JWT `role` string, lowercase):
 - `designer`
 - `reviewer`
 - `manager`
 - `client_reviewer`
+- `project_owner` — organization/project lead; scoped `/api/owner/*` and owns `projects.owner_user_id`; can invite teammates (non-admin roles) when enabled in API
 - `admin`
 - `super_admin`
+
+**Typical split:** site **admins** manage global users and elevated roles; **project_owner** users manage their projects and invited teammates via owner routes (not `/api/users`).
 
 ## API surface (current)
 
@@ -50,9 +83,10 @@ Supported roles:
 - `/api/assets` - list/detail/create/update/delete, status, comments, versions, version-audit
 - `/api/projects` - project CRUD + retrieval
 - `/api/clients` - client list/create
-- `/api/users` - user admin (create/list/update/deactivate)
+- `/api/users` - user admin (create/list/update/deactivate); **`admin` / `super_admin` only**
 - `/api/user-roles` - role lookup APIs
-- `/api/admin` - dashboard overview + activity
+- `/api/admin` - dashboard overview + activity; **`admin` / `super_admin`**
+- `/api/owner` - project-owner dashboard: overview, activity, assignable users, teammate invite/list/active; **`project_owner` only**
 
 ## Data model notes that matter operationally
 
@@ -61,19 +95,21 @@ Supported roles:
   - `current_version` (label string like `v2.0`)
   - `current_version_id` (FK to `asset_versions.id`, used by backend joins)
 - User auth table: `users.password_hash` stores bcrypt hashes.
+- `projects.owner_user_id` — organizational owner for scoped dashboards and access (see migrations).
+- `users.invited_by_user_id` — set when a `project_owner` invites a teammate via `/api/owner/teammates`.
 
 ## DB commands and when to use each
 
-Run from repo root:
+Run from **repo root**:
 
 - `npm run db:setup`
-  - bootstrap local DB (create if needed), seed baseline data, then apply all migrations.
-- `npm run db:sync` (alias of reset)
-  - destructive local rebuild (drop DB, recreate, seed, migrate).
-- `npm run db:deploy` (alias `db:migrate`)
-  - migration-only path for existing DBs (staging/prod/shared envs).
+  - First-time (or full local bootstrap): creates DB if needed via `database/setup.sql`, then applies **all** `backend/db/migrations/*.sql` in order.
+- `npm run db:sync` (same as `db:reset`)
+  - **Local only:** drops and recreates the target database, then setup + migrations. Destructive.
+- `npm run db:deploy` (same as `db:migrate`, `migrate`)
+  - **The standard upgrade path:** migrations only, no schema reset. Use after `git pull` when new `.sql` files appear, and on shared/staging/prod DBs.
 
-Rule: deploy environments should use migration-only (`db:deploy`), not reset.
+Rule: shared/deploy environments should use **`db:deploy`** only, never `db:sync`.
 
 ## Migration strategy
 
@@ -87,9 +123,11 @@ Rule: deploy environments should use migration-only (`db:deploy`), not reset.
 From repo root:
 
 1. `npm install`
-2. `npm run db:setup` (first run) or `npm run db:deploy` (upgrade)
+2. `npm run db:setup` (first run) **or** `npm run db:deploy` (existing DB, apply new migrations only)
 3. `npm run dev`
-4. `npm run test:backend`
+4. `npm test` (backend + frontend) or `npm run test:backend` / `npm run test:frontend`
+
+**Manual browser walkthrough (roles, projects, invites):** [VERIFICATION-GUIDE.md](../VERIFICATION-GUIDE.md)
 
 Backend-only:
 - `npm run dev:backend`

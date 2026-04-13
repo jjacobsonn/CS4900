@@ -21,3 +21,20 @@ export function updateUserRole(id: string, role: Role): Promise<UserAccount> {
 export function updateUserActive(id: string, isActive: boolean): Promise<UserAccount> {
   return apiClient.patch<UserAccount>(`/users/${id}`, { is_active: isActive });
 }
+
+export function updateUser(
+  id: string,
+  body: {
+    email?: string;
+    displayName?: string | null;
+    role?: Role;
+    is_active?: boolean;
+    password?: string;
+  }
+): Promise<UserAccount> {
+  return apiClient.patch<UserAccount>(`/users/${id}`, body);
+}
+
+export function removeUser(id: string): Promise<UserAccount> {
+  return apiClient.delete<UserAccount>(`/users/${id}`);
+}

@@ -4,13 +4,12 @@ import { getAssets } from "../api/assets";
 import { getProjects, type Project } from "../api/projects";
 import { Asset, AssetStatus } from "../types/models";
 import { AssetCard } from "../components/AssetCard";
-import type { Role } from "../utils/permissions";
+import { canAccessUpload, type Role } from "../utils/permissions";
 
 type Filter = "queue" | "all" | AssetStatus;
 
 function isQueueStatus(status: AssetStatus): boolean {
-  if (status === "Changes Requested") return false;
-  return status === "Draft" || status === "In Review" || status === "In Progress";
+  return status === "Draft" || status === "In Review";
 }
 
 export function DashboardPage({ role }: { role: Role }) {
@@ -23,6 +22,8 @@ export function DashboardPage({ role }: { role: Role }) {
   const [projectFilter, setProjectFilter] = useState(() => (searchParams.get("projectId") ?? "").trim());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canUpload = canAccessUpload(role);
+  const isAdmin = role === "admin";
 
   useEffect(() => {
     const fromUrl = (searchParams.get("projectId") ?? "").trim();
@@ -117,6 +118,11 @@ export function DashboardPage({ role }: { role: Role }) {
             Project
             <select value={projectFilter} onChange={(event) => onProjectFilterChange(event.target.value)}>
               <option value="">All projects</option>
+              {projects.length === 0 ? (
+                <option value="" disabled>
+                  No projects available
+                </option>
+              ) : null}
               {projects.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   #{p.id} — {p.name}
@@ -142,7 +148,30 @@ export function DashboardPage({ role }: { role: Role }) {
             <p className="dashboard-filter-note">
               {filteredAssets.length} matching asset{filteredAssets.length === 1 ? "" : "s"}
             </p>
+            {projectFilter ? (
+              <p className="dashboard-filter-note">
+                Working in project #{projectFilter}.
+              </p>
+            ) : null}
           </div>
+          {projectFilter ? (
+            <div className="row-actions">
+              {canUpload ? (
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => navigate(`/upload?projectId=${projectFilter}`)}
+                >
+                  Upload to this project
+                </button>
+              ) : null}
+              {isAdmin ? (
+                <button type="button" className="secondary-btn" onClick={() => navigate("/admin")}>
+                  Manage projects
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         {loading && <p>Loading assets...</p>}
         {error && <p role="alert">{error}</p>}

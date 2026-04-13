@@ -4,7 +4,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
-import { Role, canAccessUpload, canReview } from "./utils/permissions";
+import { Role, canAccessAdmin, canAccessUpload, canReview } from "./utils/permissions";
 import { useEffect, useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
@@ -66,7 +66,7 @@ function AppLayout({
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
   const allowReview = canReview(role);
-  const isAdmin = role === "admin" || role === "super_admin";
+  const isAdmin = canAccessAdmin(role);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const activeSection = location.pathname.startsWith("/assets")
     ? "review"
@@ -176,7 +176,7 @@ export default function App() {
         />
         <Route
           path="/admin"
-          element={auth.role === "admin" || auth.role === "super_admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />}
+          element={canAccessAdmin(auth.role) ? <AdminPage currentUser={auth.user} /> : <Navigate to="/dashboard" replace />}
         />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

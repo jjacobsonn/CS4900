@@ -17,11 +17,11 @@ export function isApproveRequestPair(buttons: WorkflowStatusButton[]): boolean {
 }
 
 const internalActor = (r: Role) =>
-  ["designer", "reviewer", "manager", "admin", "super_admin"].includes(r);
+  ["designer", "reviewer", "manager", "admin", "owner"].includes(r);
 
-const clientActor = (r: Role) => ["client_reviewer", "manager", "admin", "super_admin"].includes(r);
+const clientActor = (r: Role) => ["reviewer", "manager", "admin", "owner"].includes(r);
 
-const designerLike = (r: Role) => ["designer", "manager", "admin", "super_admin"].includes(r);
+const designerLike = (r: Role) => ["designer", "manager", "admin", "owner"].includes(r);
 
 /**
  * Buttons that PATCH `/api/assets/:id/status` with `status: statusKey`.

@@ -11,6 +11,10 @@ export interface Asset {
   owner: string;
   projectId?: number | null;
   projectName?: string | null;
+  organizationId?: number | null;
+  organizationName?: string | null;
+  /** User id of the project owner when asset is linked to a project */
+  projectOwnerUserId?: number | null;
   thumbnailUrl?: string;
   fileUrl?: string | null;
   fileName?: string | null;
@@ -52,8 +56,28 @@ export interface UserAccount {
   id: string;
   email: string;
   displayName?: string | null;
-  role: "designer" | "reviewer" | "manager" | "client_reviewer" | "admin";
+  role: "designer" | "reviewer" | "manager" | "owner" | "admin";
   isActive: boolean;
+}
+
+export interface Organization {
+  id: number;
+  name: string;
+  description?: string | null;
+  details?: string | null;
+  createdByUserId?: number | null;
+  membershipRole?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface OrganizationMemberRow {
+  organizationId: number;
+  userId: number;
+  role: string;
+  email: string;
+  displayName: string;
+  createdAt?: string;
 }
 
 export interface AdminOverview {

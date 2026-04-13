@@ -29,7 +29,7 @@ test("upload form validation requires file and title", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("Please select a file.");
 
   const file = new File(["hello"], "design.png", { type: "image/png" });
-  await userEvent.upload(screen.getByLabelText("File"), file);
+  await userEvent.upload(screen.getByLabelText("Choose file to upload"), file);
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Title is required.");
 });
@@ -48,7 +48,7 @@ test("upload submits when valid", async () => {
   renderUpload();
 
   const file = new File(["hello"], "design.png", { type: "image/png" });
-  await userEvent.upload(screen.getByLabelText("File"), file);
+  await userEvent.upload(screen.getByLabelText("Choose file to upload"), file);
   await userEvent.type(screen.getByLabelText("Title"), "New Asset");
   await userEvent.click(screen.getByRole("button", { name: "Submit" }));
 

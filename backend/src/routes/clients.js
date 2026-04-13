@@ -30,7 +30,7 @@ router.get("/", async (_req, res, next) => {
  *
  * Create a new client. Requires manager or admin.
  */
-router.post("/", requireRole(["admin", "manager", "super_admin"]), async (req, res, next) => {
+router.post("/", requireRole(["admin", "manager"]), async (req, res, next) => {
   try {
     const { name, description } = req.body ?? {};
     if (!name || typeof name !== "string") {

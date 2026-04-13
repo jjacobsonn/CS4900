@@ -1,10 +1,17 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getAdminActivity, getAdminOverview } from "../api/admin";
 import { deleteAsset } from "../api/assets";
 import { deleteComment } from "../api/comments";
 import type { AdminActivity } from "../api/admin";
 import { getClients, type Client } from "../api/clients";
+import {
+  addOrganizationMember,
+  createOrganization,
+  getOrganizationMembers,
+  getOrganizations,
+  removeOrganizationMember
+} from "../api/organizations";
 import {
   createProject,
   deleteProject,
@@ -14,9 +21,10 @@ import {
   type Project,
   type ProjectDetail
 } from "../api/projects";
-import { createUser, getUsers, updateUserActive, updateUserRole } from "../api/users";
-import { AdminOverview, UserAccount } from "../types/models";
+import { createUser, getUsers, removeUser, updateUser, updateUserActive } from "../api/users";
+import { AdminOverview, Organization, OrganizationMemberRow, UserAccount } from "../types/models";
 import { Role } from "../utils/permissions";
+import type { AuthUser } from "../App";
 
 const defaultOverview: AdminOverview = {
   pendingReview: 0,
@@ -25,6 +33,11 @@ const defaultOverview: AdminOverview = {
 };
 
 const defaultActivity: AdminActivity = { recentAssets: [], recentComments: [] };
+
+function isMissingOrganizationsTable(message: string): boolean {
+  const m = message.toLowerCase();
+  return m.includes("organizations") && m.includes("does not exist");
+}
 
 function formatDate(iso: string) {
   try {
@@ -40,13 +53,23 @@ function formatDate(iso: string) {
   }
 }
 
-export function AdminPage() {
+export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | null }) {
   const navigate = useNavigate();
   const [overview, setOverview] = useState<AdminOverview>(defaultOverview);
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [activity, setActivity] = useState<AdminActivity>(defaultActivity);
   const [loading, setLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [createUserError, setCreateUserError] = useState<string | null>(null);
+  const [userEditOpen, setUserEditOpen] = useState(false);
+  const [userEditId, setUserEditId] = useState<string | null>(null);
+  const [userEditEmail, setUserEditEmail] = useState("");
+  const [userEditDisplayName, setUserEditDisplayName] = useState("");
+  const [userEditRole, setUserEditRole] = useState<Role>("designer");
+  const [userEditActive, setUserEditActive] = useState(true);
+  const [userEditPassword, setUserEditPassword] = useState("");
+  const [userEditError, setUserEditError] = useState<string | null>(null);
+  const [userEditSaving, setUserEditSaving] = useState(false);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<Role>("designer");
@@ -60,7 +83,19 @@ export function AdminPage() {
   const [newProjectStatus, setNewProjectStatus] = useState("Active");
   const [newProjectPriority, setNewProjectPriority] = useState("");
   const [newProjectDue, setNewProjectDue] = useState("");
+  const [newProjectOwnerUserId, setNewProjectOwnerUserId] = useState("");
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [orgError, setOrgError] = useState<string | null>(null);
+  const [orgFormName, setOrgFormName] = useState("");
+  const [orgFormDescription, setOrgFormDescription] = useState("");
+  const [orgFormOwnerUserId, setOrgFormOwnerUserId] = useState("");
+  const [expandedOrgId, setExpandedOrgId] = useState<number | null>(null);
+  const [orgMembers, setOrgMembers] = useState<OrganizationMemberRow[]>([]);
+  const [orgMembersLoading, setOrgMembersLoading] = useState(false);
+  const [newMemberUserId, setNewMemberUserId] = useState("");
+  const [newMemberOrgRole, setNewMemberOrgRole] = useState("designer");
+  const [newProjectOrganizationId, setNewProjectOrganizationId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [projectDetail, setProjectDetail] = useState<ProjectDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -72,12 +107,15 @@ export function AdminPage() {
   const [editPriority, setEditPriority] = useState("");
   const [editDueDate, setEditDueDate] = useState("");
   const [editClientId, setEditClientId] = useState("");
+  const [editOwnerUserId, setEditOwnerUserId] = useState("");
 
   const load = async () => {
     setLoading(true);
     setUsersError(null);
+    setCreateUserError(null);
+    setOrgError(null);
     try {
-      const [overviewData, usersData, activityData, projectsData, clientsData] = await Promise.all([
+      const [overviewData, usersData, activityData, projectsData, clientsData, orgsData] = await Promise.all([
         getAdminOverview().catch(() => defaultOverview),
         getUsers().catch((err: Error) => {
           setUsersError(err.message || "Could not load users");
@@ -85,13 +123,21 @@ export function AdminPage() {
         }),
         getAdminActivity().catch(() => defaultActivity),
         getProjects().catch(() => [] as Project[]),
-        getClients().catch(() => [] as Client[])
+        getClients().catch(() => [] as Client[]),
+        getOrganizations().catch((err: Error) => {
+          const msg = err.message || "";
+          if (!isMissingOrganizationsTable(msg)) {
+            setOrgError(msg || "Could not load organizations.");
+          }
+          return [] as Organization[];
+        })
       ]);
       setOverview(overviewData);
       setUsers(usersData);
       setActivity(activityData);
       setProjects(Array.isArray(projectsData) ? projectsData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
+      setOrganizations(Array.isArray(orgsData) ? orgsData : []);
     } finally {
       setLoading(false);
     }
@@ -101,28 +147,125 @@ export function AdminPage() {
     void load();
   }, []);
 
+  useEffect(() => {
+    if (organizations.length > 0 && newProjectOrganizationId === "") {
+      setNewProjectOrganizationId(String(organizations[0].id));
+    }
+  }, [organizations, newProjectOrganizationId]);
+
+  const refreshOrgMembers = useCallback(async (orgId: number) => {
+    setOrgMembersLoading(true);
+    try {
+      const rows = await getOrganizationMembers(orgId);
+      setOrgMembers(rows);
+    } catch {
+      setOrgMembers([]);
+    } finally {
+      setOrgMembersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (expandedOrgId == null) {
+      setOrgMembers([]);
+      return;
+    }
+    void refreshOrgMembers(expandedOrgId);
+  }, [expandedOrgId, refreshOrgMembers]);
+
   const handleCreateUser = async (event: FormEvent) => {
     event.preventDefault();
+    setCreateUserError(null);
     if (!email.trim()) return;
-    await createUser({
-      email: email.trim(),
-      role,
-      displayName: displayName.trim() || undefined
-    });
-    setEmail("");
-    setDisplayName("");
-    setRole("designer");
-    await load();
+    try {
+      await createUser({
+        email: email.trim(),
+        role,
+        displayName: displayName.trim() || undefined
+      });
+      setEmail("");
+      setDisplayName("");
+      setRole("designer");
+      await load();
+    } catch (err) {
+      setCreateUserError(err instanceof Error ? err.message : "Could not create user.");
+    }
   };
 
-  const handleRoleChange = async (id: string, nextRole: Role) => {
-    await updateUserRole(id, nextRole);
-    await load();
+  const openUserEdit = (user: UserAccount) => {
+    setUserEditId(user.id);
+    setUserEditEmail(user.email);
+    setUserEditDisplayName(user.displayName ?? "");
+    setUserEditRole(user.role as Role);
+    setUserEditActive(user.isActive);
+    setUserEditPassword("");
+    setUserEditError(null);
+    setUserEditOpen(true);
   };
 
-  const handleDeactivate = async (id: string, currentActive: boolean) => {
-    await updateUserActive(id, !currentActive);
-    await load();
+  const closeUserEdit = () => {
+    setUserEditOpen(false);
+    setUserEditId(null);
+    setUserEditError(null);
+    setUserEditPassword("");
+  };
+
+  const handleSaveUserEdit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (userEditId == null) return;
+    setUserEditSaving(true);
+    setUserEditError(null);
+    try {
+      const body: Parameters<typeof updateUser>[1] = {
+        email: userEditEmail.trim(),
+        displayName: userEditDisplayName.trim() || null,
+        role: userEditRole,
+        is_active: userEditActive
+      };
+      if (userEditPassword.trim() !== "") {
+        body.password = userEditPassword.trim();
+      }
+      await updateUser(userEditId, body);
+      closeUserEdit();
+      await load();
+    } catch (err) {
+      setUserEditError(err instanceof Error ? err.message : "Could not save user.");
+    } finally {
+      setUserEditSaving(false);
+    }
+  };
+
+  const handleDeactivate = async (id: string) => {
+    setUsersError(null);
+    try {
+      await updateUserActive(id, false);
+      await load();
+    } catch (err) {
+      setUsersError(err instanceof Error ? err.message : "Could not update user.");
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    setUsersError(null);
+    try {
+      await updateUserActive(id, true);
+      await load();
+    } catch (err) {
+      setUsersError(err instanceof Error ? err.message : "Could not update user.");
+    }
+  };
+
+  const handleRemoveUserAccess = async (id: string, email: string) => {
+    if (email.toLowerCase() === "admin@vellum.test") return;
+    const ok = window.confirm("Remove sign-in access for this user? They can be reactivated later from this table.");
+    if (!ok) return;
+    setUsersError(null);
+    try {
+      await removeUser(id);
+      await load();
+    } catch (err) {
+      setUsersError(err instanceof Error ? err.message : "Could not remove access.");
+    }
   };
 
   const handleDeleteAsset = async (id: string) => {
@@ -139,29 +282,106 @@ export function AdminPage() {
     await load();
   };
 
+  const handleCreateOrganization = async (event: FormEvent) => {
+    event.preventDefault();
+    setOrgError(null);
+    if (!orgFormName.trim()) return;
+    try {
+      const payload: Parameters<typeof createOrganization>[0] = {
+        name: orgFormName.trim(),
+        description: orgFormDescription.trim() || undefined
+      };
+      if (orgFormOwnerUserId.trim() !== "") {
+        const ou = Number(orgFormOwnerUserId);
+        if (Number.isFinite(ou)) payload.initialOwnerUserId = ou;
+      }
+      await createOrganization(payload);
+      setOrgFormName("");
+      setOrgFormDescription("");
+      setOrgFormOwnerUserId("");
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setOrgError(isMissingOrganizationsTable(msg) ? "Could not create organization." : msg || "Could not create organization.");
+    }
+  };
+
+  const handleAddOrgMember = async (event: FormEvent, orgId: number) => {
+    event.preventDefault();
+    setOrgError(null);
+    const uid = Number(newMemberUserId);
+    if (!Number.isFinite(uid)) return;
+    try {
+      await addOrganizationMember(orgId, { userId: uid, role: newMemberOrgRole });
+      setNewMemberUserId("");
+      setNewMemberOrgRole("designer");
+      await refreshOrgMembers(orgId);
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setOrgError(isMissingOrganizationsTable(msg) ? "Could not add member." : msg || "Could not add member.");
+    }
+  };
+
+  const handleRemoveOrgMember = async (orgId: number, userId: number) => {
+    const ok = window.confirm("Remove this user from the organization?");
+    if (!ok) return;
+    setOrgError(null);
+    try {
+      await removeOrganizationMember(orgId, userId);
+      await refreshOrgMembers(orgId);
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setOrgError(isMissingOrganizationsTable(msg) ? "Could not remove member." : msg || "Could not remove member.");
+    }
+  };
+
   const handleCreateProject = async (event: FormEvent) => {
     event.preventDefault();
     setProjectError(null);
     if (!projectName.trim()) return;
+    const orgId = Number(newProjectOrganizationId);
+    if (!Number.isFinite(orgId)) {
+      setProjectError("Select an organization for this project.");
+      return;
+    }
     try {
-      await createProject({
+      const createPayload: Parameters<typeof createProject>[0] = {
+        organizationId: orgId,
         name: projectName.trim(),
         description: projectDescription.trim() || undefined,
         clientId: newProjectClientId ? Number(newProjectClientId) : undefined,
         status: newProjectStatus,
         priority: newProjectPriority.trim() || undefined,
         dueDate: newProjectDue.trim() || undefined
-      });
+      };
+      if (newProjectOwnerUserId.trim() !== "") {
+        const ou = Number(newProjectOwnerUserId);
+        if (Number.isFinite(ou)) createPayload.ownerUserId = ou;
+      }
+      await createProject(createPayload);
+
       setProjectName("");
       setProjectDescription("");
       setNewProjectClientId("");
       setNewProjectStatus("Active");
       setNewProjectPriority("");
       setNewProjectDue("");
+      setNewProjectOwnerUserId("");
       await load();
     } catch (err) {
       setProjectError(err instanceof Error ? err.message : "Could not create project.");
     }
+  };
+
+  const projectOwnerColumnLabel = (p: Project) => {
+    const uid = p.ownerUserId;
+    if (uid == null) return "—";
+    const fromUsers = users.find((u) => String(u.id) === String(uid));
+    if (fromUsers) return fromUsers.displayName || fromUsers.email;
+    if (currentUser && String(currentUser.id) === String(uid)) return currentUser.email;
+    return `#${uid}`;
   };
 
   const openProjectDetail = async (id: number) => {
@@ -187,6 +407,7 @@ export function AdminPage() {
     setEditPriority(projectDetail.priority ?? "");
     setEditDueDate(projectDetail.dueDate ? projectDetail.dueDate.slice(0, 10) : "");
     setEditClientId(projectDetail.clientId != null ? String(projectDetail.clientId) : "");
+    setEditOwnerUserId(projectDetail.ownerUserId != null ? String(projectDetail.ownerUserId) : "");
   }, [projectDetail]);
 
   const closeProjectDetail = () => {
@@ -206,7 +427,8 @@ export function AdminPage() {
         status: editStatus,
         priority: editPriority.trim() || null,
         dueDate: editDueDate.trim() || null,
-        clientId: editClientId === "" ? null : Number(editClientId)
+        clientId: editClientId === "" ? null : Number(editClientId),
+        ownerUserId: editOwnerUserId === "" ? null : Number(editOwnerUserId)
       });
       await load();
       await openProjectDetail(selectedProjectId);
@@ -252,16 +474,10 @@ export function AdminPage() {
           <li>Active Users: {users.filter((user) => user.isActive).length}</li>
           <li>Recent Assets Shown: {Math.min(activity.recentAssets.length, 20)}</li>
         </ul>
-        <div className="admin-callout">
-          <strong>Quick reminders</strong>
-          <p>Use Recent Activity for cleanup, then manage permissions below.</p>
-          <p>Delete only assets or comments that should no longer appear in review history.</p>
-        </div>
       </div>
 
       <div className="panel admin-activity-panel">
         <h1>Recent Activity</h1>
-        <p className="admin-subtitle">Last updated assets and comments</p>
 
         <div className="admin-split-header">
           <h2 className="admin-section-title">Recent assets</h2>
@@ -376,11 +592,170 @@ export function AdminPage() {
         )}
       </div>
 
+      <div className="panel admin-wide-panel admin-section-panel admin-organizations-section">
+        <div className="admin-content">
+          <h1>Organizations</h1>
+          <form onSubmit={(e) => void handleCreateOrganization(e)} className="admin-form admin-project-create-form">
+            <label>
+              Organization name
+              <input
+                type="text"
+                value={orgFormName}
+                onChange={(e) => setOrgFormName(e.target.value)}
+                placeholder="Acme Creative"
+                required
+              />
+            </label>
+            <label>
+              Description
+              <textarea value={orgFormDescription} onChange={(e) => setOrgFormDescription(e.target.value)} rows={2} />
+            </label>
+            {users.length > 0 && (
+              <label>
+                Initial owner (optional)
+                <select value={orgFormOwnerUserId} onChange={(e) => setOrgFormOwnerUserId(e.target.value)}>
+                  <option value="">You ({currentUser?.email ?? "signed-in admin"})</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.displayName || u.email}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button className="primary-btn" type="submit">
+              Create organization
+            </button>
+          </form>
+          {orgError && <p role="alert" className="admin-error">{orgError}</p>}
+
+          <div className="admin-org-cards" style={{ marginTop: "1.25rem", display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+            {organizations.length === 0 ? (
+              <p>No organizations yet.</p>
+            ) : (
+              organizations.map((org) => (
+                <div
+                  key={org.id}
+                  className="admin-org-card"
+                  style={{
+                    border: "1px solid var(--border-subtle, #ccc)",
+                    borderRadius: 8,
+                    padding: "0.75rem 1rem",
+                    minWidth: 220,
+                    background: expandedOrgId === org.id ? "var(--panel-elevated, #f7f7f7)" : undefined
+                  }}
+                >
+                  <strong>{org.name}</strong>
+                  {org.description ? <p className="admin-muted" style={{ margin: "0.35rem 0 0" }}>{org.description}</p> : null}
+                  <button
+                    type="button"
+                    className="secondary-btn small"
+                    style={{ marginTop: "0.5rem" }}
+                    onClick={() => setExpandedOrgId(expandedOrgId === org.id ? null : org.id)}
+                  >
+                    {expandedOrgId === org.id ? "Hide members" : "Members"}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+
+          {expandedOrgId != null && (
+            <div className="admin-org-members" style={{ marginTop: "1rem" }}>
+              <h2 className="admin-section-title">Members</h2>
+              {orgMembersLoading ? (
+                <p>Loading members…</p>
+              ) : (
+                <div className="admin-scroll-table">
+                  <table className="admin-table compact">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orgMembers.length === 0 ? (
+                        <tr>
+                          <td colSpan={3}>No members.</td>
+                        </tr>
+                      ) : (
+                        orgMembers.map((m) => (
+                          <tr key={m.userId}>
+                            <td data-label="User">{m.displayName} <span className="admin-muted">({m.email})</span></td>
+                            <td data-label="Role">{m.role}</td>
+                            <td data-label="Actions" className="actions-cell">
+                              <button
+                                type="button"
+                                className="secondary-btn small"
+                                onClick={() => void handleRemoveOrgMember(expandedOrgId, m.userId)}
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <form
+                onSubmit={(e) => void handleAddOrgMember(e, expandedOrgId)}
+                className="admin-form"
+                style={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "flex-end" }}
+              >
+                <label>
+                  Add user
+                  <select value={newMemberUserId} onChange={(e) => setNewMemberUserId(e.target.value)}>
+                    <option value="">Select user…</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.displayName || u.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Role
+                  <select value={newMemberOrgRole} onChange={(e) => setNewMemberOrgRole(e.target.value)}>
+                    <option value="owner">owner</option>
+                    <option value="manager">manager</option>
+                    <option value="designer">designer</option>
+                    <option value="reviewer">reviewer</option>
+                  </select>
+                </label>
+                <button className="primary-btn" type="submit" disabled={!newMemberUserId}>
+                  Add member
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="panel admin-wide-panel admin-section-panel admin-projects-section">
         <div className="admin-content">
           <h1>Projects</h1>
-          <p className="admin-subtitle">Create and manage projects. Uploads and assets can be linked to a project.</p>
           <form onSubmit={(e) => void handleCreateProject(e)} className="admin-form admin-project-create-form">
+            <label>
+              Organization
+              <select
+                value={newProjectOrganizationId}
+                onChange={(event) => setNewProjectOrganizationId(event.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Select organization
+                </option>
+                {organizations.map((o) => (
+                  <option key={o.id} value={String(o.id)}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Name
               <input
@@ -429,6 +804,22 @@ export function AdminPage() {
               Due date
               <input type="date" value={newProjectDue} onChange={(event) => setNewProjectDue(event.target.value)} />
             </label>
+            {users.length > 0 && (
+              <label>
+                Project owner (optional)
+                <select
+                  value={newProjectOwnerUserId}
+                  onChange={(event) => setNewProjectOwnerUserId(event.target.value)}
+                >
+                  <option value="">You ({currentUser?.email ?? "creator"})</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.displayName || u.email} ({u.role})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button className="primary-btn" type="submit">
               Create project
             </button>
@@ -441,8 +832,10 @@ export function AdminPage() {
                 <tr>
                   <th>ID</th>
                   <th>Name</th>
+                  <th>Organization</th>
                   <th>Status</th>
                   <th>Client</th>
+                  <th>Owner</th>
                   <th>Assets</th>
                   <th />
                 </tr>
@@ -450,15 +843,17 @@ export function AdminPage() {
               <tbody>
                 {projects.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>No projects yet.</td>
+                    <td colSpan={8}>No projects yet.</td>
                   </tr>
                 ) : (
                   projects.map((p) => (
                     <tr key={p.id} className={selectedProjectId === p.id ? "admin-row-selected" : undefined}>
                       <td data-label="ID">{p.id}</td>
                       <td data-label="Name">{p.name}</td>
+                      <td data-label="Organization">{p.organizationName ?? "—"}</td>
                       <td data-label="Status">{p.status}</td>
                       <td data-label="Client">{p.clientName ?? "—"}</td>
+                      <td data-label="Owner">{projectOwnerColumnLabel(p)}</td>
                       <td data-label="Assets">{p.assetCount ?? 0}</td>
                       <td data-label="Actions" className="actions-cell">
                         <button type="button" className="secondary-btn small" onClick={() => void openProjectDetail(p.id)}>
@@ -496,6 +891,10 @@ export function AdminPage() {
                       <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </label>
                     <label>
+                      Organization
+                      <input type="text" value={projectDetail.organizationName ?? "—"} disabled />
+                    </label>
+                    <label>
                       Description
                       <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} />
                     </label>
@@ -506,6 +905,17 @@ export function AdminPage() {
                         {clients.map((c) => (
                           <option key={c.id} value={String(c.id)}>
                             {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Project owner
+                      <select value={editOwnerUserId} onChange={(e) => setEditOwnerUserId(e.target.value)}>
+                        <option value="">Unassigned</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.displayName || u.email}
                           </option>
                         ))}
                       </select>
@@ -600,7 +1010,7 @@ export function AdminPage() {
       <div className="panel admin-wide-panel admin-section-panel admin-users-section">
         <div className="admin-content">
           <h1>User Management</h1>
-          <form onSubmit={handleCreateUser} className="admin-form">
+          <form onSubmit={(e) => void handleCreateUser(e)} className="admin-form">
             <label>
               Display name (optional)
               <input
@@ -620,7 +1030,7 @@ export function AdminPage() {
                 <option value="designer">designer</option>
                 <option value="reviewer">reviewer</option>
                 <option value="manager">manager</option>
-                <option value="client_reviewer">client_reviewer</option>
+                <option value="owner">owner</option>
                 <option value="admin">admin</option>
               </select>
             </label>
@@ -628,58 +1038,80 @@ export function AdminPage() {
               Create User
             </button>
           </form>
+          {createUserError && <p role="alert" className="admin-error">{createUserError}</p>}
 
-          <h2>All users in database</h2>
+          <h2>Users</h2>
           {usersError && <p role="alert" className="admin-error">{usersError}</p>}
           {loading ? (
             <p>Loading users...</p>
           ) : (
-            <div className="admin-scroll-table">
-              <table className="admin-table user-table">
+            <div className="admin-users-table-wrap">
+              <table className="admin-table admin-user-table compact">
                 <thead>
                   <tr>
                     <th>Name</th>
                     <th>Email</th>
                     <th>Role</th>
-                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.length === 0 ? (
                     <tr>
-                      <td colSpan={5}>No users yet. Create one above.</td>
+                      <td colSpan={4}>No users yet. Create one above.</td>
                     </tr>
                   ) : (
-                    users.map((user) => (
-                      <tr key={user.id}>
-                        <td data-label="Name">{user.displayName || "-"}</td>
-                        <td data-label="Email">{user.email}</td>
-                        <td data-label="Role">
-                          <select
-                            value={user.role}
-                            onChange={(event) => void handleRoleChange(user.id, event.target.value as Role)}
-                            disabled={user.email.toLowerCase() === "admin@vellum.test"}
-                          >
-                            <option value="designer">designer</option>
-                            <option value="reviewer">reviewer</option>
-                            <option value="manager">manager</option>
-                            <option value="client_reviewer">client_reviewer</option>
-                            <option value="admin">admin</option>
-                          </select>
-                        </td>
-                        <td data-label="Status">{user.isActive ? "Active" : "Inactive"}</td>
-                        <td data-label="Actions" className="actions-cell">
-                          <button
-                            type="button"
-                            onClick={() => void handleDeactivate(user.id, user.isActive)}
-                            className={user.isActive ? "secondary-btn" : "primary-btn"}
-                          >
-                            {user.isActive ? "Deactivate" : "Reactivate"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    users.map((user) => {
+                      const isSeedAdmin = user.email.toLowerCase() === "admin@vellum.test";
+                      return (
+                        <tr key={user.id}>
+                          <td data-label="Name">
+                            {user.displayName || "—"}
+                            {!user.isActive ? <span className="admin-muted"> · inactive</span> : null}
+                          </td>
+                          <td data-label="Email">{user.email}</td>
+                          <td data-label="Role">{user.role}</td>
+                          <td data-label="Actions" className="admin-user-actions">
+                            <button type="button" className="secondary-btn small" onClick={() => openUserEdit(user)}>
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-btn small"
+                              disabled={!user.isActive || isSeedAdmin}
+                              title={
+                                isSeedAdmin
+                                  ? "Primary admin cannot be deactivated"
+                                  : !user.isActive
+                                    ? "Already inactive"
+                                    : undefined
+                              }
+                              onClick={() => void handleDeactivate(user.id)}
+                            >
+                              Deactivate
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-btn small"
+                              disabled={user.isActive}
+                              title={user.isActive ? "User is active" : undefined}
+                              onClick={() => void handleReactivate(user.id)}
+                            >
+                              Reactivate
+                            </button>
+                            {!isSeedAdmin ? (
+                              <button
+                                type="button"
+                                className="secondary-btn small danger-outline"
+                                onClick={() => void handleRemoveUserAccess(user.id, user.email)}
+                              >
+                                Remove
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -687,6 +1119,80 @@ export function AdminPage() {
           )}
         </div>
       </div>
+
+      {userEditOpen && userEditId != null && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeUserEdit();
+          }}
+        >
+          <div className="admin-modal" role="dialog" aria-labelledby="user-edit-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="user-edit-title" className="admin-section-title" style={{ marginBottom: "0.75rem" }}>
+              Edit user
+            </h2>
+            <form onSubmit={(e) => void handleSaveUserEdit(e)} className="admin-form">
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={userEditEmail}
+                  onChange={(e) => setUserEditEmail(e.target.value)}
+                  disabled={userEditEmail.toLowerCase() === "admin@vellum.test"}
+                  required
+                />
+              </label>
+              <label>
+                Display name
+                <input type="text" value={userEditDisplayName} onChange={(e) => setUserEditDisplayName(e.target.value)} />
+              </label>
+              <label>
+                Role
+                <select
+                  value={userEditRole}
+                  onChange={(e) => setUserEditRole(e.target.value as Role)}
+                  disabled={userEditEmail.toLowerCase() === "admin@vellum.test"}
+                >
+                  <option value="designer">designer</option>
+                  <option value="reviewer">reviewer</option>
+                  <option value="manager">manager</option>
+                  <option value="owner">owner</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+              <label className="admin-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={userEditActive}
+                  onChange={(e) => setUserEditActive(e.target.checked)}
+                  disabled={userEditEmail.toLowerCase() === "admin@vellum.test"}
+                />{" "}
+                Account active
+              </label>
+              <label>
+                New password (optional)
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={userEditPassword}
+                  onChange={(e) => setUserEditPassword(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                />
+              </label>
+              {userEditError && <p role="alert" className="admin-error">{userEditError}</p>}
+              <div className="admin-project-detail-actions">
+                <button type="submit" className="primary-btn" disabled={userEditSaving}>
+                  {userEditSaving ? "Saving…" : "Save"}
+                </button>
+                <button type="button" className="secondary-btn" onClick={closeUserEdit}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

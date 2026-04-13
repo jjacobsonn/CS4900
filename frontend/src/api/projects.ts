@@ -9,6 +9,10 @@ export interface Project {
   dueDate?: string | null;
   clientId?: number | null;
   clientName?: string | null;
+  organizationId?: number | null;
+  organizationName?: string | null;
+  /** User id of the organizational project owner */
+  ownerUserId?: number | null;
   createdAt?: string;
   assetCount?: number;
 }
@@ -42,6 +46,9 @@ interface RawProject {
   due_date?: string | null;
   client_id?: number | null;
   client_name?: string | null;
+  organization_id?: number | null;
+  organization_name?: string | null;
+  owner_user_id?: number | null;
   created_at?: string;
   asset_count?: number;
 }
@@ -71,6 +78,9 @@ function toProject(raw: RawProject): Project {
     dueDate: raw.due_date ?? undefined,
     clientId: raw.client_id ?? undefined,
     clientName: raw.client_name ?? undefined,
+    organizationId: raw.organization_id ?? undefined,
+    organizationName: raw.organization_name ?? undefined,
+    ownerUserId: raw.owner_user_id ?? undefined,
     createdAt: raw.created_at,
     assetCount: raw.asset_count ?? undefined
   };
@@ -94,8 +104,15 @@ function mapProjectDetail(raw: RawProject & { assets?: RawAssetSummary[]; contri
   return { ...base, assets, contributors };
 }
 
-export async function getProjects(clientId?: number): Promise<Project[]> {
-  const q = clientId != null && Number.isFinite(clientId) ? `?clientId=${clientId}` : "";
+export async function getProjects(filter?: { clientId?: number; organizationId?: number }): Promise<Project[]> {
+  const params = new URLSearchParams();
+  if (filter?.clientId != null && Number.isFinite(filter.clientId)) {
+    params.set("clientId", String(filter.clientId));
+  }
+  if (filter?.organizationId != null && Number.isFinite(filter.organizationId)) {
+    params.set("organizationId", String(filter.organizationId));
+  }
+  const q = params.toString() ? `?${params.toString()}` : "";
   const data = await apiClient.get<RawProject[]>(`/projects${q}`);
   return data.map(toProject);
 }
@@ -109,13 +126,16 @@ export async function getProject(id: number): Promise<ProjectDetail> {
 
 export async function createProject(payload: {
   name: string;
+  organizationId: number;
   description?: string;
   clientId?: number | null;
   priority?: string | null;
   dueDate?: string | null;
   status?: string;
+  /** Set organizational owner (admin / manager only). */
+  ownerUserId?: number | null;
 }): Promise<Project> {
-  const body: Record<string, unknown> = { name: payload.name.trim() };
+  const body: Record<string, unknown> = { name: payload.name.trim(), organizationId: payload.organizationId };
   if (payload.description != null && String(payload.description).trim() !== "") {
     body.description = String(payload.description).trim();
   }
@@ -131,6 +151,9 @@ export async function createProject(payload: {
   if (payload.status != null && String(payload.status).trim() !== "") {
     body.status = String(payload.status).trim();
   }
+  if (payload.ownerUserId != null && Number.isFinite(Number(payload.ownerUserId))) {
+    body.ownerUserId = Number(payload.ownerUserId);
+  }
   const data = await apiClient.post<RawProject>("/projects", body);
   return toProject(data);
 }
@@ -144,6 +167,8 @@ export async function updateProject(
     priority?: string | null;
     dueDate?: string | null;
     clientId?: number | null;
+    ownerUserId?: number | null;
+    organizationId?: number | null;
   }
 ): Promise<Project> {
   const body: Record<string, unknown> = {};
@@ -153,6 +178,8 @@ export async function updateProject(
   if (payload.priority !== undefined) body.priority = payload.priority;
   if (payload.dueDate !== undefined) body.dueDate = payload.dueDate;
   if (payload.clientId !== undefined) body.clientId = payload.clientId;
+  if (payload.ownerUserId !== undefined) body.ownerUserId = payload.ownerUserId;
+  if (payload.organizationId !== undefined) body.organizationId = payload.organizationId;
   const raw = await apiClient.patch<RawProject>(`/projects/${id}`, body);
   return toProject({ ...raw, client_name: (raw as RawProject & { client_name?: string }).client_name });
 }

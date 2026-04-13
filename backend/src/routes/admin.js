@@ -1,5 +1,5 @@
 /**
- * Admin-only routes. Require Bearer JWT and admin or super_admin role.
+ * Admin-only routes. Require Bearer JWT and admin role.
  */
 
 import express from "express";
@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.use(attachAuth);
 router.use(requireAuth);
-router.use(requireRole(["admin", "super_admin"]));
+router.use(requireRole(["admin"]));
 
 /**
  * GET /api/admin/overview

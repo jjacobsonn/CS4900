@@ -181,6 +181,11 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
             ))}
           </select>
         </label>
+        {!isLoadingProjects && projects.length === 0 ? (
+          <small>
+            No projects found. Create one from the Admin page (or have an admin/manager create one), then return here.
+          </small>
+        ) : null}
         {projectHint && <small>{projectHint}</small>}
         <label>
           Asset Type

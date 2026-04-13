@@ -2,7 +2,7 @@ import { getWorkflowReviewActions, getWorkflowStatusButtons, isApproveRequestPai
 
 describe("getWorkflowStatusButtons", () => {
   test("Ready for Internal Review: internal roles get Start internal review", () => {
-    for (const role of ["reviewer", "designer", "manager", "admin", "super_admin"] as const) {
+    for (const role of ["reviewer", "designer", "manager", "owner", "admin"] as const) {
       expect(getWorkflowStatusButtons("Ready for Internal Review", role)).toEqual([
         { statusKey: "in_internal_review", label: "Start internal review", variant: "primary" }
       ]);
@@ -10,7 +10,7 @@ describe("getWorkflowStatusButtons", () => {
   });
 
   test("In Internal Review / legacy In Review: internal roles get approve + request changes", () => {
-    for (const role of ["reviewer", "designer", "manager", "admin", "super_admin"] as const) {
+    for (const role of ["reviewer", "designer", "manager", "owner", "admin"] as const) {
       expect(getWorkflowStatusButtons("In Internal Review", role)).toEqual([
         { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
         { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
@@ -22,12 +22,8 @@ describe("getWorkflowStatusButtons", () => {
     }
   });
 
-  test("In Internal Review: client_reviewer cannot act", () => {
-    expect(getWorkflowStatusButtons("In Internal Review", "client_reviewer")).toEqual([]);
-  });
-
   test("In Client Review: client actors get approve + request", () => {
-    for (const role of ["client_reviewer", "manager", "admin", "super_admin"] as const) {
+    for (const role of ["reviewer", "manager", "owner", "admin"] as const) {
       expect(getWorkflowStatusButtons("In Client Review", role)).toEqual([
         { statusKey: "approved_client", label: "Approve (client)", variant: "primary" },
         { statusKey: "client_changes_requested", label: "Request client changes", variant: "secondary" }
@@ -37,6 +33,7 @@ describe("getWorkflowStatusButtons", () => {
 
   test("Draft: designer-like roles can submit", () => {
     expect(getWorkflowStatusButtons("Draft", "designer").map((b) => b.statusKey)).toContain("ready_for_internal_review");
+    expect(getWorkflowStatusButtons("Draft", "owner").map((b) => b.statusKey)).toContain("ready_for_internal_review");
   });
 
   test("Draft: reviewer alone cannot submit", () => {

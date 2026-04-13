@@ -12,11 +12,15 @@ export async function getProjectDetail(projectId) {
             p.priority,
             p.due_date,
             p.client_id,
+            p.organization_id,
+            o.name AS organization_name,
             c.name AS client_name,
             p.created_by_user_id,
+            p.owner_user_id,
             p.created_at
      FROM projects p
      LEFT JOIN clients c ON c.id = p.client_id
+     LEFT JOIN organizations o ON o.id = p.organization_id
      WHERE p.id = $1`,
     [projectId]
   );
@@ -48,6 +52,8 @@ export async function getProjectDetail(projectId) {
        SELECT created_by_user_id FROM assets WHERE project_id = $1 AND created_by_user_id IS NOT NULL
        UNION
        SELECT created_by_user_id FROM projects WHERE id = $1 AND created_by_user_id IS NOT NULL
+       UNION
+       SELECT owner_user_id FROM projects WHERE id = $1 AND owner_user_id IS NOT NULL
      )
      ORDER BY u.email`,
     [projectId]
@@ -68,7 +74,9 @@ export async function getProjectDetail(projectId) {
  *   status?: string,
  *   priority?: string | null,
  *   dueDate?: string | null,
- *   clientId?: number | null
+ *   clientId?: number | null,
+ *   ownerUserId?: number | null,
+ *   organizationId?: number | null
  * }} patch
  */
 export async function updateProjectById(projectId, patch) {
@@ -109,6 +117,49 @@ export async function updateProjectById(projectId, patch) {
     }
   }
 
+  let organization_id = row.organization_id;
+  if (patch.organizationId !== undefined) {
+    const oid = patch.organizationId;
+    if (oid == null || oid === "") {
+      organization_id = null;
+    } else {
+      const n = Number(oid);
+      if (!Number.isFinite(n)) {
+        const err = new Error("Invalid organizationId");
+        err.status = 400;
+        throw err;
+      }
+      const ocheck = await query("SELECT id FROM organizations WHERE id = $1 LIMIT 1", [n]);
+      if (ocheck.rows.length === 0) {
+        const err = new Error("Organization not found");
+        err.status = 400;
+        throw err;
+      }
+      organization_id = n;
+    }
+  }
+
+  let owner_user_id = row.owner_user_id;
+  if (patch.ownerUserId !== undefined) {
+    if (patch.ownerUserId == null || patch.ownerUserId === "") {
+      owner_user_id = null;
+    } else {
+      const ou = Number(patch.ownerUserId);
+      if (!Number.isFinite(ou)) {
+        const err = new Error("Invalid ownerUserId");
+        err.status = 400;
+        throw err;
+      }
+      const ucheck = await query("SELECT id FROM users WHERE id = $1 AND is_active = TRUE LIMIT 1", [ou]);
+      if (ucheck.rows.length === 0) {
+        const err = new Error("User not found or inactive");
+        err.status = 400;
+        throw err;
+      }
+      owner_user_id = ou;
+    }
+  }
+
   const result = await query(
     `UPDATE projects
      SET name = $1,
@@ -116,10 +167,12 @@ export async function updateProjectById(projectId, patch) {
          status = $3,
          priority = $4,
          due_date = $5,
-         client_id = $6
-     WHERE id = $7
-     RETURNING id, client_id, name, description, status, priority, due_date, created_at`,
-    [name, description ?? null, status, priority ?? null, due_date ?? null, client_id, projectId]
+         client_id = $6,
+         owner_user_id = $7,
+         organization_id = $8
+     WHERE id = $9
+     RETURNING id, client_id, organization_id, name, description, status, priority, due_date, created_at, owner_user_id`,
+    [name, description ?? null, status, priority ?? null, due_date ?? null, client_id, owner_user_id, organization_id, projectId]
   );
   return result.rows[0];
 }

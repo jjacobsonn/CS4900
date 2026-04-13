@@ -32,17 +32,17 @@ function mapAssetRow(row) {
   };
 }
 
-/**
- * Get all assets from the database
- * 
- * This function queries the assets table and joins lookup/user data to return
- * display-ready rows for the frontend dashboard.
- * 
- * @returns {Promise<Array>} Array of asset rows with status and owner details
- */
-export async function listAssets() {
-  const result = await query(
-    `SELECT a.id,
+const LIST_ASSETS_FROM = `
+     FROM assets a
+     JOIN asset_status_lookup s ON s.id = a.status_id
+     LEFT JOIN users u ON u.id = a.created_by_user_id
+     LEFT JOIN projects p ON p.id = a.project_id
+     LEFT JOIN organizations o ON o.id = p.organization_id
+     LEFT JOIN asset_versions v
+       ON v.asset_id = a.id
+      AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))`;
+
+const LIST_ASSETS_SELECT = `SELECT a.id,
             a.title,
             a.description,
             a.asset_type,
@@ -52,21 +52,58 @@ export async function listAssets() {
             a.current_version_id,
             a.project_id,
             p.name AS project_name,
+            p.organization_id,
+            o.name AS organization_name,
+            p.owner_user_id AS project_owner_user_id,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
             v.size_bytes,
             v.file_path,
             a.created_at,
-            a.updated_at
-     FROM assets a
-     JOIN asset_status_lookup s ON s.id = a.status_id
-     LEFT JOIN users u ON u.id = a.created_by_user_id
-     LEFT JOIN projects p ON p.id = a.project_id
-     LEFT JOIN asset_versions v
-       ON v.asset_id = a.id
-      AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))
-     ORDER BY a.id DESC`
+            a.updated_at`;
+
+/**
+ * Get all assets from the database
+ *
+ * This function queries the assets table and joins lookup/user data to return
+ * display-ready rows for the frontend dashboard.
+ *
+ * @returns {Promise<Array>} Array of asset rows with status and owner details
+ */
+export async function listAssets() {
+  const result = await query(`${LIST_ASSETS_SELECT} ${LIST_ASSETS_FROM} ORDER BY a.id DESC`);
+  return result.rows.map(mapAssetRow);
+}
+
+/**
+ * List assets visible to a user: platform admins see all; others see assets in their
+ * organizations (by project) plus legacy unassigned assets they created.
+ *
+ * @param {number|string|null} userId
+ * @param {string|null|undefined} globalRoleLower
+ * @returns {Promise<Array>}
+ */
+export async function listAssetsForUser(userId, globalRoleLower) {
+  if (String(globalRoleLower || "").toLowerCase() === "admin") {
+    return listAssets();
+  }
+  const uid = Number(userId);
+  if (!Number.isFinite(uid)) {
+    return [];
+  }
+  const result = await query(
+    `${LIST_ASSETS_SELECT} ${LIST_ASSETS_FROM}
+     WHERE (
+       (a.project_id IS NULL AND a.created_by_user_id = $1)
+       OR EXISTS (
+         SELECT 1 FROM projects pr
+         INNER JOIN organization_members m ON m.organization_id = pr.organization_id
+         WHERE pr.id = a.project_id AND m.user_id = $1
+       )
+     )
+     ORDER BY a.id DESC`,
+    [uid]
   );
   return result.rows.map(mapAssetRow);
 }
@@ -156,6 +193,9 @@ export async function getAssetById(assetId) {
             a.current_version_id,
             a.project_id,
             p.name AS project_name,
+            p.organization_id,
+            o.name AS organization_name,
+            p.owner_user_id AS project_owner_user_id,
             COALESCE(u.display_name, u.email, 'Unassigned') AS owner,
             v.original_file_name,
             v.mime_type,
@@ -167,6 +207,7 @@ export async function getAssetById(assetId) {
      JOIN asset_status_lookup s ON s.id = a.status_id
      LEFT JOIN users u ON u.id = a.created_by_user_id
      LEFT JOIN projects p ON p.id = a.project_id
+     LEFT JOIN organizations o ON o.id = p.organization_id
      LEFT JOIN asset_versions v
        ON v.asset_id = a.id
       AND (v.id = a.current_version_id OR (a.current_version_id IS NULL AND v.version_number = CAST(SPLIT_PART(REPLACE(a.current_version, 'v', ''), '.', 1) AS INTEGER)))
@@ -470,10 +511,10 @@ export async function updateAssetStatus(assetId, statusKey, actorRole = null) {
     return { invalidStatus: true, reason: "Unknown internal status key" };
   }
 
-  if (CLIENT_REVIEW_KEYS.has(statusKey) && !["client_reviewer", "manager", "admin"].includes(actorRole || "")) {
+  if (CLIENT_REVIEW_KEYS.has(statusKey) && !["reviewer", "manager", "admin", "owner"].includes(actorRole || "")) {
     return { invalidStatus: true, reason: "Role cannot perform client review transitions" };
   }
-  if (INTERNAL_REVIEW_KEYS.has(statusKey) && !["designer", "reviewer", "manager", "admin"].includes(actorRole || "")) {
+  if (INTERNAL_REVIEW_KEYS.has(statusKey) && !["designer", "reviewer", "manager", "admin", "owner"].includes(actorRole || "")) {
     return { invalidStatus: true, reason: "Role cannot perform internal transitions" };
   }
 

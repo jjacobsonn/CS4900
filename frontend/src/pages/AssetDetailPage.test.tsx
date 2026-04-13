@@ -77,7 +77,8 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
   expect(screen.getByText("Notes: Demo details")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: "Hero Graphic" })).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+  await userEvent.selectOptions(screen.getByLabelText("Review action"), "approved_internal");
+  await userEvent.click(screen.getByRole("button", { name: "Apply action" }));
   expect(patchAssetStatusMock).toHaveBeenCalledWith("42", "approved_internal");
 
   await userEvent.type(screen.getByLabelText("Add Comment"), "Looks good");
@@ -134,6 +135,7 @@ test("AssetDetailPage Request changes sends changes_requested_internal", async (
   );
 
   expect(await screen.findByText("Draft Social")).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "Request changes" }));
+  await userEvent.selectOptions(screen.getByLabelText("Review action"), "changes_requested_internal");
+  await userEvent.click(screen.getByRole("button", { name: "Apply action" }));
   expect(patchAssetStatusMock).toHaveBeenCalledWith("99", "changes_requested_internal");
 });

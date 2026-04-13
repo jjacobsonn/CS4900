@@ -10,6 +10,9 @@ interface RawAsset {
   status: string;
   project_id?: number | null;
   project_name?: string | null;
+  organization_id?: number | null;
+  organization_name?: string | null;
+  project_owner_user_id?: number | null;
   owner?: string;
   current_version?: string;
   currentVersion?: string;
@@ -33,6 +36,9 @@ function toAsset(raw: RawAsset): Asset {
     owner: raw.owner ?? "Unassigned",
     projectId: raw.project_id ?? null,
     projectName: raw.project_name ?? null,
+    organizationId: raw.organization_id ?? null,
+    organizationName: raw.organization_name ?? null,
+    projectOwnerUserId: raw.project_owner_user_id ?? null,
     status: normalizeWorkflowDisplayStatus(raw.status),
     backendStatus: backendName || undefined,
     updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.created_at ?? raw.createdAt ?? new Date().toISOString(),

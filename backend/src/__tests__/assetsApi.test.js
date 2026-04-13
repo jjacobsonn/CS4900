@@ -51,10 +51,11 @@ describe("Assets API", () => {
 
   test("POST /api/assets returns 201 with asset id for valid payload", async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-      .mockResolvedValueOnce({
-        rows: [{ id: 101, title: "Landing Page Banner", description: "Sprint 1 demo asset" }]
-      })
+      .mockResolvedValueOnce({ rows: [{ id: 2 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 101 }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
         rows: [
@@ -74,14 +75,19 @@ describe("Assets API", () => {
     const response = await request(app)
       .post("/api/assets")
       .set(bearerAuth("designer"))
-      .send({ title: "Landing Page Banner", description: "Sprint 1 demo asset" });
+      .send({ title: "Landing Page Banner", description: "Sprint 1 demo asset", projectId: 1 });
 
     expect(response.status).toBe(201);
     expect(response.body.id).toBeDefined();
   });
 
   test("PATCH /api/assets/:id/status returns 400 when status is invalid", async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] });
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [{ project_id: 1, created_by_user_id: 99, organization_id: 1 }]
+      })
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] });
 
     const response = await request(app)
       .patch("/api/assets/101/status")
@@ -125,6 +131,13 @@ describe("Assets API", () => {
   });
 
   test("PATCH /api/assets/:id/status returns 400 for non-internal status key (e.g. legacy label)", async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [{ project_id: 1, created_by_user_id: 7, organization_id: 1 }]
+      })
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] });
+
     const response = await request(app)
       .patch("/api/assets/1/status")
       .set(bearerAuth("designer"))
@@ -140,6 +153,11 @@ describe("Assets API", () => {
 
   test("POST /api/assets/:id/comments returns 201 with JWT", async () => {
     mockQuery
+      .mockResolvedValueOnce({
+        rows: [{ project_id: 10, created_by_user_id: 1, organization_id: 1 }]
+      })
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({
         rows: [
@@ -164,6 +182,11 @@ describe("Assets API", () => {
 
   test("POST /api/assets/:id/comments returns 400 when asset has no version row", async () => {
     mockQuery
+      .mockResolvedValueOnce({
+        rows: [{ project_id: 10, created_by_user_id: 1, organization_id: 1 }]
+      })
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 10 }] });
@@ -179,7 +202,10 @@ describe("Assets API", () => {
 
   test("POST /api/assets accepts multipart upload and persists file metadata", async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 2 }] })
       .mockResolvedValueOnce({ rows: [{ id: 102 }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({
@@ -206,12 +232,13 @@ describe("Assets API", () => {
       .set(bearerAuth("designer", "42"))
       .field("title", "Spec Sheet")
       .field("description", "Uploaded from UI")
+      .field("projectId", "1")
       .attach("file", Buffer.from("pdfdata"), "spec-sheet.pdf");
 
     expect(response.status).toBe(201);
     expect(response.body.file_name).toBe("spec-sheet.pdf");
     expect(mockQuery).toHaveBeenNthCalledWith(
-      3,
+      6,
       expect.stringContaining("INSERT INTO asset_versions"),
       expect.arrayContaining([
         102,

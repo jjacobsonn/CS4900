@@ -108,19 +108,20 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [selectedWorkflowStatus, setSelectedWorkflowStatus] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentPosting, setCommentPosting] = useState(false);
 
-  const isStaffAdmin = currentUser?.role === "admin" || currentUser?.role === "super_admin";
-
   const loadData = async () => {
     if (!id) return;
-    const [assetData, commentRows, versionRows, usersData, auditData] = await Promise.all([
-      getAsset(id),
+    const assetData = await getAsset(id);
+    const isAdminForAsset = currentUser?.role === "admin";
+
+    const [commentRows, versionRows, usersData, auditData] = await Promise.all([
       getComments(id),
       getAssetVersions(id),
-      isStaffAdmin ? getUsers() : Promise.resolve(null),
-      isStaffAdmin ? getVersionAudit(id) : Promise.resolve([])
+      isAdminForAsset ? getUsers() : Promise.resolve(null),
+      isAdminForAsset ? getVersionAudit(id) : Promise.resolve([])
     ]);
     setAsset(assetData);
     setComments(
@@ -138,15 +139,20 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         status: assetData.status
       }))
     );
-    if (isStaffAdmin && Array.isArray(usersData)) {
+    if (isAdminForAsset && usersData != null && Array.isArray(usersData)) {
       setOwnerCandidates(usersData as UserAccount[]);
       const currentOwner = (usersData as UserAccount[]).find(
         (u) => u.email === assetData.owner || u.displayName === assetData.owner
       );
       setOwnerSelectId(currentOwner?.id ?? "");
+    } else {
+      setOwnerCandidates([]);
+      setOwnerSelectId("");
     }
-    if (isStaffAdmin && Array.isArray(auditData)) {
+    if (isAdminForAsset && Array.isArray(auditData)) {
       setAuditEntries(auditData);
+    } else {
+      setAuditEntries([]);
     }
   };
 
@@ -156,7 +162,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     loadData()
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [id, currentUser?.role]);
+  }, [id, currentUser?.role, currentUser?.id]);
 
   const applyWorkflowStatus = async (statusKey: string) => {
     if (!asset) return;
@@ -287,6 +293,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     }
   };
 
+  const isAssetAdmin = useMemo(() => {
+    if (!asset || !currentUser) return false;
+    return currentUser.role === "admin";
+  }, [asset, currentUser]);
+
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
   const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset?.mimeType));
 
@@ -294,6 +305,56 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     () => (asset ? getWorkflowStatusButtons(asset.backendStatus, currentUser?.role) : []),
     [asset, currentUser?.role]
   );
+  const useWorkflowDropdown = ["reviewer", "manager", "admin"].includes(currentUser?.role ?? "");
+  const activityTimeline = useMemo(() => {
+    if (!asset) return [];
+
+    const versionEntries = versions.map((version) => ({
+      id: `version-${version.id}`,
+      at: version.createdAt,
+      title: "Version uploaded",
+      detail: `${version.versionNumber}${version.label ? ` (${version.label})` : ""}`,
+      actor: version.createdBy ?? "Unknown"
+    }));
+
+    const commentEntries = comments.map((comment) => ({
+      id: `comment-${comment.id}`,
+      at: comment.createdAt,
+      title: "Comment added",
+      detail: comment.message,
+      actor: comment.author
+    }));
+
+    const auditEntriesTimeline = auditEntries.map((entry) => ({
+      id: `audit-${entry.id}`,
+      at: entry.performed_at,
+      title: entry.action === "deleted" ? "Version deleted" : "Version metadata updated",
+      detail: entry.details ?? "No details provided",
+      actor: entry.performed_by
+    }));
+
+    const statusEntry = {
+      id: `status-current-${asset.id}`,
+      at: asset.updatedAt,
+      title: "Status snapshot",
+      detail: `${asset.backendStatus || asset.status}`,
+      actor: "System"
+    };
+
+    return [...versionEntries, ...commentEntries, ...auditEntriesTimeline, statusEntry].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+    );
+  }, [asset, versions, comments, auditEntries]);
+
+  useEffect(() => {
+    if (workflowButtons.length === 0) {
+      setSelectedWorkflowStatus("");
+      return;
+    }
+    setSelectedWorkflowStatus((prev) =>
+      workflowButtons.some((btn) => btn.statusKey === prev) ? prev : workflowButtons[0].statusKey
+    );
+  }, [workflowButtons]);
 
   if (loading) return <section className="panel"><p>Loading asset...</p></section>;
   if (error || !asset) return <section className="panel"><p role="alert">{error || "Asset not found."}</p></section>;
@@ -354,7 +415,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </a>
             </p>
           ) : null}
-          {isStaffAdmin && (
+          {isAssetAdmin && (
             <>
               {!editAssetOpen ? (
                 <button type="button" className="secondary-btn" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
@@ -422,7 +483,32 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                   {workflowError}
                 </p>
               ) : null}
-              {isApproveRequestPair(workflowButtons) ? (
+              {useWorkflowDropdown ? (
+                <>
+                  <label>
+                    Review action
+                    <select
+                      value={selectedWorkflowStatus}
+                      onChange={(event) => setSelectedWorkflowStatus(event.target.value)}
+                      disabled={workflowBusy}
+                    >
+                      {workflowButtons.map((btn) => (
+                        <option key={btn.statusKey} value={btn.statusKey}>
+                          {btn.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="primary-btn"
+                    disabled={workflowBusy || !selectedWorkflowStatus}
+                    onClick={() => void applyWorkflowStatus(selectedWorkflowStatus)}
+                  >
+                    Apply action
+                  </button>
+                </>
+              ) : isApproveRequestPair(workflowButtons) ? (
                 <>
                   <button
                     type="button"
@@ -490,15 +576,15 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </form>
               <CommentList
                 comments={comments}
-                isAdmin={isStaffAdmin}
-                onDeleteComment={isStaffAdmin ? handleDeleteComment : undefined}
+                isAdmin={isAssetAdmin}
+                onDeleteComment={isAssetAdmin ? handleDeleteComment : undefined}
                 deletingCommentId={deletingCommentId}
               />
             </>
           )}
           {activeTab === "versions" && (
             <>
-              {(currentUser?.role === "designer" || isStaffAdmin) && (
+              {(currentUser?.role === "designer" || isAssetAdmin) && (
                 <form
                   key={versionFormKey}
                   style={{ marginBottom: "0.6rem", display: "grid", gap: "0.4rem" }}
@@ -520,7 +606,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                     />
                   </label>
                   <label>
-                    Label (optional)
+                    Label (optional milestone tag, e.g. "Client Round 2")
                     <input
                       type="text"
                       value={newVersionLabel}
@@ -529,7 +615,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                     />
                   </label>
                   <label>
-                    Notes (optional)
+                    Notes (optional summary of what changed)
                     <textarea
                       value={newVersionNotes}
                       onChange={(event) => setNewVersionNotes(event.target.value)}
@@ -544,15 +630,37 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               <VersionList
                 versions={versions}
                 currentVersionId={asset.currentVersionId}
-                isAdmin={isStaffAdmin}
+                isAdmin={isAssetAdmin}
                 auditEntries={auditEntries}
-                onEditVersion={isStaffAdmin ? handleEditVersion : undefined}
-                onDeleteVersion={isStaffAdmin ? handleDeleteVersion : undefined}
+                onEditVersion={isAssetAdmin ? handleEditVersion : undefined}
+                onDeleteVersion={isAssetAdmin ? handleDeleteVersion : undefined}
                 onRefresh={loadData}
               />
             </>
           )}
         </div>
+      </section>
+      <section className="panel" style={{ marginTop: "0.75rem" }}>
+        <h2 style={{ marginBottom: "0.35rem" }}>Activity Timeline</h2>
+        <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
+          {versions.length} version{versions.length === 1 ? "" : "s"} · {comments.length} comment
+          {comments.length === 1 ? "" : "s"} · {activityTimeline.length} total event
+          {activityTimeline.length === 1 ? "" : "s"}
+        </p>
+        {activityTimeline.length === 0 ? (
+          <p>No timeline events yet.</p>
+        ) : (
+          <ul className="version-audit" style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
+            {activityTimeline.map((event) => (
+              <li key={event.id} style={{ marginBottom: "0.6rem" }}>
+                <strong>{event.title}</strong> - {event.detail}
+                <div className="version-meta">
+                  {new Date(event.at).toLocaleString()} {event.actor ? ` • ${event.actor}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       {isPreviewOpen && canEnlargePreview ? (
         <div className="preview-lightbox" onClick={() => setIsPreviewOpen(false)} role="presentation">

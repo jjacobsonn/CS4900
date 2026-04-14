@@ -146,7 +146,18 @@ export async function assertProjectMembership(userId, projectId, globalRoleLower
     throw e;
   }
   const orgRole = await getOrgMembershipRole(userId, organizationId);
-  if (!orgRole) {
+  const orgRank = orgRoleToRank(orgRole);
+  if (orgRank >= ORG_RANK.MANAGER) {
+    return { organizationId, orgRole };
+  }
+  const projectAssignment = await query(
+    `SELECT 1
+     FROM project_members pm
+     WHERE pm.project_id = $1 AND pm.user_id = $2
+     LIMIT 1`,
+    [Number(projectId), Number(userId)]
+  );
+  if (projectAssignment.rows.length === 0) {
     const e = new Error("Forbidden");
     e.status = 403;
     throw e;
@@ -274,9 +285,9 @@ export async function createOrganization({ name, description, details, createdBy
   }
 
   const ins = await query(
-    `INSERT INTO organizations (name, description, details, created_by_user_id)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, name, description, details, created_by_user_id, created_at, updated_at`,
+    `INSERT INTO organizations (name, description, details, created_by_user_id, is_active)
+     VALUES ($1, $2, $3, $4, TRUE)
+     RETURNING id, name, description, details, is_active, created_by_user_id, created_at, updated_at`,
     [trimmed, description ?? null, details ?? null, createdByUserId]
   );
   const org = ins.rows[0];
@@ -296,7 +307,7 @@ export async function createOrganization({ name, description, details, createdBy
 export async function listOrganizationsForActor(actorUserId, actorGlobalRole) {
   if (isPlatformAdmin(actorGlobalRole)) {
     const r = await query(
-      `SELECT o.id, o.name, o.description, o.details, o.created_by_user_id, o.created_at, o.updated_at
+      `SELECT o.id, o.name, o.description, o.details, o.is_active, o.created_by_user_id, o.created_at, o.updated_at
        FROM organizations o
        ORDER BY o.created_at DESC`
     );
@@ -304,11 +315,12 @@ export async function listOrganizationsForActor(actorUserId, actorGlobalRole) {
   }
   const uid = Number(actorUserId);
   const r = await query(
-    `SELECT o.id, o.name, o.description, o.details, o.created_by_user_id, o.created_at, o.updated_at,
+    `SELECT o.id, o.name, o.description, o.details, o.is_active, o.created_by_user_id, o.created_at, o.updated_at,
             m.role AS membership_role
      FROM organizations o
      INNER JOIN organization_members m ON m.organization_id = o.id
      WHERE m.user_id = $1
+       AND o.is_active = TRUE
      ORDER BY o.created_at DESC`,
     [uid]
   );
@@ -325,18 +337,18 @@ export async function getOrganizationByIdForActor(orgId, actorUserId, actorGloba
   if (!Number.isFinite(oid)) return null;
   if (isPlatformAdmin(actorGlobalRole)) {
     const r = await query(
-      `SELECT id, name, description, details, created_by_user_id, created_at, updated_at
+      `SELECT id, name, description, details, is_active, created_by_user_id, created_at, updated_at
        FROM organizations WHERE id = $1 LIMIT 1`,
       [oid]
     );
     return r.rows[0] ?? null;
   }
   const r = await query(
-    `SELECT o.id, o.name, o.description, o.details, o.created_by_user_id, o.created_at, o.updated_at,
+    `SELECT o.id, o.name, o.description, o.details, o.is_active, o.created_by_user_id, o.created_at, o.updated_at,
             m.role AS membership_role
      FROM organizations o
      INNER JOIN organization_members m ON m.organization_id = o.id AND m.user_id = $2
-     WHERE o.id = $1 LIMIT 1`,
+     WHERE o.id = $1 AND o.is_active = TRUE LIMIT 1`,
     [oid, Number(actorUserId)]
   );
   return r.rows[0] ?? null;
@@ -372,10 +384,37 @@ export async function updateOrganizationById(orgId, patch, actorUserId, actorGlo
     `UPDATE organizations
      SET name = $1, description = $2, details = $3, updated_at = CURRENT_TIMESTAMP
      WHERE id = $4
-     RETURNING id, name, description, details, created_by_user_id, created_at, updated_at`,
+     RETURNING id, name, description, details, is_active, created_by_user_id, created_at, updated_at`,
     [name, description ?? null, details ?? null, oid]
   );
   return r.rows[0] ?? null;
+}
+
+/**
+ * @param {number|string} orgId
+ * @param {boolean} isActive
+ */
+export async function setOrganizationActiveById(orgId, isActive) {
+  const oid = Number(orgId);
+  if (!Number.isFinite(oid)) return null;
+  const r = await query(
+    `UPDATE organizations
+     SET is_active = $1, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2
+     RETURNING id, name, description, details, is_active, created_by_user_id, created_at, updated_at`,
+    [Boolean(isActive), oid]
+  );
+  return r.rows[0] ?? null;
+}
+
+/**
+ * @param {number|string} orgId
+ */
+export async function deleteOrganizationById(orgId) {
+  const oid = Number(orgId);
+  if (!Number.isFinite(oid)) return false;
+  const d = await query("DELETE FROM organizations WHERE id = $1 RETURNING id", [oid]);
+  return d.rows.length > 0;
 }
 
 /**

@@ -63,6 +63,7 @@ Vellum provides lightweight, role-aware creative reviews optimized for real-worl
 - **Designer/Contributor:** Upload files and track approval status
 - **Creative Reviewer:** Review files, provide feedback, approve/request changes
 - **Admin/Project Owner:** Manage users, roles, and project settings
+- **Password lifecycle:** Admin can set password at creation and reset passwords from user tables
 
 **Review Queue Dashboard**
 - Review-focused queue defaults to assets that still need attention

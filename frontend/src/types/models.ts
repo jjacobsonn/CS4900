@@ -65,6 +65,7 @@ export interface Organization {
   name: string;
   description?: string | null;
   details?: string | null;
+  isActive?: boolean;
   createdByUserId?: number | null;
   membershipRole?: string | null;
   createdAt?: string;

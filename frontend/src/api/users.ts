@@ -10,6 +10,7 @@ export function createUser(payload: {
   email: string;
   role: Role;
   displayName?: string;
+  password?: string;
 }): Promise<UserAccount> {
   return apiClient.post<UserAccount>("/users", payload);
 }

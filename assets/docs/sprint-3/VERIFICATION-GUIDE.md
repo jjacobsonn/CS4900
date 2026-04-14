@@ -208,6 +208,26 @@ Work through these in order the first time; later, spot-check by scenario.
 
 ---
 
+### Scenario 7.1 — “Password lifecycle: set + reset”
+
+**Goal:** Validate account provisioning and recovery flows used by admins.
+
+1. As **admin**, open **Admin → User Management**.
+2. Create a user with:
+   - email
+   - role
+   - password + confirm password (>= 10 chars)
+3. Log out and log in as that user with the new password.
+4. Log back in as **admin**; in Users table click **Reset password** for that user.
+5. Enter a new password (>= 10 chars), save, and verify old password no longer works.
+6. In an organization page (**Users** tab), repeat:
+   - Create new user with password
+   - Reset password from organization member row
+
+**Pass criteria:** User can log in with set password; reset replaces prior password; short passwords are rejected.
+
+---
+
 ### Scenario 8 — Edge cases (quick)
 
 | Case | What to do | Expect |

@@ -4,10 +4,12 @@ import { query } from "../config/database.js";
 import {
   addOrUpdateOrganizationMember,
   createOrganization,
+  deleteOrganizationById,
   getOrganizationByIdForActor,
   listOrganizationMembers,
   listOrganizationsForActor,
   removeOrganizationMember,
+  setOrganizationActiveById,
   updateOrganizationById
 } from "../services/organizationService.js";
 
@@ -97,6 +99,45 @@ router.patch("/:organizationId", async (req, res, next) => {
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
     next(error);
+  }
+});
+
+/**
+ * PATCH /api/organizations/:organizationId/status — admin only
+ * Body: { isActive: boolean }
+ */
+router.patch("/:organizationId/status", requireRole(["admin"]), async (req, res, next) => {
+  try {
+    const organizationId = Number(req.params.organizationId);
+    if (!Number.isFinite(organizationId)) {
+      return res.status(400).json({ error: "Invalid organization id" });
+    }
+    const { isActive } = req.body ?? {};
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({ error: "isActive (boolean) is required" });
+    }
+    const updated = await setOrganizationActiveById(organizationId, isActive);
+    if (!updated) return res.status(404).json({ error: "Organization not found" });
+    return res.json(updated);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * DELETE /api/organizations/:organizationId — admin only
+ */
+router.delete("/:organizationId", requireRole(["admin"]), async (req, res, next) => {
+  try {
+    const organizationId = Number(req.params.organizationId);
+    if (!Number.isFinite(organizationId)) {
+      return res.status(400).json({ error: "Invalid organization id" });
+    }
+    const deleted = await deleteOrganizationById(organizationId);
+    if (!deleted) return res.status(404).json({ error: "Organization not found" });
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
   }
 });
 

@@ -64,7 +64,14 @@ SELECT o.id, u.id,
        END
 FROM users u
 JOIN user_roles r ON r.id = u.role_id
-CROSS JOIN (SELECT id FROM organizations ORDER BY id LIMIT 1) o
+CROSS JOIN (
+  SELECT id
+  FROM organizations
+  WHERE name = 'Default organization'
+    AND description = 'Auto-created when enabling multi-tenant organizations.'
+  ORDER BY id
+  LIMIT 1
+) o
 WHERE COALESCE(u.is_active, TRUE) = TRUE
 ON CONFLICT (organization_id, user_id) DO NOTHING;
 

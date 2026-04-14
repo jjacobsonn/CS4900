@@ -1018,6 +1018,92 @@ button:disabled {
   color: #444;
 }
 
+.admin-org-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 220px;
+  gap: 0.6rem;
+  margin-top: 0.85rem;
+}
+
+.admin-org-tile-grid {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-org-tile {
+  border: 1.5px solid #111;
+  background: #fff;
+  padding: 0.65rem;
+  min-height: 220px;
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 0.45rem;
+}
+
+.admin-org-tile-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.admin-org-tile-description {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.admin-org-open-btn {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.org-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.org-tabs button.active {
+  background: #111;
+  color: #fff;
+}
+
+.manager-page {
+  row-gap: 1rem;
+}
+
+.manager-panel {
+  padding: 1.15rem 1.2rem;
+}
+
+.manager-tab-content {
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.1rem 0.2rem;
+}
+
+.assets-action-row {
+  margin-top: 0.9rem;
+  margin-bottom: 0.2rem;
+}
+
+.assets-action-row .file-link-btn {
+  padding: 0.55rem 0.95rem;
+}
+
+.org-back-btn {
+  padding: 0.55rem 0.95rem;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+}
+
 .login-hint {
   margin: 0 0 0.6rem;
   font-size: 0.72rem;
@@ -1182,6 +1268,10 @@ button:disabled {
   .admin-split-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-org-toolbar {
+    grid-template-columns: 1fr;
   }
 
   .admin-scroll-table {

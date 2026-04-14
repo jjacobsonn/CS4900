@@ -434,3 +434,81 @@ Production and local databases require **`asset_comments.asset_version_id`** (NO
 ---
 
 **Last Updated:** April 13, 2026
+
+---
+
+## April 14, 2026 — Password set/reset + org user admin flow polish
+
+### Tasks Completed
+
+- Added **set password + confirm password** fields to Admin user creation flow.
+- Added **Reset password** action to Admin users table for non-primary-admin accounts.
+- Added **set password + confirm password** fields to Organization `Users` tab ("Create new user" flow).
+- Added **Reset password** action for organization member rows.
+- Kept implementation lightweight (no external auth provider dependency), using existing backend `POST /api/users` and `PATCH /api/users/:id` password support.
+- Updated verification documentation with a dedicated password lifecycle test scenario in `assets/docs/sprint-3/VERIFICATION-GUIDE.md`.
+
+### Challenges
+
+- Maintaining parity between Admin and Organization user flows without duplicating too much UI logic.
+- Preserving primary admin protections while enabling practical reset workflows for all other users.
+
+### Next Steps
+
+- Add automated tests for frontend validation (password confirm mismatch, length checks) and reset action error handling.
+- Evaluate a first-login forced password change path for invite-created users in a future sprint.
+
+### Reflections
+
+- This is a practical middle ground for capstone scope and deployability: password lifecycle controls are now available where admins actually work, without introducing heavyweight identity infrastructure.
+
+---
+
+## April 14, 2026 — Project member assignments + manager workflow hardening
+
+### Tasks Completed
+
+- Implemented project-level assignment model without adding new global roles (kept only `admin`, `manager`, `reviewer`, `designer`).
+- Added migration `backend/db/migrations/20260414_project_members_assignments.sql` to create `project_members` with indexes and assignment audit metadata (`assigned_by_user_id`, `assigned_at`).
+- Added backend project team endpoints:
+  - `GET /api/projects/:projectId/members`
+  - `POST /api/projects/:projectId/members`
+  - `DELETE /api/projects/:projectId/members/:userId`
+- Updated visibility rules:
+  - Non-admin users now see projects/assets if they are org `OWNER`/`MANAGER` **or** explicitly assigned via `project_members`.
+  - Assignment-aware checks were added in organization/project access logic.
+- Updated manager permissions and UX:
+  - Managers can delete projects in their authorized scope.
+  - Managers can open project team management in `ProjectsPage` and add/remove assignees from organization members.
+  - Manager view no longer exposes admin assignment targets; backend also blocks manager attempts to assign platform admin or org owner users.
+- Refined `ProjectsPage` inputs:
+  - `Priority` changed from free text to dropdown (`None`, `Low`, `Medium`, `High`, `Urgent`).
+  - Removed `Client` field from Projects page create flow per current UX direction.
+- Applied migration locally with `npm run db:migrate` and validated frontend/backend compile checks.
+
+### Teammate Pull / Run Notes
+
+- Teammates can pull and run this branch after standard setup:
+  1. `npm install` (repo root and as needed per package)
+  2. `npm run db:migrate` in `backend/`
+  3. `npm run dev` (or usual backend + frontend start commands)
+- The key requirement is running migrations so `project_members` exists before using project team assignment UI.
+
+### Challenges
+
+- Avoiding role-model drift while introducing assignment granularity required careful guard updates (service-layer and route-layer).
+- Needed to enforce manager restrictions in both frontend and backend to avoid UI-only security assumptions.
+
+### Next Steps
+
+- Add assigned-member count and "my assigned projects" filters to improve day-to-day manager/designer/reviewer usability.
+- Add tests for project member assignment endpoints and visibility constraints.
+
+### Reflections
+
+- Project assignment provides the missing bridge between organization membership and actual work execution, while keeping the global role system simple and stable.
+- This aligns well with sprint goals: managers coordinate work allocation; designers/reviewers focus on assigned deliverables.
+
+---
+
+**Last Updated:** April 14, 2026

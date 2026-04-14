@@ -54,6 +54,8 @@ export async function getProjectDetail(projectId) {
        SELECT created_by_user_id FROM projects WHERE id = $1 AND created_by_user_id IS NOT NULL
        UNION
        SELECT owner_user_id FROM projects WHERE id = $1 AND owner_user_id IS NOT NULL
+       UNION
+       SELECT user_id FROM project_members WHERE project_id = $1
      )
      ORDER BY u.email`,
     [projectId]

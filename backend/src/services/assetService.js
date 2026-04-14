@@ -97,9 +97,18 @@ export async function listAssetsForUser(userId, globalRoleLower) {
      WHERE (
        (a.project_id IS NULL AND a.created_by_user_id = $1)
        OR EXISTS (
-         SELECT 1 FROM projects pr
+         SELECT 1
+         FROM projects pr
          INNER JOIN organization_members m ON m.organization_id = pr.organization_id
-         WHERE pr.id = a.project_id AND m.user_id = $1
+         WHERE pr.id = a.project_id
+           AND m.user_id = $1
+           AND m.role IN ('OWNER', 'MANAGER')
+       )
+       OR EXISTS (
+         SELECT 1
+         FROM project_members pm
+         WHERE pm.project_id = a.project_id
+           AND pm.user_id = $1
        )
      )
      ORDER BY a.id DESC`,

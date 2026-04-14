@@ -45,10 +45,21 @@ router.get("/", async (req, res, next) => {
 
     if (!isPlatformAdmin(req.role)) {
       whereParts.push(
-        `EXISTS (
-           SELECT 1 FROM organization_members m
-           WHERE m.organization_id = p.organization_id AND m.user_id = $${params.length + 1}
-         )`
+        `(
+          EXISTS (
+            SELECT 1
+            FROM organization_members m
+            WHERE m.organization_id = p.organization_id
+              AND m.user_id = $${params.length + 1}
+              AND m.role IN ('OWNER', 'MANAGER')
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM project_members pm
+            WHERE pm.project_id = p.id
+              AND pm.user_id = $${params.length + 1}
+          )
+        )`
       );
       params.push(uid);
     }
@@ -267,7 +278,7 @@ router.patch("/:projectId", requireRole(["admin", "owner", "manager"]), async (r
 /**
  * DELETE /api/projects/:projectId
  */
-router.delete("/:projectId", requireRole(["admin", "owner"]), async (req, res, next) => {
+router.delete("/:projectId", requireRole(["admin", "owner", "manager"]), async (req, res, next) => {
   try {
     const projectId = Number(req.params.projectId);
     if (!Number.isFinite(projectId)) {
@@ -280,7 +291,7 @@ router.delete("/:projectId", requireRole(["admin", "owner"]), async (req, res, n
 
     if (!isPlatformAdmin(req.role)) {
       try {
-        await assertProjectMinOrgRank(uid, projectId, req.role, ORG_RANK_OWNER);
+        await assertProjectMinOrgRank(uid, projectId, req.role, ORG_RANK_MANAGER);
       } catch (err) {
         if (err.status) return res.status(err.status).json({ error: err.message });
         throw err;
@@ -330,6 +341,141 @@ router.get("/:projectId", async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+});
+
+/**
+ * GET /api/projects/:projectId/members
+ */
+router.get("/:projectId/members", async (req, res, next) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    if (!Number.isFinite(projectId)) {
+      return res.status(400).json({ error: "Invalid project id" });
+    }
+    const uid = parseAuthUserId(req);
+    if (uid == null) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    try {
+      await assertProjectMembership(uid, projectId, req.role);
+    } catch (err) {
+      if (err.status) return res.status(err.status).json({ error: err.message });
+      throw err;
+    }
+    const result = await query(
+      `SELECT pm.project_id, pm.user_id, pm.assigned_at,
+              u.email,
+              COALESCE(u.display_name, u.email) AS display_name,
+              LOWER(r.role_code) AS role
+       FROM project_members pm
+       JOIN users u ON u.id = pm.user_id
+       JOIN user_roles r ON r.id = u.role_id
+       WHERE pm.project_id = $1
+       ORDER BY pm.assigned_at ASC`,
+      [projectId]
+    );
+    return res.json(result.rows);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * POST /api/projects/:projectId/members
+ * Body: { userId }
+ */
+router.post("/:projectId/members", requireRole(["admin", "owner", "manager"]), async (req, res, next) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const targetUserId = Number(req.body?.userId);
+    if (!Number.isFinite(projectId) || !Number.isFinite(targetUserId)) {
+      return res.status(400).json({ error: "projectId and userId are required" });
+    }
+    const uid = parseAuthUserId(req);
+    if (uid == null) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (!isPlatformAdmin(req.role)) {
+      try {
+        await assertProjectMinOrgRank(uid, projectId, req.role, ORG_RANK_MANAGER);
+      } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        throw err;
+      }
+    }
+    const projectOrg = await query("SELECT organization_id FROM projects WHERE id = $1", [projectId]);
+    if (projectOrg.rows.length === 0) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    const orgId = Number(projectOrg.rows[0].organization_id);
+    const memberCheck = await query(
+      "SELECT 1 FROM organization_members WHERE organization_id = $1 AND user_id = $2 LIMIT 1",
+      [orgId, targetUserId]
+    );
+    if (memberCheck.rows.length === 0) {
+      return res.status(400).json({ error: "User must belong to the same organization" });
+    }
+    if (!isPlatformAdmin(req.role)) {
+      const userRoleCheck = await query(
+        `SELECT LOWER(r.role_code) AS role
+         FROM users u
+         JOIN user_roles r ON r.id = u.role_id
+         WHERE u.id = $1
+         LIMIT 1`,
+        [targetUserId]
+      );
+      const targetGlobalRole = String(userRoleCheck.rows[0]?.role || "");
+      if (targetGlobalRole === "admin") {
+        return res.status(403).json({ error: "Managers cannot assign platform admins to projects" });
+      }
+      const orgRoleCheck = await query(
+        `SELECT role FROM organization_members WHERE organization_id = $1 AND user_id = $2 LIMIT 1`,
+        [orgId, targetUserId]
+      );
+      const targetOrgRole = String(orgRoleCheck.rows[0]?.role || "").toUpperCase();
+      if (targetOrgRole === "OWNER") {
+        return res.status(403).json({ error: "Managers cannot assign organization owners to projects" });
+      }
+    }
+    await query(
+      `INSERT INTO project_members (project_id, user_id, assigned_by_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (project_id, user_id) DO NOTHING`,
+      [projectId, targetUserId, uid]
+    );
+    return res.status(201).json({ projectId, userId: targetUserId });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * DELETE /api/projects/:projectId/members/:userId
+ */
+router.delete("/:projectId/members/:userId", requireRole(["admin", "owner", "manager"]), async (req, res, next) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const targetUserId = Number(req.params.userId);
+    if (!Number.isFinite(projectId) || !Number.isFinite(targetUserId)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+    const uid = parseAuthUserId(req);
+    if (uid == null) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    if (!isPlatformAdmin(req.role)) {
+      try {
+        await assertProjectMinOrgRank(uid, projectId, req.role, ORG_RANK_MANAGER);
+      } catch (err) {
+        if (err.status) return res.status(err.status).json({ error: err.message });
+        throw err;
+      }
+    }
+    await query("DELETE FROM project_members WHERE project_id = $1 AND user_id = $2", [projectId, targetUserId]);
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
   }
 });
 

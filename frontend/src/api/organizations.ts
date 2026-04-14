@@ -6,6 +6,7 @@ interface RawOrganization {
   name: string;
   description?: string | null;
   details?: string | null;
+  is_active?: boolean;
   created_by_user_id?: number | null;
   membership_role?: string | null;
   created_at?: string;
@@ -27,6 +28,7 @@ function toOrganization(raw: RawOrganization): Organization {
     name: raw.name,
     description: raw.description ?? undefined,
     details: raw.details ?? undefined,
+    isActive: raw.is_active ?? true,
     createdByUserId: raw.created_by_user_id ?? undefined,
     membershipRole: raw.membership_role ?? undefined,
     createdAt: raw.created_at,
@@ -76,6 +78,20 @@ export async function updateOrganization(
 ): Promise<Organization> {
   const raw = await apiClient.patch<RawOrganization>(`/organizations/${id}`, payload);
   return toOrganization(raw);
+}
+
+export async function getOrganizationById(id: number): Promise<Organization> {
+  const raw = await apiClient.get<RawOrganization>(`/organizations/${id}`);
+  return toOrganization(raw);
+}
+
+export async function setOrganizationActive(id: number, isActive: boolean): Promise<Organization> {
+  const raw = await apiClient.patch<RawOrganization>(`/organizations/${id}/status`, { isActive });
+  return toOrganization(raw);
+}
+
+export async function deleteOrganization(id: number): Promise<void> {
+  await apiClient.delete(`/organizations/${id}`);
 }
 
 export async function getOrganizationMembers(organizationId: number): Promise<OrganizationMemberRow[]> {

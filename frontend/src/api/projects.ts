@@ -23,6 +23,15 @@ export interface ProjectContributor {
   displayName: string;
 }
 
+export interface ProjectMember {
+  projectId: number;
+  userId: number;
+  email: string;
+  displayName: string;
+  role: string;
+  assignedAt?: string;
+}
+
 export interface ProjectAssetSummary {
   id: number;
   title: string;
@@ -57,6 +66,15 @@ interface RawContributor {
   id: number;
   email: string;
   display_name: string;
+}
+
+interface RawProjectMember {
+  project_id: number;
+  user_id: number;
+  email: string;
+  display_name: string;
+  role: string;
+  assigned_at?: string;
 }
 
 interface RawAssetSummary {
@@ -186,4 +204,24 @@ export async function updateProject(
 
 export async function deleteProject(id: number): Promise<void> {
   await apiClient.delete(`/projects/${id}`);
+}
+
+export async function getProjectMembers(projectId: number): Promise<ProjectMember[]> {
+  const rows = await apiClient.get<RawProjectMember[]>(`/projects/${projectId}/members`);
+  return rows.map((row) => ({
+    projectId: row.project_id,
+    userId: row.user_id,
+    email: row.email,
+    displayName: row.display_name,
+    role: row.role,
+    assignedAt: row.assigned_at
+  }));
+}
+
+export async function addProjectMember(projectId: number, userId: number): Promise<void> {
+  await apiClient.post(`/projects/${projectId}/members`, { userId });
+}
+
+export async function removeProjectMember(projectId: number, userId: number): Promise<void> {
+  await apiClient.delete(`/projects/${projectId}/members/${userId}`);
 }

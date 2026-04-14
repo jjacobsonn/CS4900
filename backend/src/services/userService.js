@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 
 const BCRYPT_SALT_ROUNDS = 10;
 const PLACEHOLDER_HASH = "$2b$10$example_hash_replace_in_production";
+const MIN_PASSWORD_LENGTH = 4;
 
 /**
  * Map a lowercase role string used by the frontend to the canonical
@@ -101,8 +102,8 @@ export async function createUserAccount({ email, role, displayName, password }) 
   let passwordHash = PLACEHOLDER_HASH;
 
   if (normalizedPassword) {
-    if (normalizedPassword.length < 10) {
-      const error = new Error("Password must be at least 10 characters.");
+    if (normalizedPassword.length < MIN_PASSWORD_LENGTH) {
+      const error = new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       error.status = 400;
       throw error;
     }
@@ -328,8 +329,8 @@ export async function patchUserById(id, patch) {
 
   if (patch.password !== undefined && String(patch.password).trim() !== "") {
     const normalizedPassword = String(patch.password).trim();
-    if (normalizedPassword.length < 10) {
-      const error = new Error("Password must be at least 10 characters.");
+    if (normalizedPassword.length < MIN_PASSWORD_LENGTH) {
+      const error = new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       error.status = 400;
       throw error;
     }

@@ -17,11 +17,13 @@ CREATE TABLE IF NOT EXISTS organizations (
   description TEXT,
   details TEXT,
   created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_organizations_created_at ON organizations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_organizations_is_active ON organizations(is_active);
 
 CREATE TABLE IF NOT EXISTS organization_members (
   organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,

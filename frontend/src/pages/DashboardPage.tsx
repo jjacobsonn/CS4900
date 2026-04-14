@@ -60,12 +60,14 @@ export function DashboardPage({ role }: { role: Role }) {
 
   const summary = useMemo(
     () => ({
+      projects: projects.length,
+      assets: assets.length,
       inReview: assets.filter((asset) => asset.status === "In Review").length,
       changesRequested: assets.filter((asset) => asset.status === "Changes Requested").length,
       draft: assets.filter((asset) => asset.status === "Draft").length,
       approved: assets.filter((asset) => asset.status === "Approved").length
     }),
-    [assets]
+    [assets, projects]
   );
 
   const onProjectFilterChange = (value: string) => {
@@ -81,6 +83,14 @@ export function DashboardPage({ role }: { role: Role }) {
       <div className="panel dashboard-summary">
         <h1>Review Queue</h1>
         <div className="dashboard-summary-grid">
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Projects</span>
+            <strong>{summary.projects}</strong>
+          </div>
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Assets</span>
+            <strong>{summary.assets}</strong>
+          </div>
           <div className="dashboard-metric">
             <span className="dashboard-metric-label">In Review</span>
             <strong>{summary.inReview}</strong>
@@ -144,7 +154,7 @@ export function DashboardPage({ role }: { role: Role }) {
       <div className="panel dashboard-results">
         <div className="dashboard-results-header">
           <div>
-            <h1>Queue Items</h1>
+            <h1>Dashboard Overview</h1>
             <p className="dashboard-filter-note">
               {filteredAssets.length} matching asset{filteredAssets.length === 1 ? "" : "s"}
             </p>
@@ -176,12 +186,64 @@ export function DashboardPage({ role }: { role: Role }) {
         {loading && <p>Loading assets...</p>}
         {error && <p role="alert">{error}</p>}
         {!loading && !error && (
-          <div className="asset-grid">
-            {filteredAssets.map((asset) => (
-              <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
-            ))}
-            {filteredAssets.length === 0 && <p>No assets found.</p>}
-          </div>
+          <>
+            <div className="admin-callout">
+              <strong>Project Snapshot</strong>
+              {projects.length === 0 ? (
+                <p>No projects available yet.</p>
+              ) : (
+                <div className="admin-scroll-table">
+                  <table className="admin-table compact">
+                    <thead>
+                      <tr>
+                        <th>Project</th>
+                        <th>Status</th>
+                        <th>Assets</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projects.slice(0, 8).map((project) => (
+                        <tr key={project.id}>
+                          <td data-label="Project">{project.name}</td>
+                          <td data-label="Status">{project.status}</td>
+                          <td data-label="Assets">{project.assetCount ?? 0}</td>
+                          <td data-label="Actions" className="actions-cell">
+                            <button type="button" className="secondary-btn small" onClick={() => onProjectFilterChange(String(project.id))}>
+                              View queue
+                            </button>
+                            {canUpload ? (
+                              <button
+                                type="button"
+                                className="secondary-btn small"
+                                onClick={() => navigate(`/upload?projectId=${project.id}`)}
+                              >
+                                Upload
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="admin-callout">
+              <strong>Asset Queue</strong>
+              <div className="asset-grid">
+                {filteredAssets.map((asset) => (
+                  <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
+                ))}
+                {filteredAssets.length === 0 && (
+                  <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
+                    No assets found for current filters.
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </section>

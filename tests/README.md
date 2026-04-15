@@ -27,14 +27,15 @@ This runs backend tests, then frontend tests. No database or server needs to be 
 
 | File | What it covers |
 |------|----------------|
-| **assetsApi.test.js** | Assets API routes with **mocked DB**. Tests: POST create asset (full flow: status lookup → insert asset → insert version → getAssetById), PATCH status (valid + invalid status), GET list, **role checks** (403 without `X-Vellum-Role`, 403 for wrong role on create vs status), POST comment. |
+| **assetsApi.test.js** | Assets API routes with **mocked DB**. Tests: POST create asset (full flow: status lookup → insert asset → insert version → getAssetById), PATCH status (valid + invalid status), GET list, **JWT** (401 without Bearer, 403 for wrong role on create), POST comment, multipart upload. |
+| **jwtService.test.js** | **JWT helpers** only (no HTTP/DB). Tests: sign/verify roundtrip (`sub`, lowercased `role`, optional `email`), missing `JWT_SECRET`, malformed token, wrong signing secret. |
 | **userRoleService.test.js** | User role service with **mocked DB**. Tests: `getAllUserRoles` (success + error path), `getUserRoleByCode`, `getUserRoleById` (found, not found, error). |
 
 **Details:**
 
-- The database module (`config/database.js`) is mocked in both files, so no real PostgreSQL is required.
-- Assets tests use Supertest against the Express `app`; each test sets up the exact query sequence the service expects (e.g. four mocks for createAsset).
-- Role-protected routes require the `X-Vellum-Role` header (designer/reviewer/admin) as used by the frontend.
+- The database module (`config/database.js`) is mocked for **assets** and **userRole** tests, so no real PostgreSQL is required. **jwtService** tests do not touch the DB.
+- Assets tests use Supertest against the Express `app`; each test sets up the exact query sequence the service expects (e.g. four mocks for createAsset). Protected routes expect an **`Authorization: Bearer <JWT>`** header (same as the browser after login).
+- **Three** backend test files: `assetsApi.test.js`, `jwtService.test.js`, `userRoleService.test.js`.
 
 ---
 
@@ -47,10 +48,12 @@ This runs backend tests, then frontend tests. No database or server needs to be 
 | File | What it covers |
 |------|----------------|
 | **pages/DashboardPage.test.tsx** | Dashboard loads asset list (mocked `getAssets`), shows assets, and **status filter** (e.g. select "Draft" hides others). |
-| **pages/AssetDetailPage.test.tsx** | Detail page loads asset and comments (mocked `getAsset`, `getComments`, `getAssetVersions`), **Approve** button calls `patchAssetStatus`, and **Post Comment** calls `addComment` with correct payload. |
+| **pages/AssetDetailPage.test.tsx** | Detail page loads asset and comments (mocked `getAsset`, `getComments`, `getAssetVersions`); **Approve** sends `approved_internal`; **Request changes** sends `changes_requested_internal`; **Post Comment** calls `addComment` with correct payload. |
 | **pages/UploadPage.test.tsx** | **Validation:** submit without file shows "Please select a file"; with file but no title shows "Title is required." **Submit:** with file + title calls `createAsset` with correct payload. |
 | **utils/format.test.ts** | `statusLabel` and `formatDate` return expected strings. |
-| **utils/permissions.test.ts** | **Role permissions:** `canReview("reviewer")` true, `canReview("designer")` false; `canAccessUpload("designer")` true, `canAccessUpload("reviewer")` false. |
+| **utils/permissions.test.ts** | **Role permissions:** `canReview` for reviewer and designer; `canAccessUpload("designer")` true, `canAccessUpload("reviewer")` false. |
+| **utils/assetStatus.test.ts** | Maps API / lookup statuses to dashboard display buckets. |
+| **utils/workflowReview.test.ts** | Reviewer actions and internal status keys for approve / request changes. |
 
 **Details:**
 
@@ -66,8 +69,8 @@ To verify the full app including **login** and backend auth:
 1. **Database**
    - PostgreSQL running, database `vellum` created.
    - Schema and seeds applied: from project root run  
-     `npm run init-db`  
-     (or `psql -U postgres -d postgres -f database/setup.sql`).
+     `npm run db:setup` (or `npm run init-db` — same script).  
+     Configure `backend/.env` first; see [database/README.md](../database/README.md).
 
 2. **Backend**
    - In `backend/`: copy `.env.example` to `.env` and set `DB_*` and `PORT` if needed.

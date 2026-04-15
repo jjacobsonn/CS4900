@@ -16,18 +16,28 @@ export const handlers = [
     return HttpResponse.json(asset);
   }),
   http.post("/api/assets", async ({ request }) => {
-    const body = (await request.json()) as { title: string; description?: string };
+    const contentType = request.headers.get("content-type") || "";
+    const body = contentType.includes("multipart/form-data")
+      ? await request.formData()
+      : ((await request.json()) as { title: string; description?: string });
     const now = new Date().toISOString();
     const nextId = db.assets.reduce((max, asset) => Math.max(max, asset.id), 0) + 1;
+    const title = body instanceof FormData ? String(body.get("title") || "") : body.title;
+    const description = body instanceof FormData ? String(body.get("description") || "") : body.description ?? null;
+    const file = body instanceof FormData ? body.get("file") : null;
     const newAsset = {
       id: nextId,
-      title: body.title,
-      description: body.description ?? null,
+      title,
+      description,
       owner: "Frontend User",
-      status: "Draft" as const,
+      status: "In Review" as const,
       current_version: "v1.0",
       created_at: now,
-      updated_at: now
+      updated_at: now,
+      file_name: file instanceof File ? file.name : null,
+      mime_type: file instanceof File ? file.type : null,
+      size_bytes: file instanceof File ? file.size : null,
+      file_url: file instanceof File ? `/uploads/${file.name}` : null
     };
     db.assets.unshift(newAsset);
     db.commentsByAsset[String(newAsset.id)] = [];

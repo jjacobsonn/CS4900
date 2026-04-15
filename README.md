@@ -63,15 +63,21 @@ Vellum provides lightweight, role-aware creative reviews optimized for real-worl
 - **Designer/Contributor:** Upload files and track approval status
 - **Creative Reviewer:** Review files, provide feedback, approve/request changes
 - **Admin/Project Owner:** Manage users, roles, and project settings
+- **Password lifecycle:** Admin can set password at creation and reset passwords from user tables
 
-**Multi-Format File Support**
-- Images, PDFs, Office documents
-- Text, code files, CSV, JSON
-- Archive files (ZIP) and more
+**Review Queue Dashboard**
+- Review-focused queue defaults to assets that still need attention
+- Summary metrics for In Review, Changes Requested, Draft, and Approved
+- Dedicated filter panel with queue scope and title search
+
+**Asset Upload and Preview**
+- Designer/admin upload flow stores real files on the backend server
+- Supported upload types: images and PDFs
+- Asset detail page shows in-page preview plus open-full-file actions
 
 **Contextual Feedback**
-- Comment on files with approval context
-- Version history tracking
+- Comment on assets with approval context
+- Lightweight version history tracking
 - Clear visual approval indicators
 
 ---
@@ -122,12 +128,13 @@ This screenshot shows:
 
 - **[Testing Plan (Whitebox)](tests/testing-plan-whitebox.md)** - Unit and integration testing strategy
 - **[User Acceptance Test Plan](assets/docs/sprint-1/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
+- **[Verification guide (Sprint 3)](assets/docs/sprint-3/VERIFICATION-GUIDE.md)** - Automated tests, `db:deploy`, role matrix, and real-world manual scenarios
 
 ### Project Management
 
 - **[Project Follow-up](assets/docs/project-management/project-follow-up.md)** - Sprint review and status tracking
 - **[Schedule](assets/docs/project-management/schedule.md)** - Project timeline and milestones
-- **[Sprint 2 Purpose & Review Requirements](assets/docs/sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** - Four-week review process; master checklist so everything is done
+- **[Sprint 2 documentation](assets/docs/sprint-2/README.md)** - Requirements, workflow, engineering notes, QA, and [review checklist](assets/docs/sprint-2/operations/sprint-review-checklist.md)
 - **[Review Prep & Cadence](assets/docs/project-management/review-prep-and-cadence.md)** - Before-meeting prep and sprint review checklist
 - **[Sprint 1 Review Checklist](assets/docs/project-management/sprint1-review-checklist.md)** - Review preparation checklist
 
@@ -210,26 +217,29 @@ Or using a GUI tool like pgAdmin:
 4. Name it `vellum`
 5. Click "Save"
 
-#### 3.2 Run Database Setup Script
+#### 3.2 Run database setup (schema + migrations)
 
-From the project root directory:
+Configure **`backend/.env`** from `backend/.env.example` (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, etc.).
+
+From the **project root**:
 
 ```bash
-# Preferred project command
-npm run init-db
-
-# Equivalent direct psql command
-psql -U postgres -d postgres -f database/setup.sql
+npm run db:setup
 ```
 
-**Full guide (prerequisites, verification, troubleshooting):** [database/README.md](database/README.md)
+Same as `npm run init-db` (alias). This runs `database/setup.sql` (creates `vellum` and core schema) **and** every file in `backend/db/migrations/*.sql` in order.
 
-The setup script will:
-- Create all required tables (users, files, file_versions, comments, approval_history)
-- Create normalized lookup tables (user_roles, approval_statuses)
-- Insert default/initial records (roles and statuses)
-- Create indexes for performance
-- Set up triggers for automatic timestamp updates
+**Full guide:** [database/README.md](database/README.md)
+
+The combined run creates tables, lookups, seeds, Sprint 2 project/activity migrations, and indexes/triggers as defined in those SQL files.
+
+**Already have a database and only need new migrations?** From the project root:
+
+```bash
+npm run db:deploy
+```
+
+(`npm run db:migrate` and `npm run migrate` are the same.) Requires `psql` on your PATH and `backend/.env`. See [Backend runbook](assets/docs/sprint-3/backend/BACKEND-RUNBOOK.md) for details.
 
 #### 3.3 Verify Database Setup
 
@@ -266,7 +276,7 @@ NODE_ENV=development
 JWT_SECRET=your_jwt_secret_key_here
 
 # File Upload Configuration
-UPLOAD_DIR=./uploads
+UPLOAD_DIR=backend/uploads
 MAX_FILE_SIZE=10485760  # 10MB in bytes
 ```
 
@@ -321,14 +331,21 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 1. **Database:** Verify tables exist and lookup data is populated
 2. **Backend:** Check that server starts without errors
 3. **Frontend:** Verify React app loads in browser
-4. **API Connection:** Test API endpoints (when implemented)
+4. **API Connection:** Verify login, dashboard data, and asset upload against the real backend
 
 ### Default URLs
 
 - **Backend API:** http://localhost:3000/api
 - **Backend Health Check:** http://localhost:3000/api/health
 - **User Roles API:** http://localhost:3000/api/user-roles
+- **Uploaded Files:** http://localhost:3000/uploads/<stored-file-name>
 - **Frontend GUI:** http://localhost:5173 (Vite dev server)
+
+### Current App Notes
+
+- The dashboard behaves as a **Review Queue** by default, showing only `In Review` and `Changes Requested` assets unless the queue scope is widened.
+- The old `Backend Test` page has been removed from the user-facing navigation.
+- Uploaded files are stored locally on the backend server for the MVP
 
 ### Troubleshooting
 

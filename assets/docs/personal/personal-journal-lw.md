@@ -73,4 +73,83 @@ Sprint 1 frontend goals were met with a runnable GUI, tested UI flows, and clear
 
 ---
 
-**Last Updated:** February 18, 2026
+## Sprint 2 (March 12, 2026)
+
+**Tasks Completed:**
+- Implemented real asset upload flow across frontend and backend:
+  - Frontend upload now sends multipart `FormData`
+  - Backend accepts uploads with `multer`
+  - Uploaded files are stored on the backend server and linked to asset versions
+- Added upload validation and restrictions:
+  - Limited uploads to image and PDF files
+  - Added file-size/type validation in the UI
+- Improved asset detail experience:
+  - Replaced placeholder preview with real image/PDF preview behavior
+  - Added open-full-file behavior and image lightbox-style enlargement
+  - Displayed upload notes in the asset detail view
+- Improved dashboard behavior and clarity:
+  - Converted dashboard into a clearer review queue
+  - Default queue now focuses on `In Review` and `Changes Requested`
+  - Added queue summary metrics and a stronger filter layout
+- Improved responsive/admin UX:
+  - Added mobile hamburger navigation for smaller screens
+  - Removed the Backend Test page from user-facing navigation
+  - Reworked Admin page layout to behave better on mobile
+- Fixed backend/frontend integration issues:
+  - Preserved file preview data after status changes
+  - Fixed dev proxy behavior for uploaded files
+  - Isolated upload-related backend tests so real uploads are not deleted
+- Updated documentation to match the implemented system state
+
+**Challenges:**
+- Real upload support touched multiple layers at once: database schema, backend routes, frontend forms, and previews
+- File-link behavior in local development required Vite proxy fixes so uploaded files resolved correctly
+- Some UI improvements looked acceptable in code but needed browser iteration to actually feel better in layout
+- Test behavior briefly overlapped with real uploaded files before upload directories were isolated
+
+**Accomplishments:**
+- Moved asset upload from metadata-only behavior to a real working MVP with stored files
+- Improved the product feel of the asset detail page with real previews instead of placeholder-only UI
+- Made the dashboard more workflow-oriented and easier to understand as a review tool
+- Helped reduce confusing or overly developer-facing UI by removing Backend Test from the main experience
+- Brought top-level documentation closer to the actual implemented state of the application
+
+**Next Steps:**
+- Continue polishing the review queue cards and overall dashboard readability
+- Add a more complete revised-version upload flow from the asset detail page
+- Consider moving file storage from local disk to cloud/object storage later
+- Keep tightening admin UX and documentation for sprint review readiness
+
+**Reflections:**
+Sprint 2 work made the app feel substantially more real. The biggest improvement was shifting uploads from placeholder/metadata behavior into a usable end-to-end flow with stored files and previews. The UI also became more intentional by focusing the dashboard on review work and removing or reducing screens that felt like development artifacts rather than product features.
+
+---
+
+## Sprint 2 - Individual Tasks
+
+### Completed Tasks
+- [x] Real frontend-to-backend asset upload flow
+- [x] Backend multipart upload handling and file storage
+- [x] Upload validation for supported file types and size
+- [x] Asset detail preview improvements for images and PDFs
+- [x] Upload notes surfaced in asset detail page
+- [x] Dashboard redesign toward review queue workflow
+- [x] Mobile hamburger navigation
+- [x] Admin mobile responsiveness improvements
+- [x] Removal of Backend Test from user-facing navigation
+- [x] Upload/file-link bug fixes and test isolation improvements
+- [x] README documentation updates
+
+---
+
+## Notes & Observations
+
+- Real file upload required more coordination work than a typical frontend-only feature because route behavior, file serving, database metadata, and local dev setup all had to agree
+- Small layout decisions had a big impact on perceived quality, especially on the dashboard and asset detail page
+- Mobile-specific navigation and admin table behavior needed dedicated handling rather than relying on desktop layouts to scale down automatically
+- Documentation drift happens quickly once implementation moves beyond the original sprint plan, so keeping readmes current matters for demos and reviews
+- Next sprint focus or Jackson focus should probably be multi-tennant and getting permissions properly alligned
+
+---
+
+**Last Updated:** March 12, 2026

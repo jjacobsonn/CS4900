@@ -28,8 +28,11 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
 
   return (
     <div className="centered-page">
-      <form className="panel login-form" onSubmit={handleSubmit}>
-        <div className="logo-tile">Vellum</div>
+      <form className="card panel login-form" onSubmit={handleSubmit}>
+        <div className="logo-tile">
+          <img src="/vellum-logo.png" alt="" />
+          <span>Vellum</span>
+        </div>
         <p className="login-hint">
           Seed accounts: admin@vellum.test, designer@vellum.test, reviewer@vellum.test
         </p>
@@ -39,7 +42,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="admin@vellum.test (or designer/reviewer)"
+            placeholder="admin@vellum.test (or designer/reviewer/manager/client reviewer)"
           />
         </label>
         <label>
@@ -51,9 +54,12 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
             placeholder="TestPass123!"
           />
         </label>
-        <button type="submit">Login</button>
+        <button className="btn btn-primary mt-3" type="submit">Login</button>
         {error && <p role="alert">{error}</p>}
       </form>
     </div>
   );
 }
+
+
+

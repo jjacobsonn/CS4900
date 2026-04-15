@@ -1,78 +1,56 @@
-# Database setup — one command
+# Database setup — init-db
 
-Initialize the **PostgreSQL** schema, baseline seed data, and **all** SQL migrations with a single npm script from the **repo root**.
+How to run the database initialization script for Vellum so the backend can connect and the app (including login) works.
 
 ---
 
 ## Prerequisites
 
-- **PostgreSQL** running (`pg_isready` succeeds).
-- **`psql`** on your `PATH`.
-- **`backend/.env`** (copy from `backend/.env.example`) with at least:
-
-| Variable | Purpose |
-|----------|---------|
-| `DB_HOST` | Default `localhost` |
-| `DB_PORT` | Default `5432` |
-| `DB_USER` | Default `postgres` |
-| `DB_PASSWORD` | Set if your server requires a password |
-| `DB_NAME` | App database name, default `vellum` |
-
-The setup script uses the same variables as `backend/src/config/database.js`.
+- **PostgreSQL** installed and running (e.g. `pg_isready` succeeds, or `brew services start postgresql` on macOS).
+- **psql** available on your PATH (comes with PostgreSQL).
+- You have a superuser or DB owner account (default: `postgres`).
 
 ---
 
-## Recommended: full bootstrap
+## Run init-db (recommended)
+
+From the **project root** (the repo root where `package.json` and `database/` live):
 
 ```bash
-npm run db:setup
+npm run init-db
 ```
-
-Alias: `npm run init-db` (same command).
 
 This runs:
 
-1. **`database/setup.sql`** against database **`postgres`** — creates **`vellum`** if needed, core tables, lookups, sample assets, etc.
-2. Every **`backend/db/migrations/*.sql`** file in **sorted filename order** against **`DB_NAME`** (usually `vellum`) — projects/clients, asset columns, client workflow statuses, activity + role seeds, etc.
-
-## Deployment-safe migrations (Vercel / shared envs)
-
-Use migrations as the source of truth for deploys:
-
 ```bash
-npm run db:deploy
+psql -U postgres -d postgres -f database/setup.sql
 ```
 
-Alias: `npm run db:migrate` (same command).
+- **-U postgres** — connect as user `postgres` (change if your DB user is different).
+- **-d postgres** — connect to the default `postgres` database first (the script will create/use `vellum`).
+- **-f database/setup.sql** — execute the setup script.
 
-This applies only `backend/db/migrations/*.sql` in sorted order against `DB_NAME` and does not run local bootstrap SQL.
+If your PostgreSQL user is not `postgres`, either:
 
-## Team sync: reset and rebuild from scratch
+- Set the `PGUSER` environment variable, e.g. `PGUSER=myuser npm run init-db`, or  
+- Run the equivalent `psql` command with your user:
 
-When a teammate needs their local DB to exactly match the current repo schema and seeds, run:
+  ```bash
+  psql -U your_username -d postgres -f database/setup.sql
+  ```
 
-```bash
-npm run db:sync
-```
+---
 
-Alias: `npm run db:reset` (same command).
+## What the script does
 
-This will:
+- Creates the **vellum** database if it does not exist.
+- Connects to **vellum** and:
+  - Creates schema (tables, lookups, assets, users, comments, versions, etc.).
+  - Inserts default lookup data (roles, statuses, comment types).
+  - Inserts seeded users (`admin@vellum.test`, `designer@vellum.test`, `reviewer@vellum.test`) and sample assets/comments.
+  - Creates indexes and triggers as defined in `setup.sql`.
 
-1. Terminate active connections to `DB_NAME`.
-2. Drop the database if it exists.
-3. Recreate and seed via `database/setup.sql`.
-4. Re-apply all SQL migrations in sorted order.
-
-Use this after pulling migration/schema changes from teammates.
-
-## Seed hashing note
-
-Seed users now use real bcrypt hashes (no placeholder hash values in seed SQL).
-
-Re-running is mostly safe: migrations use `IF NOT EXISTS` / `ON CONFLICT` where appropriate. For a **clean slate**, run `npm run db:sync`.
-
-**Production:** do not rely on dev seeds; see [deployment-and-super-admin.md](../assets/docs/sprint-2/deployment-and-super-admin.md).
+After a successful run, the backend can use the `vellum` database and you can log in with the seeded accounts (see [tests/README.md](../tests/README.md) for login details).
 
 ---
 
@@ -80,7 +58,12 @@ Re-running is mostly safe: migrations use `IF NOT EXISTS` / `ON CONFLICT` where 
 
 ```bash
 psql -U postgres -d vellum -c "\dt"
-psql -U postgres -d vellum -c "SELECT id, email FROM users ORDER BY id;"
+```
+
+You should see the application tables. To check seeded users:
+
+```bash
+psql -U postgres -d vellum -c "SELECT id, email FROM users;"
 ```
 
 ---
@@ -89,21 +72,28 @@ psql -U postgres -d vellum -c "SELECT id, email FROM users ORDER BY id;"
 
 | Issue | What to try |
 |-------|-------------|
-| `psql: command not found` | Install PostgreSQL client tools; add `bin` to `PATH`. |
-| `password authentication failed` | Set `DB_PASSWORD` in `backend/.env` to match `pg_hba` / role password. |
-| `permission denied to create database` | Use a superuser (`postgres`) or a role with `CREATEDB`. |
-| Script stops on a migration | Fix the underlying error; `ON_ERROR_STOP` is enabled so failures are visible. |
+| `psql: command not found` | Add PostgreSQL bin to PATH or use the full path to `psql`. |
+| `connection refused` | Start PostgreSQL (e.g. `brew services start postgresql`, or your OS service manager). |
+| `password authentication failed` | Use the correct user/password; for local trust auth, ensure `pg_hba.conf` allows it. |
+| `permission denied to create database` | Run as a superuser (e.g. `postgres`) or a user with `CREATEDB`. |
+| Script already run / “relation already exists” | Safe to re-run; the script uses `IF NOT EXISTS` and `ON CONFLICT DO NOTHING` where appropriate. For a clean slate, drop and recreate the database, then run `npm run init-db` again. |
 
 ---
 
-## Manual psql (optional)
+## Direct psql (no npm)
 
-If you cannot use npm:
+If you prefer not to use npm:
 
 ```bash
-psql -h localhost -p 5432 -U postgres -d postgres -v ON_ERROR_STOP=1 -f database/setup.sql
-# then each migration against vellum, in sorted order:
-psql -h localhost -p 5432 -U postgres -d vellum -v ON_ERROR_STOP=1 -f backend/db/migrations/<file>.sql
+# From project root
+psql -U postgres -d postgres -f database/setup.sql
 ```
 
-Prefer **`npm run db:setup`** so credentials stay in one place.
+Or from inside psql:
+
+```bash
+psql -U postgres -d postgres
+\i database/setup.sql
+```
+
+(Use the path that resolves to `database/setup.sql` from your current directory.)

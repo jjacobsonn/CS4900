@@ -8,13 +8,12 @@ Express.js RESTful API server for the Vellum digital asset review platform.
 backend/
 ├── src/
 │   ├── config/
-│   │   ├── database.js             # PostgreSQL connection pool
-│   │   └── upload.js               # Multer upload config and file URL helpers
+│   │   └── database.js             # PostgreSQL connection pool
 │   ├── routes/
-│   │   ├── assets.js               # Assets API endpoints (CRUD, upload, status, comments, versions)
+│   │   ├── assets.js               # Assets API endpoints (CRUD, status, comments)
 │   │   └── userRoles.js            # User roles API endpoints
 │   ├── services/
-│   │   ├── assetService.js         # Business logic for assets, file metadata, and workflows
+│   │   ├── assetService.js         # Business logic for assets and workflows
 │   │   └── userRoleService.js      # Business logic for user roles
 │   ├── middleware/                 # Custom middleware (future)
 │   ├── __tests__/
@@ -36,7 +35,7 @@ backend/
 2. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials and set JWT_SECRET (required).
+   # Edit .env with your database credentials
    ```
 
 3. **Ensure database is set up:**
@@ -62,29 +61,20 @@ Server will start on `http://localhost:3000` (or PORT from .env)
 ## API Endpoints
 
 ### Health Check
-- `GET /api/health` - Server health status
+- `GET /health` - Server health status
 
-### User Roles (requires JWT)
+### User Roles
 - `GET /api/user-roles` - Get all user roles
 - `GET /api/user-roles/:code` - Get role by code (DESIGNER, REVIEWER, ADMIN)
 - `GET /api/user-roles/id/:id` - Get role by ID
 
-### Authentication
-- `POST /api/auth/login` — email/password; returns `{ token, user }`. Send `Authorization: Bearer <token>` on other `/api/*` routes (except `/api/health` and this login).
-- Protected routes return `401` without a valid JWT, and `403` when the JWT role is not allowed for that action.
-
-### Assets (JWT + role-protected)
-- `GET /api/assets` - List all assets (requires valid JWT)
+### Assets (role-protected)
+- `GET /api/assets` - List all assets (any authenticated role)
 - `GET /api/assets/:id` - Get asset by ID
-- `POST /api/assets` - Create asset (designer, manager, admin, or super_admin; multipart supported)
-- `PATCH /api/assets/:id/status` - Update asset status (reviewer-capable roles)
-- `POST /api/assets/:id/comments` - Add comment (actor is the authenticated user)
+- `POST /api/assets` - Create asset (designer or admin; requires `X-Vellum-Role`)
+- `PATCH /api/assets/:id/status` - Update asset status (reviewer or admin)
+- `POST /api/assets/:id/comments` - Add comment to asset
 - `GET /api/assets/:id/comments` - List comments for asset
-- `GET /api/assets/:id/versions` - List asset versions
-- `POST /api/assets/:id/versions` - Create a new asset version (designer-capable roles; multipart supported)
-
-### Uploaded Files
-- `GET /uploads/:filename` - Serve uploaded asset files stored on the backend server
 
 ## Testing
 
@@ -98,7 +88,7 @@ npm test
 npm run test:watch
 ```
 
-Tests use mocked database connections, so no live database is required for unit tests. Upload route tests write to an isolated temporary directory during test runs.
+Tests use mocked database connections, so no live database is required for unit tests.
 
 - **assetsApi.test.js** – Mocks `config/database.js` and exercises assets routes (POST create, PATCH status, GET list, role checks, comments). Each test resets mocks and supplies the exact query sequence the service expects (e.g. createAsset: status lookup → insert asset → insert version → getAssetById).
 - **userRoleService.test.js** – Unit tests for user role service (with mocked DB and error-path tests).
@@ -130,7 +120,7 @@ The `database.js` module provides:
 
 ## Environment Variables
 
-See `.env.example` or `backend/.env` for required variables:
+See `.env.example` for required variables:
 - `DB_HOST` - Database host (default: localhost)
 - `DB_PORT` - Database port (default: 5432)
 - `DB_NAME` - Database name (vellum)
@@ -138,4 +128,3 @@ See `.env.example` or `backend/.env` for required variables:
 - `DB_PASSWORD` - Database password
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment (development/production)
-- `UPLOAD_DIR` - Relative or absolute upload directory used by multer/static file serving

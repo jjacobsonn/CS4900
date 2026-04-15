@@ -6,16 +6,10 @@
 -- ============================================================================
 -- BOOTSTRAP: Create and connect to database
 -- ============================================================================
--- Target DB name comes from psql -v dbname=... (see scripts/db-setup.mjs).
--- If unset, default to vellum so manual runs still work.
-\if :{?dbname}
-\else
-\set dbname vellum
-\endif
 
-SELECT format('CREATE DATABASE %I', :'dbname')
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = :'dbname')\gexec
-\connect :"dbname"
+SELECT 'CREATE DATABASE vellum'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'vellum')\gexec
+\connect vellum;
 
 -- ============================================================================
 -- STEP 1: Create Database Schema
@@ -118,18 +112,9 @@ CREATE TABLE IF NOT EXISTS approval_history (
 -- ============================================================================
 
 -- Add foreign key constraint for current_version_id (must be done after file_versions table exists)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'fk_files_current_version'
-    ) THEN
-        ALTER TABLE files
-        ADD CONSTRAINT fk_files_current_version
-        FOREIGN KEY (current_version_id) REFERENCES file_versions(id);
-    END IF;
-END $$;
+ALTER TABLE files 
+ADD CONSTRAINT fk_files_current_version 
+FOREIGN KEY (current_version_id) REFERENCES file_versions(id);
 
 -- ============================================================================
 -- STEP 5: Create Indexes for Performance
@@ -174,15 +159,17 @@ ON CONFLICT (status_code) DO NOTHING;
 -- STEP 7: Insert Test/Seed Data (Optional - for development)
 -- ============================================================================
 
--- Insert Test Users (bcrypt-hashed)
+-- Insert Test Users (passwords are hashed - these are examples)
+-- In production, use proper password hashing (bcrypt, argon2, etc.)
 -- Password for all test users: TestPass123!
+-- These are example hashes - replace with actual bcrypt hashes in implementation
 
 INSERT INTO users (email, password_hash, role_id, is_active) VALUES
-    ('admin@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa', 
+    ('admin@vellum.test', '$2b$10$example_hash_replace_in_production', 
      (SELECT id FROM user_roles WHERE role_code = 'ADMIN'), TRUE),
-    ('designer@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa',
+    ('designer@vellum.test', '$2b$10$example_hash_replace_in_production',
      (SELECT id FROM user_roles WHERE role_code = 'DESIGNER'), TRUE),
-    ('reviewer@vellum.test', '$2b$10$e50BR7WpS2TDQeiZPzwVI.AwvTKItNzI2H8n9gzQDphR3tbfFdqQa',
+    ('reviewer@vellum.test', '$2b$10$example_hash_replace_in_production',
      (SELECT id FROM user_roles WHERE role_code = 'REVIEWER'), TRUE)
 ON CONFLICT (email) DO NOTHING;
 
@@ -200,12 +187,10 @@ END;
 $$ language 'plpgsql';
 
 -- Trigger to auto-update updated_at on users table
-DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger to auto-update updated_at on files table
-DROP TRIGGER IF EXISTS update_files_updated_at ON files;
 CREATE TRIGGER update_files_updated_at BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -235,9 +220,7 @@ CREATE TABLE IF NOT EXISTS asset_status_lookup (
 );
 
 INSERT INTO asset_status_lookup (status_name) VALUES
-    ('In Progress'),
-    ('Ready for Internal Review'),
-    ('In Internal Review'),
+    ('Draft'),
     ('In Review'),
     ('Approved'),
     ('Changes Requested')
@@ -279,7 +262,6 @@ CREATE TABLE IF NOT EXISTS assets (
     description TEXT,
     status_id INTEGER NOT NULL REFERENCES asset_status_lookup(id),
     current_version VARCHAR(20) NOT NULL DEFAULT 'v1.0',
-    current_version_id INTEGER REFERENCES asset_versions(id),
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -305,25 +287,6 @@ CREATE TABLE IF NOT EXISTS asset_versions (
 
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS label VARCHAR(100);
 ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS notes TEXT;
-ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
-ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS stored_file_name VARCHAR(255);
-ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
-ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS size_bytes BIGINT;
-ALTER TABLE asset_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
-
-CREATE INDEX IF NOT EXISTS idx_assets_current_version_id ON assets(current_version_id);
-
--- Audit log for admin actions on versions (delete, edit metadata)
-CREATE TABLE IF NOT EXISTS asset_version_audit (
-  id SERIAL PRIMARY KEY,
-  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  asset_version_id INTEGER REFERENCES asset_versions(id) ON DELETE SET NULL,
-  action VARCHAR(50) NOT NULL,
-  performed_by_user_id INTEGER REFERENCES users(id),
-  performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  details TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_asset_version_audit_asset_id ON asset_version_audit(asset_id);
 
 INSERT INTO assets (title, description, status_id, current_version, created_by_user_id)
 SELECT
@@ -338,7 +301,7 @@ INSERT INTO assets (title, description, status_id, current_version, created_by_u
 SELECT
     'Instagram Carousel Set',
     '5-card promo carousel with CTA variants.',
-    (SELECT id FROM asset_status_lookup WHERE status_name = 'Ready for Internal Review'),
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'Draft'),
     'v1.3',
     (SELECT id FROM users WHERE email = 'designer@vellum.test')
 WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Instagram Carousel Set');

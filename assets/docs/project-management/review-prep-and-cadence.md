@@ -4,7 +4,7 @@
 **Course:** CS 4900 — Senior Capstone Project  
 **Term:** Spring 2026
 
-**Sprint 2 purpose:** The purpose of Sprint 2 (and each sprint) is to **fulfill the four-week review process**. Use the **[Sprint 2 review checklist](../sprint-2/operations/sprint-review-checklist.md)** and **[Sprint 2 documentation index](../sprint-2/README.md)** so **everything** required for each review is done.
+**Sprint 2 purpose:** The purpose of Sprint 2 (and each sprint) is to **fulfill the four-week review process**. Use **[Sprint 2 Purpose & Review Requirements](../sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** as the master checklist so **everything** required for each review is done.
 
 ---
 
@@ -63,7 +63,7 @@ The group should add to **Project Follow-up** during or right after the meeting:
 
 ## 5. Sprint review checklist (from course — apply to every sprint)
 
-Use this for **each** sprint review (and the final). Full checklist: **[Sprint 2 review checklist](../sprint-2/operations/sprint-review-checklist.md)** (and **[Sprint 2 doc index](../sprint-2/README.md)**).
+Use this for **each** sprint review (and the final). Full checklist: **[Sprint 2 Purpose & Review Requirements](../sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)**.
 
 ### Setup & installation (README steps)
 
@@ -109,7 +109,7 @@ Use this for **each** sprint review (and the final). Full checklist: **[Sprint 2
 
 ## 7. What to do *right now* (before next 3rd Wednesday)
 
-**Goal:** Make sure **everything** required for the review is done. Cross-check against **[Sprint 2 review checklist](../sprint-2/operations/sprint-review-checklist.md)** and **[Sprint 2 documentation](../sprint-2/README.md)**.
+**Goal:** Make sure **everything** required for the review is done. Cross-check against **[Sprint 2 Purpose & Review Requirements](../sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)**.
 
 - [ ] **Personal journal** — You added Feb 23 re-implementation; before the *next* review, add another entry for the sprint that just ended.
 - [ ] **Schedule** — Mark any remaining completed items (e.g. re-implementation Phase 0/1, doc updates); update “Individual Task Tracking” for each person.

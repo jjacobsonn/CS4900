@@ -55,18 +55,11 @@ npm test
 
 ## API Integration
 
-The frontend now defaults to the real backend API during normal development.
+The frontend uses Mock Service Worker for development and testing. To connect to the real backend:
 
-- API requests are proxied through Vite to `http://localhost:3000`
-- Uploaded file links under `/uploads/...` are also proxied to the backend in development
-- MSW remains available for tests and optional mock-driven workflows
-
-### Current Frontend Behavior
-
-- `DashboardPage` is a review queue with default filtering for `In Review` and `Changes Requested`
-- `UploadPage` sends multipart `FormData` and supports image/PDF uploads
-- `AssetDetailPage` shows image/PDF previews, notes, file links, comments, and versions
-- `AdminPage` is responsive and mobile-friendly; `Backend Test` is no longer part of the user-facing app
+1. Update `src/api/client.ts` with backend URL
+2. Ensure backend CORS is configured to allow frontend origin
+3. Backend API should be running on `http://localhost:3000`
 
 ## Tech Stack
 
@@ -79,4 +72,4 @@ The frontend now defaults to the real backend API during normal development.
 
 ---
 
-**Last Updated:** March 12, 2026
+**Last Updated:** February 16, 2026

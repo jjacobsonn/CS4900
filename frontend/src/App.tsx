@@ -4,12 +4,9 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { AssetDetailPage } from "./pages/AssetDetailPage";
 import { UploadPage } from "./pages/UploadPage";
 import { AdminPage } from "./pages/AdminPage";
-import { OrganizationDetailPage } from "./pages/OrganizationDetailPage";
-import { ProjectsPage } from "./pages/ProjectsPage";
-import { AssetsPage } from "./pages/AssetsPage";
-import { ManagerPage } from "./pages/ManagerPage";
-import { Role, canAccessAdmin, canAccessUpload } from "./utils/permissions";
-import { useEffect, useMemo, useState } from "react";
+import { BackendTestPage } from "./pages/BackendTestPage";
+import { Role, canAccessUpload, canReview } from "./utils/permissions";
+import { useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
 const ROLE_KEY = "vellum_role";
@@ -57,110 +54,72 @@ export function useAuth() {
 
 function AppLayout({
   role,
-  user,
   onLogout,
   children
 }: {
   role: Role;
-  user: AuthUser | null;
   onLogout: () => void;
   children: React.ReactNode;
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
-  const isAdmin = canAccessAdmin(role);
-  const canAccessManagerWorkspace = role === "manager" || role === "admin";
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
-
-  const goTo = (path: string) => {
-    navigate(path);
-  };
+  const allowReview = canReview(role);
+  const activeSection = location.pathname.startsWith("/assets")
+    ? "review"
+    : location.pathname.startsWith("/admin")
+      ? "admin"
+    : location.pathname.startsWith("/upload")
+      ? "upload"
+      : "dashboard";
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand-box">
-          <img src="/vellum-logo.png" alt="" />
-          <span>Vellum</span>
-        </div>
-        <button
-          type="button"
-          className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="main-navigation"
-          aria-label="Toggle navigation menu"
-          onClick={() => setIsMobileMenuOpen((open) => !open)}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-        <nav id="main-navigation" className={`nav-links ${isMobileMenuOpen ? "open" : ""}`}>
-          <button type="button" onClick={() => goTo("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
+        <div className="brand-box">Vellum</div>
+        <nav className="nav-links">
+          <button type="button" onClick={() => navigate("/dashboard")} className={location.pathname === "/dashboard" ? "active" : ""}>
             Dashboard
           </button>
-          {allowUpload && (
-            <button
-              type="button"
-              onClick={() => goTo("/upload")}
-              className={location.pathname === "/upload" ? "active" : ""}
-            >
-              Upload
-            </button>
-          )}
           <button
             type="button"
-            onClick={() => goTo("/projects")}
-            className={location.pathname === "/projects" ? "active" : ""}
+            onClick={() => navigate("/upload")}
+            className={location.pathname === "/upload" ? "active" : ""}
+            disabled={!allowUpload}
           >
-            Projects
+            Upload
           </button>
           <button
             type="button"
-            onClick={() => goTo("/assets")}
-            className={location.pathname === "/assets" ? "active" : ""}
+            onClick={() => navigate("/admin")}
+            className={location.pathname === "/admin" ? "active" : ""}
+            disabled={role !== "admin"}
           >
-            Assets
+            Admin
           </button>
-          {canAccessManagerWorkspace && (
-            <button
-              type="button"
-              onClick={() => goTo("/manager")}
-              className={location.pathname === "/manager" ? "active" : ""}
-            >
-              Manager
-            </button>
-          )}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => goTo("/admin")}
-              className={location.pathname === "/admin" ? "active" : ""}
-            >
-              Admin
-            </button>
-          )}
-          <button type="button" className="mobile-logout" onClick={onLogout}>
-            Logout
+          <button
+            type="button"
+            onClick={() => navigate("/backend-test")}
+            className={location.pathname === "/backend-test" ? "active" : ""}
+            disabled={role !== "admin"}
+          >
+            Backend Test
           </button>
         </nav>
         <div className="header-actions">
-          {user && (
-            <div className="user-pill" aria-label="Current user">
-              <span className="user-email">{user.email}</span>
-            </div>
-          )}
           <button type="button" onClick={onLogout}>
             Logout
           </button>
         </div>
       </header>
       <main>{children}</main>
+      <footer className="permissions-note">
+        <span className={`dot ${activeSection === "dashboard" ? "active" : ""}`} aria-hidden />
+        <span className={`dot ${activeSection === "review" ? "active" : ""}`} aria-hidden />
+        <span className={`dot ${activeSection === "upload" ? "active" : ""}`} aria-hidden />
+        <span className={`dot ${activeSection === "admin" ? "active" : ""}`} aria-hidden />
+        <span className="footnote">Review: {allowReview ? "on" : "off"} | Upload: {allowUpload ? "on" : "off"}</span>
+      </footer>
     </div>
   );
 }
@@ -168,21 +127,17 @@ function AppLayout({
 export default function App() {
   const auth = useAuth();
   const isLoggedIn = useMemo(() => Boolean(auth.token), [auth.token]);
-  const canAccessManagerWorkspace = auth.role === "manager" || auth.role === "admin";
 
   if (!isLoggedIn) {
     return <LoginPage onLogin={auth.setLoggedIn} />;
   }
 
   return (
-    <AppLayout role={auth.role} user={auth.user} onLogout={auth.logout}>
+    <AppLayout role={auth.role} onLogout={auth.logout}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage role={auth.role} />} />
-        <Route path="/manager" element={canAccessManagerWorkspace ? <ManagerPage role={auth.role} /> : <Navigate to="/dashboard" replace />} />
-        <Route path="/projects" element={<ProjectsPage role={auth.role} />} />
-        <Route path="/assets" element={<AssetsPage role={auth.role} />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/assets/:id" element={<AssetDetailPage currentUser={auth.user} />} />
         <Route
           path="/upload"
@@ -194,19 +149,10 @@ export default function App() {
             )
           }
         />
-        <Route
-          path="/admin"
-          element={canAccessAdmin(auth.role) ? <AdminPage currentUser={auth.user} /> : <Navigate to="/dashboard" replace />}
-        />
-        <Route
-          path="/admin/organizations/:id"
-          element={canAccessAdmin(auth.role) ? <OrganizationDetailPage role={auth.role} /> : <Navigate to="/dashboard" replace />}
-        />
+        <Route path="/admin" element={auth.role === "admin" ? <AdminPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/backend-test" element={auth.role === "admin" ? <BackendTestPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AppLayout>
   );
 }
-
-
-

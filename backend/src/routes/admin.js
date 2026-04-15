@@ -1,15 +1,14 @@
 /**
- * Admin-only routes. Require Bearer JWT and admin role.
+ * Admin-only routes. All require X-Vellum-Role: admin.
  */
 
 import express from "express";
-import { attachAuth, requireAuth, requireRole } from "../middleware/roleAuth.js";
+import { attachRole, requireRole } from "../middleware/roleAuth.js";
 import { getActivity, getOverview } from "../services/adminService.js";
 
 const router = express.Router();
 
-router.use(attachAuth);
-router.use(requireAuth);
+router.use(attachRole);
 router.use(requireRole(["admin"]));
 
 /**

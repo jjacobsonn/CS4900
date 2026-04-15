@@ -1,53 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getAssets } from "../api/assets";
-import { getProjects, type Project } from "../api/projects";
 import { Asset, AssetStatus } from "../types/models";
 import { AssetCard } from "../components/AssetCard";
-import { canAccessUpload, type Role } from "../utils/permissions";
-import { statusLabel } from "../utils/format";
 
-type Filter = "reviewerQueue" | "designerQueue" | "all" | AssetStatus;
+type Filter = "all" | AssetStatus;
 
-function isReviewerQueueStatus(status: AssetStatus): boolean {
-  return status === "In Review";
-}
-
-function isDesignerQueueStatus(status: AssetStatus): boolean {
-  return status === "Changes Requested" || status === "In Progress";
-}
-
-function defaultStatusFilter(role: Role): Filter {
-  if (role === "admin") return "all";
-  if (role === "designer") return "designerQueue";
-  return "reviewerQueue";
-}
-
-export function DashboardPage({ role }: { role: Role }) {
+export function DashboardPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Filter>(() => defaultStatusFilter(role));
-  const [projectFilter, setProjectFilter] = useState(() => (searchParams.get("projectId") ?? "").trim());
+  const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const canUpload = canAccessUpload(role);
-  const isAdmin = role === "admin";
 
   useEffect(() => {
-    const fromUrl = (searchParams.get("projectId") ?? "").trim();
-    setProjectFilter(fromUrl);
-  }, [searchParams]);
-
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([getAssets(), getProjects().catch(() => [] as Project[])])
-      .then(([assetRows, projectRows]) => {
-        setAssets(assetRows);
-        setProjects(Array.isArray(projectRows) ? projectRows : []);
-      })
+    getAssets()
+      .then((data) => setAssets(data))
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -56,107 +25,18 @@ export function DashboardPage({ role }: { role: Role }) {
     return assets.filter((asset) => {
       const assetName = (asset.name || "").toString().toLowerCase();
       const matchesSearch = assetName.includes(search.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all"
-          ? true
-          : statusFilter === "reviewerQueue"
-            ? isReviewerQueueStatus(asset.status)
-            : statusFilter === "designerQueue"
-              ? isDesignerQueueStatus(asset.status)
-            : asset.status === statusFilter;
-      const matchesProject =
-        projectFilter === "" ||
-        (asset.projectId != null && String(asset.projectId) === projectFilter);
-      return matchesSearch && matchesStatus && matchesProject;
+      const matchesStatus = statusFilter === "all" ? true : asset.status === statusFilter;
+      return matchesSearch && matchesStatus;
     });
-  }, [assets, search, statusFilter, projectFilter]);
-
-  const summary = useMemo(
-    () => ({
-      projects: projects.length,
-      assets: assets.length,
-      inReview: assets.filter((asset) => asset.status === "In Review").length,
-      changesRequested: assets.filter((asset) => asset.status === "Changes Requested").length,
-      inProgress: assets.filter((asset) => asset.status === "In Progress").length,
-      approved: assets.filter((asset) => asset.status === "Approved").length
-    }),
-    [assets, projects]
-  );
-  const selectedProject = projects.find((project) => String(project.id) === projectFilter);
-  const overviewTitle = projectFilter ? "Project Overview" : "Dashboard Overview";
-
-  const onProjectFilterChange = (value: string) => {
-    setProjectFilter(value);
-    const next = new URLSearchParams(searchParams);
-    if (value) next.set("projectId", value);
-    else next.delete("projectId");
-    setSearchParams(next, { replace: true });
-  };
+  }, [assets, search, statusFilter]);
 
   return (
-    <section className="page-grid dashboard-page">
-      <div className="card panel dashboard-summary">
-        <h1>Review Queue</h1>
-        <div className="dashboard-summary-grid">
-          <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Projects</span>
-            <strong>{summary.projects}</strong>
-          </div>
-          <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Assets</span>
-            <strong>{summary.assets}</strong>
-          </div>
-          <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Needs Review</span>
-            <strong>{summary.inReview}</strong>
-          </div>
-          <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Changes Requested</span>
-            <strong>{summary.changesRequested}</strong>
-          </div>
-          <div className="dashboard-metric">
-            <span className="dashboard-metric-label">WIP</span>
-            <strong>{summary.inProgress}</strong>
-          </div>
-          <div className="dashboard-metric muted">
-            <span className="dashboard-metric-label">Approved</span>
-            <strong>{summary.approved}</strong>
-          </div>
-        </div>
-      </div>
-      <div className="card panel dashboard-filters">
-        <h1>Filters</h1>
-        <div className="dashboard-filter-stack">
-          <label className="dashboard-primary-filter">
-            Queue Scope
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Filter)}>
-              <option value="reviewerQueue">Reviewer queue</option>
-              <option value="designerQueue">Designer queue</option>
-              <option value="In Review">{statusLabel("In Review")}</option>
-              <option value="In Progress">{statusLabel("In Progress")}</option>
-              <option value="Changes Requested">Changes Requested</option>
-              <option value="Approved">Approved</option>
-              <option value="all">All Assets</option>
-            </select>
-          </label>
+    <section className="page-grid">
+      <div className="panel">
+        <h1>Assets Requiring Review</h1>
+        <div className="toolbar">
           <label>
-            Project
-            <select value={projectFilter} onChange={(event) => onProjectFilterChange(event.target.value)}>
-              <option value="">All projects</option>
-              {projects.length === 0 ? (
-                <option value="" disabled>
-                  No projects available
-                </option>
-              ) : null}
-              {projects.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  #{p.id} — {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Search by Title
+            Filter
             <input
               type="text"
               value={search}
@@ -164,106 +44,30 @@ export function DashboardPage({ role }: { role: Role }) {
               placeholder="Search assets"
             />
           </label>
+          <label>
+            Status
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Filter)}>
+              <option value="all">All</option>
+              <option value="Draft">Draft</option>
+              <option value="In Review">In Review</option>
+              <option value="Approved">Approved</option>
+              <option value="Changes Requested">Changes Requested</option>
+            </select>
+          </label>
         </div>
       </div>
-      <div className="card panel dashboard-results">
-        <div className="dashboard-results-header">
-          <div>
-            <h1>{overviewTitle}</h1>
-            <p className="dashboard-filter-note">
-              {filteredAssets.length} matching asset{filteredAssets.length === 1 ? "" : "s"}
-            </p>
-            {projectFilter ? (
-              <p className="dashboard-filter-note">
-                Working in {selectedProject?.name ?? `project #${projectFilter}`}.
-              </p>
-            ) : null}
-          </div>
-          {projectFilter ? (
-            <div className="d-flex flex-wrap align-items-center gap-2 row-actions">
-              {canUpload ? (
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => navigate(`/upload?projectId=${projectFilter}`)}
-                >
-                  Upload to this project
-                </button>
-              ) : null}
-              {isAdmin ? (
-                <button type="button" className="btn btn-outline-secondary" onClick={() => navigate("/admin")}>
-                  Manage projects
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+      <div className="panel">
         {loading && <p>Loading assets...</p>}
         {error && <p role="alert">{error}</p>}
         {!loading && !error && (
-          <>
-            <div className="admin-callout">
-              <strong>Project Snapshot</strong>
-              {projects.length === 0 ? (
-                <p>No projects available yet.</p>
-              ) : (
-                <div className="admin-scroll-table">
-                  <table className="table table-hover align-middle admin-table compact">
-                    <thead>
-                      <tr>
-                        <th>Project</th>
-                        <th>Status</th>
-                        <th>Assets</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projects.slice(0, 8).map((project) => (
-                        <tr key={project.id}>
-                          <td data-label="Project">{project.name}</td>
-                          <td data-label="Status">{project.status}</td>
-                          <td data-label="Assets">{project.assetCount ?? 0}</td>
-                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
-                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => onProjectFilterChange(String(project.id))}>
-                              View queue
-                            </button>
-                            {canUpload ? (
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm"
-                                onClick={() => navigate(`/upload?projectId=${project.id}`)}
-                              >
-                                Upload
-                              </button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div className="admin-callout">
-              <strong>Asset Queue</strong>
-              <div className="asset-grid">
-                {filteredAssets.map((asset) => (
-                  <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
-                ))}
-                {filteredAssets.length === 0 && (
-                  <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
-                    No assets found for current filters.
-                  </p>
-                )}
-              </div>
-            </div>
-          </>
+          <div className="asset-grid">
+            {filteredAssets.map((asset) => (
+              <AssetCard key={String(asset.id)} asset={asset} onOpen={(id) => navigate(`/assets/${id}`)} />
+            ))}
+            {filteredAssets.length === 0 && <p>No assets found.</p>}
+          </div>
         )}
       </div>
     </section>
   );
 }
-
-
-

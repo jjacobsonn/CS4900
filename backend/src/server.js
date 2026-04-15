@@ -1,12 +1,8 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import path from "path";
 import { testConnection } from "./config/database.js";
 import adminRouter from "./routes/admin.js";
-import clientsRouter from "./routes/clients.js";
-import projectsRouter from "./routes/projects.js";
-import organizationsRouter from "./routes/organizations.js";
 import assetsRouter from "./routes/assets.js";
 import authRouter from "./routes/auth.js";
 import userRolesRouter from "./routes/userRoles.js";
@@ -16,12 +12,10 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const uploadDir = path.resolve(process.cwd(), process.env.UPLOAD_DIR || "backend/uploads");
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static(uploadDir));
 
 app.get("/api/health", (_req, res) => {
   res.status(200).json({
@@ -36,9 +30,6 @@ app.use("/api/user-roles", userRolesRouter);
 app.use("/api/assets", assetsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/admin", adminRouter);
-app.use("/api/clients", clientsRouter);
-app.use("/api/projects", projectsRouter);
-app.use("/api/organizations", organizationsRouter);
 
 app.get("/", (_req, res) => {
   res.json({
@@ -46,9 +37,6 @@ app.get("/", (_req, res) => {
     endpoints: {
       health: "/api/health",
       assets: "/api/assets",
-      clients: "/api/clients",
-      projects: "/api/projects",
-      organizations: "/api/organizations",
       userRoles: "/api/user-roles",
       auth: "/api/auth",
       users: "/api/users",
@@ -75,11 +63,6 @@ export async function startServer() {
   const dbOk = await testConnection();
   if (!dbOk) {
     console.error("Failed to connect to database. Server not started.");
-    process.exit(1);
-  }
-  const { getJwtSecret } = await import("./services/jwtService.js");
-  if (!getJwtSecret()) {
-    console.error("JWT_SECRET is required. Copy backend/.env.example to .env and set JWT_SECRET.");
     process.exit(1);
   }
   app.listen(PORT, () => {

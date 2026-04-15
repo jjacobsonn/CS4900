@@ -11,7 +11,7 @@
 **Date:** March 19, 2026  
 **Sprint:** Sprint 2 — Core API, authentication, admin dashboard, and versioning updates ready for review.
 
-**Sprint 2 purpose:** Ensure the **four-week review process** is fulfilled — every 3rd Wednesday and at the final. Each individual must update Personal Journal, Schedule, and this Project Follow-up before each meeting; during the meeting we capture Code Review Notes, Action Items, and suggestions. Use the **[Sprint 2 review checklist](../sprint-2/operations/sprint-review-checklist.md)** and **[Sprint 2 documentation](../sprint-2/README.md)** as the master checklist so **everything is being done** (setup from README, DB script, code examples, unit tests a–d, demo, actual vs planned status).
+**Sprint 2 purpose:** Ensure the **four-week review process** is fulfilled — every 3rd Wednesday and at the final. Each individual must update Personal Journal, Schedule, and this Project Follow-up before each meeting; during the meeting we capture Code Review Notes, Action Items, and suggestions. Use **[Sprint 2 Purpose & Review Requirements](../sprint-2/SPRINT-2-PURPOSE-AND-REVIEW-REQUIREMENTS.md)** as the master checklist so **everything is being done** (setup from README, DB script, code examples, unit tests a–d, demo, actual vs planned status).
 
 ---
 

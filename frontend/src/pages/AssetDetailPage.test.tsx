@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { jest } from "@jest/globals";
 import { AssetDetailPage } from "./AssetDetailPage";
-import type { AuthUser } from "../App";
 import { getAsset, getAssetVersions, patchAssetStatus, createAssetVersionApi, updateAssetOwner } from "../api/assets";
 import { addComment, getComments } from "../api/comments";
 
@@ -34,11 +33,7 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
     id: 42,
     name: "Hero Graphic",
     owner: "Designer",
-    fileUrl: "/uploads/hero.png",
-    fileName: "hero.png",
-    mimeType: "image/png",
     status: "In Review",
-    backendStatus: "In Internal Review",
     updatedAt: "2026-02-10T00:00:00.000Z",
     currentVersion: "v1.0",
     notes: "Demo details"
@@ -48,9 +43,6 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
     id: 42,
     name: "Hero Graphic",
     owner: "Designer",
-    fileUrl: "/uploads/hero.png",
-    fileName: "hero.png",
-    mimeType: "image/png",
     status: "Approved",
     updatedAt: "2026-02-10T00:00:00.000Z",
     currentVersion: "v1.0",
@@ -63,79 +55,23 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
     created_at: "2026-02-10T00:00:00.000Z"
   });
 
-  const reviewer: AuthUser = { id: "9", email: "reviewer@vellum.test", role: "reviewer" };
-
   render(
     <MemoryRouter initialEntries={["/assets/42"]}>
       <Routes>
-        <Route path="/assets/:id" element={<AssetDetailPage currentUser={reviewer} />} />
+        <Route path="/assets/:id" element={<AssetDetailPage />} />
       </Routes>
     </MemoryRouter>
   );
 
   expect(await screen.findByText("Hero Graphic")).toBeInTheDocument();
-  expect(screen.getByText("Notes: Demo details")).toBeInTheDocument();
-  expect(screen.getByRole("img", { name: "Hero Graphic" })).toBeInTheDocument();
 
-  await userEvent.selectOptions(screen.getByLabelText("Review action"), "approved_internal");
-  await userEvent.click(screen.getByRole("button", { name: "Apply action" }));
-  expect(patchAssetStatusMock).toHaveBeenCalledWith("42", "approved_internal");
+  await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+  expect(patchAssetStatusMock).toHaveBeenCalledWith("42", "Approved");
 
   await userEvent.type(screen.getByLabelText("Add Comment"), "Looks good");
   await userEvent.click(screen.getByRole("button", { name: "Post Comment" }));
   expect(addCommentMock).toHaveBeenCalledWith("42", {
     message: "Looks good",
-    commentType: "General",
-    authorUserId: "9"
+    commentType: "General"
   });
-});
-
-test("AssetDetailPage Request changes sends changes_requested_internal", async () => {
-  const getAssetMock = getAsset as jest.MockedFunction<typeof getAsset>;
-  const patchAssetStatusMock = patchAssetStatus as jest.MockedFunction<typeof patchAssetStatus>;
-  const getCommentsMock = getComments as jest.MockedFunction<typeof getComments>;
-  const getAssetVersionsMock = getAssetVersions as jest.MockedFunction<typeof getAssetVersions>;
-  getAssetVersionsMock.mockResolvedValue([]);
-  getCommentsMock.mockResolvedValue([]);
-
-  getAssetMock.mockResolvedValue({
-    id: 99,
-    name: "Social Concept",
-    owner: "Designer",
-    fileUrl: "/uploads/social.png",
-    fileName: "social.png",
-    mimeType: "image/png",
-    status: "In Review",
-    backendStatus: "In Internal Review",
-    updatedAt: "2026-02-10T00:00:00.000Z",
-    currentVersion: "v1.0",
-    notes: null
-  });
-  patchAssetStatusMock.mockResolvedValue({
-    id: 99,
-    name: "Social Concept",
-    owner: "Designer",
-    fileUrl: "/uploads/social.png",
-    fileName: "social.png",
-    mimeType: "image/png",
-    status: "Changes Requested",
-    updatedAt: "2026-02-10T00:00:00.000Z",
-    currentVersion: "v1.0",
-    notes: null
-  });
-
-  const reviewer: AuthUser = { id: "9", email: "reviewer@vellum.test", role: "reviewer" };
-
-  render(
-    <MemoryRouter initialEntries={["/assets/99"]}>
-      <Routes>
-        <Route path="/assets/:id" element={<AssetDetailPage currentUser={reviewer} />} />
-      </Routes>
-    </MemoryRouter>
-  );
-
-  expect(await screen.findByText("Social Concept")).toBeInTheDocument();
-  await userEvent.selectOptions(screen.getByLabelText("Review action"), "changes_requested_internal");
-  await userEvent.click(screen.getByRole("button", { name: "Apply action" }));
-  expect(patchAssetStatusMock).toHaveBeenCalledWith("99", "changes_requested_internal");
 });

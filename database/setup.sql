@@ -235,7 +235,9 @@ CREATE TABLE IF NOT EXISTS asset_status_lookup (
 );
 
 INSERT INTO asset_status_lookup (status_name) VALUES
-    ('Draft'),
+    ('In Progress'),
+    ('Ready for Internal Review'),
+    ('In Internal Review'),
     ('In Review'),
     ('Approved'),
     ('Changes Requested')
@@ -336,7 +338,7 @@ INSERT INTO assets (title, description, status_id, current_version, created_by_u
 SELECT
     'Instagram Carousel Set',
     '5-card promo carousel with CTA variants.',
-    (SELECT id FROM asset_status_lookup WHERE status_name = 'Draft'),
+    (SELECT id FROM asset_status_lookup WHERE status_name = 'Ready for Internal Review'),
     'v1.3',
     (SELECT id FROM users WHERE email = 'designer@vellum.test')
 WHERE NOT EXISTS (SELECT 1 FROM assets WHERE title = 'Instagram Carousel Set');

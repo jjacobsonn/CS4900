@@ -19,7 +19,9 @@ export function formatDateTime(isoDate: string): string {
   });
 }
 
-export function statusLabel(status: AssetStatus): string {
+export function statusLabel(status: AssetStatus | string): string {
+  if (status === "In Review" || status === "Ready for Internal Review" || status === "In Internal Review") return "Needs Review";
+  if (status === "In Progress") return "WIP";
   return status;
 }
 

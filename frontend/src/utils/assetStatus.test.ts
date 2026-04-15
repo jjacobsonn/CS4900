@@ -14,8 +14,9 @@ describe("normalizeWorkflowDisplayStatus", () => {
   });
 
   test("legacy and empty", () => {
-    expect(normalizeWorkflowDisplayStatus("")).toBe("Draft");
-    expect(normalizeWorkflowDisplayStatus(undefined)).toBe("Draft");
-    expect(normalizeWorkflowDisplayStatus("Unknown Future Status")).toBe("Draft");
+    expect(normalizeWorkflowDisplayStatus("")).toBe("In Review");
+    expect(normalizeWorkflowDisplayStatus(undefined)).toBe("In Review");
+    expect(normalizeWorkflowDisplayStatus("Draft")).toBe("In Review");
+    expect(normalizeWorkflowDisplayStatus("Unknown Future Status")).toBe("In Review");
   });
 });

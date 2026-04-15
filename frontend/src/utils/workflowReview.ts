@@ -16,8 +16,7 @@ export function isApproveRequestPair(buttons: WorkflowStatusButton[]): boolean {
   );
 }
 
-const internalActor = (r: Role) =>
-  ["designer", "reviewer", "manager", "admin", "owner"].includes(r);
+const internalReviewer = (r: Role) => ["reviewer", "manager", "admin", "owner"].includes(r);
 
 const clientActor = (r: Role) => ["reviewer", "manager", "admin", "owner"].includes(r);
 
@@ -35,11 +34,7 @@ export function getWorkflowStatusButtons(
   const n = backendStatus.trim();
   const r = role;
 
-  if (n === "Ready for Internal Review" && internalActor(r)) {
-    return [{ statusKey: "in_internal_review", label: "Start internal review", variant: "primary" }];
-  }
-
-  if ((n === "In Internal Review" || n === "In Review") && internalActor(r)) {
+  if ((n === "Ready for Internal Review" || n === "In Internal Review" || n === "In Review") && internalReviewer(r)) {
     return [
       { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
       { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
@@ -50,13 +45,6 @@ export function getWorkflowStatusButtons(
     return [
       { statusKey: "approved_client", label: "Approve (client)", variant: "primary" },
       { statusKey: "client_changes_requested", label: "Request client changes", variant: "secondary" }
-    ];
-  }
-
-  if (n === "Draft" && designerLike(r)) {
-    return [
-      { statusKey: "ready_for_internal_review", label: "Submit for internal review", variant: "primary" },
-      { statusKey: "in_progress", label: "Mark in progress", variant: "secondary" }
     ];
   }
 

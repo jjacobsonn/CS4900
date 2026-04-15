@@ -8,7 +8,7 @@ import { OrganizationDetailPage } from "./pages/OrganizationDetailPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { ManagerPage } from "./pages/ManagerPage";
-import { Role, canAccessAdmin, canAccessUpload, canReview } from "./utils/permissions";
+import { Role, canAccessAdmin, canAccessUpload } from "./utils/permissions";
 import { useEffect, useMemo, useState } from "react";
 
 const TOKEN_KEY = "vellum_token";
@@ -69,23 +69,9 @@ function AppLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const allowUpload = canAccessUpload(role);
-  const allowReview = canReview(role);
   const isAdmin = canAccessAdmin(role);
   const canAccessManagerWorkspace = role === "manager" || role === "admin";
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const activeSection = location.pathname === "/assets"
-    ? "assets"
-    : location.pathname.startsWith("/assets/")
-      ? "review"
-    : location.pathname.startsWith("/manager")
-      ? "manager"
-    : location.pathname.startsWith("/projects")
-      ? "projects"
-    : location.pathname.startsWith("/admin")
-      ? "admin"
-    : location.pathname.startsWith("/upload")
-      ? "upload"
-      : "dashboard";
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -98,7 +84,10 @@ function AppLayout({
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="brand-box">Vellum</div>
+        <div className="brand-box">
+          <img src="/vellum-logo.png" alt="" />
+          <span>Vellum</span>
+        </div>
         <button
           type="button"
           className={`menu-toggle ${isMobileMenuOpen ? "open" : ""}`}
@@ -172,16 +161,6 @@ function AppLayout({
         </div>
       </header>
       <main>{children}</main>
-      <footer className="permissions-note">
-        <span className={`dot ${activeSection === "dashboard" ? "active" : ""}`} aria-hidden />
-        <span className={`dot ${activeSection === "review" ? "active" : ""}`} aria-hidden />
-        {allowUpload && <span className={`dot ${activeSection === "upload" ? "active" : ""}`} aria-hidden />}
-        <span className={`dot ${activeSection === "projects" ? "active" : ""}`} aria-hidden />
-        <span className={`dot ${activeSection === "assets" ? "active" : ""}`} aria-hidden />
-        {canAccessManagerWorkspace && <span className={`dot ${activeSection === "manager" ? "active" : ""}`} aria-hidden />}
-        {isAdmin && <span className={`dot ${activeSection === "admin" ? "active" : ""}`} aria-hidden />}
-        <span className="footnote">Review: {allowReview ? "on" : "off"} | Upload: {allowUpload ? "on" : "off"}</span>
-      </footer>
     </div>
   );
 }
@@ -228,3 +207,6 @@ export default function App() {
     </AppLayout>
   );
 }
+
+
+

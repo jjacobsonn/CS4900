@@ -69,7 +69,7 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
           return;
         }
         setProjectId("");
-        setProjectHint(`Project #${requestedProjectId} was not found. Upload will be unlinked unless you choose a project.`);
+        setProjectHint(`Project #${requestedProjectId} was not found. Choose a project before uploading.`);
       })
       .catch(() => {
         setProjects([]);
@@ -92,6 +92,10 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
     }
     if (!title.trim()) {
       setError("Title is required.");
+      return;
+    }
+    if (!projectId) {
+      setError("Project is required.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -125,9 +129,9 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
   };
 
   return (
-    <section className="panel upload-panel">
+    <section className="card panel upload-panel">
       <h1>Upload Asset</h1>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <input
           ref={fileInputRef}
           id="upload-asset-file"
@@ -172,11 +176,13 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
         </label>
         <label>
           Project
-          <select value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={isLoadingProjects}>
-            <option value="">No project (optional)</option>
+          <select value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={isLoadingProjects} required>
+            <option value="" disabled>
+              Select project
+            </option>
             {projects.map((project) => (
               <option key={project.id} value={String(project.id)}>
-                #{project.id} - {project.name}
+                {project.name}
               </option>
             ))}
           </select>
@@ -233,3 +239,6 @@ export function UploadPage({ role, currentUser }: { role: Role; currentUser: Aut
     </section>
   );
 }
+
+
+

@@ -82,19 +82,19 @@ export function VersionList({
 
   return (
     <>
-      <ul className="version-list">
+      <ul className="version-list list-group mt-3">
         {versions.map((version) => {
           const isCurrent = currentVersionId != null && String(version.id) === String(currentVersionId);
           const isEditing = editingId === version.id;
           const isDeleting = deletingId === version.id;
           const displayFileName = sanitizeFileName(version.fileName);
           return (
-            <li key={version.id} className="version-item">
+            <li key={version.id} className="version-item list-group-item">
               <div className="version-zones">
                 <div className="version-info">
                   <div className="version-header">
                     <strong className="version-number">{version.versionNumber}</strong>
-                    {isCurrent && <span className="version-badge current">Current</span>}
+                    {isCurrent && <span className="badge version-badge current">Current</span>}
                     <StatusBadge status={version.status} />
                   </div>
                   <div className="version-meta">
@@ -122,7 +122,7 @@ export function VersionList({
                   <div className="version-actions">
                     <button
                       type="button"
-                      className="secondary-btn small"
+                      className="btn btn-outline-secondary btn-sm"
                       onClick={() => startEdit(version)}
                       disabled={!!deletingId}
                     >
@@ -130,7 +130,7 @@ export function VersionList({
                     </button>
                     <button
                       type="button"
-                      className="secondary-btn small"
+                      className="btn btn-outline-secondary btn-sm"
                       onClick={() => handleDelete(version.id as string)}
                       disabled={!!deletingId || isDeleting}
                     >
@@ -178,10 +178,10 @@ export function VersionList({
                     </label>
                   )}
                   <div>
-                    <button type="button" className="primary-btn small" onClick={() => saveEdit()} disabled={saving}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={() => saveEdit()} disabled={saving}>
                       {saving ? "Saving…" : "Save"}
                     </button>
-                    <button type="button" className="secondary-btn small" onClick={() => setEditingId(null)}>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setEditingId(null)}>
                       Cancel
                     </button>
                   </div>
@@ -212,3 +212,6 @@ export function VersionList({
     </>
   );
 }
+
+
+

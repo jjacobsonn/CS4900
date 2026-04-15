@@ -15,6 +15,7 @@ import { createProject, getProjects, type Project } from "../api/projects";
 import { createUser, getUsers, removeUser, updateUser, updateUserActive } from "../api/users";
 import type { Asset, Organization, OrganizationMemberRow, UserAccount } from "../types/models";
 import { canAccessAdmin, type Role } from "../utils/permissions";
+import { statusLabel } from "../utils/format";
 
 type OrgTab = "overview" | "projects" | "assets" | "users" | "settings";
 const PRIMARY_ADMIN_EMAIL = "admin@vellum.test";
@@ -390,11 +391,11 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
 
   return (
     <section className="page-grid">
-      <div className="panel admin-wide-panel admin-section-panel">
+      <div className="card panel admin-wide-panel admin-section-panel">
         <div className="admin-content">
           <div className="admin-split-header">
             <h1>{organization?.name ?? "Organization"}</h1>
-            <Link className="primary-btn file-link-btn org-back-btn" to="/admin">
+            <Link className="btn btn-primary file-link-btn org-back-btn" to="/admin">
               Back to Admin
             </Link>
           </div>
@@ -409,22 +410,22 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
         </div>
       </div>
 
-      <div className="panel admin-wide-panel admin-section-panel">
+      <div className="card panel admin-wide-panel admin-section-panel">
         <div className="admin-content">
-          <div className="org-tabs">
-            <button type="button" className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>
+          <div className="org-tabs nav nav-pills">
+            <button type="button" className={`nav-link ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}>
               Overview
             </button>
-            <button type="button" className={tab === "projects" ? "active" : ""} onClick={() => setTab("projects")}>
+            <button type="button" className={`nav-link ${tab === "projects" ? "active" : ""}`} onClick={() => setTab("projects")}>
               Projects
             </button>
-            <button type="button" className={tab === "assets" ? "active" : ""} onClick={() => setTab("assets")}>
+            <button type="button" className={`nav-link ${tab === "assets" ? "active" : ""}`} onClick={() => setTab("assets")}>
               Assets
             </button>
-            <button type="button" className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>
+            <button type="button" className={`nav-link ${tab === "users" ? "active" : ""}`} onClick={() => setTab("users")}>
               Users
             </button>
-            <button type="button" className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>
+            <button type="button" className={`nav-link ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
               Settings
             </button>
           </div>
@@ -438,9 +439,9 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
               {projects.length === 0 ? (
                 <p className="admin-muted">No projects yet.</p>
               ) : (
-                <ul className="overview-list">
+                <ul className="overview-list list-group">
                   {projects.slice(0, 6).map((project) => (
-                    <li key={project.id}>
+                    <li key={project.id} className="list-group-item">
                       <Link className="admin-link-button" to={`/projects?organizationId=${project.organizationId ?? ""}`}>
                         {project.name}
                       </Link>
@@ -452,9 +453,9 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
               {assets.length === 0 ? (
                 <p className="admin-muted">No assets yet.</p>
               ) : (
-                <ul className="overview-list">
+                <ul className="overview-list list-group">
                   {assets.slice(0, 6).map((asset) => (
-                    <li key={String(asset.id)}>
+                    <li key={String(asset.id)} className="list-group-item">
                       <Link className="admin-link-button" to={`/assets?projectId=${asset.projectId ?? ""}`}>
                         {asset.name}
                       </Link>
@@ -469,66 +470,9 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
             <>
               <div className="admin-split-header">
                 <h2 className="admin-section-title">Projects</h2>
-                <button type="button" className="primary-btn" onClick={() => setShowProjectCreate((v) => !v)}>
-                  {showProjectCreate ? "Cancel" : "Add Project"}
-                </button>
               </div>
-              {showProjectCreate && (
-                <form onSubmit={(event) => void handleCreateProject(event)} className="admin-form admin-project-create-form">
-                  <label>
-                    Name
-                    <input type="text" value={newProjectName} onChange={(event) => setNewProjectName(event.target.value)} required />
-                  </label>
-                  <label>
-                    Description
-                    <textarea value={newProjectDescription} onChange={(event) => setNewProjectDescription(event.target.value)} rows={2} />
-                  </label>
-                  <label>
-                    Client
-                    <select value={newProjectClientId} onChange={(event) => setNewProjectClientId(event.target.value)}>
-                      <option value="">None</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={String(c.id)}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Status
-                    <select value={newProjectStatus} onChange={(event) => setNewProjectStatus(event.target.value)}>
-                      <option value="Active">Active</option>
-                      <option value="On hold">On hold</option>
-                      <option value="Archived">Archived</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </label>
-                  <label>
-                    Priority
-                    <input type="text" value={newProjectPriority} onChange={(event) => setNewProjectPriority(event.target.value)} />
-                  </label>
-                  <label>
-                    Due date
-                    <input type="date" value={newProjectDueDate} onChange={(event) => setNewProjectDueDate(event.target.value)} />
-                  </label>
-                  <label>
-                    Project owner (optional)
-                    <select value={newProjectOwnerUserId} onChange={(event) => setNewProjectOwnerUserId(event.target.value)}>
-                      <option value="">You (creator)</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.displayName || u.email} ({u.role})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button className="primary-btn" type="submit">
-                    Create project
-                  </button>
-                </form>
-              )}
               <div className="admin-scroll-table">
-                <table className="admin-table compact">
+                <table className="table table-hover align-middle admin-table compact">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -562,75 +506,9 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
             <>
               <div className="admin-split-header">
                 <h2 className="admin-section-title">Assets</h2>
-                <button type="button" className="primary-btn" onClick={() => setShowAssetCreate((v) => !v)}>
-                  {showAssetCreate ? "Cancel" : "Add Asset"}
-                </button>
               </div>
-              {showAssetCreate && (
-                <form onSubmit={(event) => void handleCreateAsset(event)} className="admin-form">
-                  <label>
-                    File
-                    <input type="file" onChange={(event) => setNewAssetFile(event.target.files?.[0] ?? null)} required />
-                  </label>
-                  <label>
-                    Title
-                    <input type="text" value={newAssetTitle} onChange={(event) => setNewAssetTitle(event.target.value)} required />
-                  </label>
-                  <label>
-                    Project
-                    <select value={newAssetProjectId} onChange={(event) => setNewAssetProjectId(event.target.value)}>
-                      <option value="">No project (optional)</option>
-                      {projects.map((project) => (
-                        <option key={project.id} value={String(project.id)}>
-                          #{project.id} - {project.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Asset Type
-                    <select value={newAssetType} onChange={(event) => setNewAssetType(event.target.value)}>
-                      <option value="">Select type (optional)</option>
-                      <option value="image">Image</option>
-                      <option value="mockup">Mockup</option>
-                      <option value="figma">Figma</option>
-                      <option value="brief">Brief</option>
-                      <option value="spec">Spec</option>
-                      <option value="document">Document</option>
-                      <option value="markdown">Markdown</option>
-                      <option value="code">Code</option>
-                      <option value="spreadsheet">Spreadsheet</option>
-                      <option value="dataset">Dataset</option>
-                      <option value="archive">Archive</option>
-                      <option value="ticket">Ticket</option>
-                      <option value="repo">Repo</option>
-                      <option value="chat">Chat</option>
-                      <option value="crm">CRM</option>
-                      <option value="note">Note</option>
-                      <option value="checklist">Checklist</option>
-                      <option value="decision">Decision</option>
-                    </select>
-                  </label>
-                  <label>
-                    External URL
-                    <input
-                      type="url"
-                      value={newAssetExternalUrl}
-                      onChange={(event) => setNewAssetExternalUrl(event.target.value)}
-                      placeholder="Optional link (Figma, Jira, GitHub, etc.)"
-                    />
-                  </label>
-                  <label>
-                    Notes
-                    <textarea value={newAssetNotes} onChange={(event) => setNewAssetNotes(event.target.value)} />
-                  </label>
-                  <button className="primary-btn" type="submit">
-                    Submit
-                  </button>
-                </form>
-              )}
               <div className="admin-scroll-table">
-                <table className="admin-table compact">
+                <table className="table table-hover align-middle admin-table compact">
                   <thead>
                     <tr>
                       <th>Title</th>
@@ -648,10 +526,10 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                       assets.map((a) => (
                         <tr key={String(a.id)}>
                           <td data-label="Title">{a.name}</td>
-                          <td data-label="Status">{a.status}</td>
+                          <td data-label="Status">{statusLabel(a.status)}</td>
                           <td data-label="Owner">{a.owner}</td>
-                          <td data-label="Actions" className="actions-cell">
-                            <Link className="secondary-btn file-link-btn small" to={`/assets/${a.id}`}>
+                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
+                            <Link className="btn btn-outline-secondary btn-sm file-link-btn" to={`/assets/${a.id}`}>
                               Open
                             </Link>
                           </td>
@@ -665,7 +543,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
           )}
 
           {tab === "users" && (
-            <>
+            <div className="org-tab-panel org-users-tab">
               <h2 className="admin-section-title">Team Access</h2>
               <form
                 onSubmit={(event) =>
@@ -673,8 +551,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                     ? void handleAddMember(event)
                     : void handleCreateUserAndAdd(event)
                 }
-                className="admin-form"
-                style={{ marginTop: "0.6rem" }}
+                className="vstack gap-3 admin-form org-member-form"
               >
                 <label>
                   Access action
@@ -705,7 +582,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                         <option value="reviewer">reviewer</option>
                       </select>
                     </label>
-                    <button className="primary-btn" type="submit" disabled={!newMemberUserId}>
+                    <button className="btn btn-primary" type="submit" disabled={!newMemberUserId}>
                       Add to organization
                     </button>
                   </>
@@ -759,7 +636,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                         <option value="reviewer">reviewer</option>
                       </select>
                     </label>
-                    <button className="primary-btn" type="submit">
+                    <button className="btn btn-primary" type="submit">
                       Create and add
                     </button>
                   </>
@@ -768,7 +645,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
 
               <h2 className="admin-section-title">Organization Members</h2>
               <div className="admin-scroll-table">
-                <table className="admin-table admin-user-table compact">
+                <table className="table table-hover align-middle admin-table admin-user-table compact">
                   <thead>
                     <tr>
                       <th>Name</th>
@@ -788,23 +665,23 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                           <td data-label="Name">{m.displayName || "—"}</td>
                           <td data-label="Email">{m.email}</td>
                           <td data-label="Role">{m.role}</td>
-                          <td data-label="Actions" className="admin-user-actions">
-                            <button type="button" className="secondary-btn small" onClick={() => void handleEditMember(m)}>
+                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 admin-user-actions">
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleEditMember(m)}>
                               Edit
                             </button>
-                            <button type="button" className="secondary-btn small" onClick={() => void handleDeactivateMember(m)}>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleDeactivateMember(m)}>
                               Deactivate
                             </button>
-                            <button type="button" className="secondary-btn small" onClick={() => void handleReactivateMember(m)}>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleReactivateMember(m)}>
                               Reactivate
                             </button>
-                            <button type="button" className="secondary-btn small" onClick={() => void handleResetMemberPassword(m)}>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleResetMemberPassword(m)}>
                               Reset password
                             </button>
-                            <button type="button" className="secondary-btn small" onClick={() => void handleRemoveMember(m.userId)}>
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void handleRemoveMember(m.userId)}>
                               Remove
                             </button>
-                            <button type="button" className="secondary-btn small danger-outline" onClick={() => void handleRemoveMemberAccount(m)}>
+                            <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => void handleRemoveMemberAccount(m)}>
                               Remove Access
                             </button>
                           </td>
@@ -814,12 +691,12 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                   </tbody>
                 </table>
               </div>
-            </>
+            </div>
           )}
 
           {tab === "settings" && (
-            <>
-              <form onSubmit={(event) => void handleSaveSettings(event)} className="admin-form">
+            <div className="org-tab-panel org-settings-tab">
+              <form onSubmit={(event) => void handleSaveSettings(event)} className="vstack gap-3 admin-form org-settings-form">
                 <label>
                   Organization name
                   <input type="text" value={editName} onChange={(event) => setEditName(event.target.value)} required />
@@ -832,23 +709,23 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                   Details / caption
                   <textarea rows={3} value={editDetails} onChange={(event) => setEditDetails(event.target.value)} />
                 </label>
-                <button className="primary-btn" type="submit" disabled={saving}>
-                  {saving ? "Saving…" : "Save organization"}
+                <button className="btn btn-primary" type="submit" disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
                 </button>
               </form>
-              <div className="admin-project-detail-actions">
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions org-settings-actions">
                 <button
                   type="button"
-                  className="secondary-btn"
+                  className="btn btn-outline-secondary"
                   onClick={() => void handleToggleActive(organization?.isActive === false)}
                 >
                   {organization?.isActive === false ? "Reactivate" : "Deactivate"}
                 </button>
-                <button type="button" className="secondary-btn danger-outline" onClick={() => void handleDeleteOrganization()}>
+                <button type="button" className="btn btn-outline-danger" onClick={() => void handleDeleteOrganization()}>
                   Delete organization
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -866,7 +743,7 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
               Reset password
             </h2>
             <p className="admin-muted" style={{ marginTop: 0 }}>{resetMemberEmail}</p>
-            <form onSubmit={(event) => void handleResetMemberPasswordSubmit(event)} className="admin-form">
+            <form onSubmit={(event) => void handleResetMemberPasswordSubmit(event)} className="vstack gap-3 admin-form">
               <label>
                 New password
                 <input
@@ -890,11 +767,11 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
                 />
               </label>
               {resetError && <p role="alert" className="admin-error">{resetError}</p>}
-              <div className="admin-project-detail-actions">
-                <button type="submit" className="primary-btn" disabled={resetSaving}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="submit" className="btn btn-primary" disabled={resetSaving}>
                   {resetSaving ? "Saving…" : "Reset password"}
                 </button>
-                <button type="button" className="secondary-btn" onClick={closeResetModal}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeResetModal}>
                   Cancel
                 </button>
               </div>
@@ -905,3 +782,6 @@ export function OrganizationDetailPage({ role }: { role: Role }) {
     </section>
   );
 }
+
+
+

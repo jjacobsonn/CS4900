@@ -120,8 +120,8 @@ export async function listAssetsForUser(userId, globalRoleLower) {
 /**
  * Create a new asset record
  *
- * This function inserts a new asset and defaults it to Draft status. When a
- * createdByUserId is provided, that user is recorded as the asset owner.
+ * This function inserts a new asset and defaults it to review-ready status.
+ * When a createdByUserId is provided, that user is recorded as the asset owner.
  *
  * @param {{ title: string, description?: string, assetType?: string|null, externalUrl?: string|null, createdByUserId?: number|null, projectId?: number|null, file?: Object|null }} payload - Asset create payload
  * @returns {Promise<Object>} Created asset response object (raw DB row)
@@ -137,7 +137,7 @@ export async function createAsset(payload) {
   }
 
   const status = await query(
-    "SELECT id FROM asset_status_lookup WHERE status_name = 'Draft' LIMIT 1"
+    "SELECT id FROM asset_status_lookup WHERE status_name = 'Ready for Internal Review' LIMIT 1"
   );
   const statusId = status.rows[0]?.id;
   const created = await query(
@@ -456,7 +456,6 @@ export async function createAssetVersion(assetId, payload) {
  */
 const INTERNAL_STATUS_MAP = {
   // key           // canonical DB status_name
-  draft: "Draft",
   in_progress: "In Progress",
   ready_for_internal_review: "Ready for Internal Review",
   in_internal_review: "In Internal Review",
@@ -470,9 +469,8 @@ const INTERNAL_STATUS_MAP = {
 
 // Allowed state transitions for the initial internal-only workflow slice.
 const INTERNAL_STATUS_TRANSITIONS = {
-  Draft: new Set(["In Progress", "Ready for Internal Review"]),
   "In Progress": new Set(["Ready for Internal Review"]),
-  "Ready for Internal Review": new Set(["In Internal Review"]),
+  "Ready for Internal Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
   // Legacy seed status from setup.sql — same reviewer outcomes as "In Internal Review"
   "In Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
   "In Internal Review": new Set(["Changes Requested (Internal)", "Approved (Internal)"]),
@@ -484,21 +482,17 @@ const INTERNAL_STATUS_TRANSITIONS = {
   "Approved (Client)": new Set([]) // terminal state
 };
 
-const INTERNAL_REVIEW_KEYS = new Set([
-  "draft",
-  "in_progress",
-  "ready_for_internal_review",
-  "in_internal_review",
-  "changes_requested_internal",
-  "approved_internal"
-]);
-
-const CLIENT_REVIEW_KEYS = new Set([
-  "ready_for_client_review",
-  "in_client_review",
-  "client_changes_requested",
-  "approved_client"
-]);
+const STATUS_KEY_ROLES = {
+  in_progress: new Set(["designer", "manager", "admin", "owner"]),
+  ready_for_internal_review: new Set(["designer", "manager", "admin", "owner"]),
+  in_internal_review: new Set(["reviewer", "manager", "admin", "owner"]),
+  changes_requested_internal: new Set(["reviewer", "manager", "admin", "owner"]),
+  approved_internal: new Set(["reviewer", "manager", "admin", "owner"]),
+  ready_for_client_review: new Set(["reviewer", "manager", "admin", "owner"]),
+  in_client_review: new Set(["reviewer", "manager", "admin", "owner"]),
+  client_changes_requested: new Set(["reviewer", "manager", "admin", "owner"]),
+  approved_client: new Set(["reviewer", "manager", "admin", "owner"])
+};
 
 /**
  * Update asset status
@@ -520,11 +514,9 @@ export async function updateAssetStatus(assetId, statusKey, actorRole = null) {
     return { invalidStatus: true, reason: "Unknown internal status key" };
   }
 
-  if (CLIENT_REVIEW_KEYS.has(statusKey) && !["reviewer", "manager", "admin", "owner"].includes(actorRole || "")) {
-    return { invalidStatus: true, reason: "Role cannot perform client review transitions" };
-  }
-  if (INTERNAL_REVIEW_KEYS.has(statusKey) && !["designer", "reviewer", "manager", "admin", "owner"].includes(actorRole || "")) {
-    return { invalidStatus: true, reason: "Role cannot perform internal transitions" };
+  const allowedRoles = STATUS_KEY_ROLES[statusKey];
+  if (!allowedRoles?.has(actorRole || "")) {
+    return { invalidStatus: true, reason: "Role cannot perform this status transition" };
   }
 
   // Load current status for this asset to enforce transitions.

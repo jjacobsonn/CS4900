@@ -1,16 +1,18 @@
 import { getWorkflowReviewActions, getWorkflowStatusButtons, isApproveRequestPair } from "./workflowReview";
 
 describe("getWorkflowStatusButtons", () => {
-  test("Ready for Internal Review: internal roles get Start internal review", () => {
-    for (const role of ["reviewer", "designer", "manager", "owner", "admin"] as const) {
+  test("Ready for Internal Review: reviewers can approve or request changes directly", () => {
+    for (const role of ["reviewer", "manager", "owner", "admin"] as const) {
       expect(getWorkflowStatusButtons("Ready for Internal Review", role)).toEqual([
-        { statusKey: "in_internal_review", label: "Start internal review", variant: "primary" }
+        { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
+        { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
       ]);
     }
+    expect(getWorkflowStatusButtons("Ready for Internal Review", "designer")).toEqual([]);
   });
 
   test("In Internal Review / legacy In Review: internal roles get approve + request changes", () => {
-    for (const role of ["reviewer", "designer", "manager", "owner", "admin"] as const) {
+    for (const role of ["reviewer", "manager", "owner", "admin"] as const) {
       expect(getWorkflowStatusButtons("In Internal Review", role)).toEqual([
         { statusKey: "approved_internal", label: "Approve (internal)", variant: "primary" },
         { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
@@ -20,6 +22,8 @@ describe("getWorkflowStatusButtons", () => {
         { statusKey: "changes_requested_internal", label: "Request changes", variant: "secondary" }
       ]);
     }
+    expect(getWorkflowStatusButtons("In Internal Review", "designer")).toEqual([]);
+    expect(getWorkflowStatusButtons("In Review", "designer")).toEqual([]);
   });
 
   test("In Client Review: client actors get approve + request", () => {
@@ -31,12 +35,9 @@ describe("getWorkflowStatusButtons", () => {
     }
   });
 
-  test("Draft: designer-like roles can submit", () => {
-    expect(getWorkflowStatusButtons("Draft", "designer").map((b) => b.statusKey)).toContain("ready_for_internal_review");
-    expect(getWorkflowStatusButtons("Draft", "owner").map((b) => b.statusKey)).toContain("ready_for_internal_review");
-  });
-
-  test("Draft: reviewer alone cannot submit", () => {
+  test("Draft is not an active workflow state", () => {
+    expect(getWorkflowStatusButtons("Draft", "designer")).toEqual([]);
+    expect(getWorkflowStatusButtons("Draft", "owner")).toEqual([]);
     expect(getWorkflowStatusButtons("Draft", "reviewer")).toEqual([]);
   });
 
@@ -77,7 +78,10 @@ describe("getWorkflowReviewActions (compat)", () => {
     });
   });
 
-  test("returns null when only begin-review step exists", () => {
-    expect(getWorkflowReviewActions("Ready for Internal Review", "reviewer")).toBeNull();
+  test("maps approve/request pair for ready internal review", () => {
+    expect(getWorkflowReviewActions("Ready for Internal Review", "reviewer")).toEqual({
+      approveKey: "approved_internal",
+      requestChangesKey: "changes_requested_internal"
+    });
   });
 });

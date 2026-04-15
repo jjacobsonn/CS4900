@@ -22,6 +22,7 @@ import { createUser, getUsers, removeUser, updateUser, updateUserActive } from "
 import { AdminOverview, Organization, UserAccount } from "../types/models";
 import { Role } from "../utils/permissions";
 import type { AuthUser } from "../App";
+import { statusLabel } from "../utils/format";
 
 const defaultOverview: AdminOverview = {
   pendingReview: 0,
@@ -494,31 +495,55 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
 
   return (
     <section className="page-grid admin-page">
-      <div className="panel admin-overview-panel">
-        <h1>System Overview</h1>
-        <ul className="overview-list">
-          <li>Pending Review: {overview.pendingReview}</li>
-          <li>Changes Requested: {overview.changesRequested}</li>
-          <li>Approved: {overview.approved}</li>
+      <div className="card panel admin-overview-panel">
+        <div>
+          <p className="admin-console-kicker">Operations</p>
+          <h1>Admin Console</h1>
+          <p className="admin-muted admin-console-intro">
+            Manage organizations, projects, users, and review activity from one workspace.
+          </p>
+        </div>
+        <div className="admin-stat-grid">
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Needs Review</span>
+            <strong>{overview.pendingReview}</strong>
+          </div>
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Changes</span>
+            <strong>{overview.changesRequested}</strong>
+          </div>
+          <div className="dashboard-metric muted">
+            <span className="dashboard-metric-label">Approved</span>
+            <strong>{overview.approved}</strong>
+          </div>
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Users</span>
+            <strong>{users.length}</strong>
+          </div>
+          <div className="dashboard-metric">
+            <span className="dashboard-metric-label">Active Users</span>
+            <strong>{users.filter((user) => user.isActive).length}</strong>
+          </div>
+        </div>
+      </div>
+
+      <div className="card panel admin-desktop-only admin-aside-panel">
+        <h1>Snapshot</h1>
+        <ul className="overview-list list-group">
+          <li className="list-group-item">Organizations: {organizations.length}</li>
+          <li className="list-group-item">Projects: {projects.length}</li>
+          <li className="list-group-item">Clients: {clients.length}</li>
+          <li className="list-group-item">Recent assets: {Math.min(activity.recentAssets.length, 5)}</li>
         </ul>
       </div>
 
-      <div className="panel admin-desktop-only admin-aside-panel">
-        <h1>Admin Notes</h1>
-        <ul className="overview-list">
-          <li>Total Users: {users.length}</li>
-          <li>Active Users: {users.filter((user) => user.isActive).length}</li>
-          <li>Recent Assets Shown: {Math.min(activity.recentAssets.length, 20)}</li>
-        </ul>
-      </div>
-
-      <div className="panel admin-activity-panel">
+      <div className="card panel admin-activity-panel">
         <h1>Recent Activity</h1>
 
         <div className="admin-split-header">
           <h2 className="admin-section-title">Recent assets</h2>
           {activity.recentAssets.length > 0 && (
-            <button type="button" className="secondary-btn" onClick={() => setShowAssets((prev) => !prev)}>
+            <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAssets((prev) => !prev)}>
               {showAssets ? "Hide" : "Show"}
             </button>
           )}
@@ -529,7 +554,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
             {activity.recentAssets.length === 0 ? (
               <p>No assets yet.</p>
             ) : (
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Title</th>
@@ -540,7 +565,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.recentAssets.slice(0, 20).map((asset) => (
+                  {activity.recentAssets.slice(0, 5).map((asset) => (
                     <tr key={asset.id}>
                       <td data-label="Title">
                         <button
@@ -551,13 +576,13 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                           {asset.title}
                         </button>
                       </td>
-                      <td data-label="Status">{asset.status}</td>
+                      <td data-label="Status">{statusLabel(asset.status)}</td>
                       <td data-label="Owner">{asset.owner}</td>
                       <td data-label="Updated">{formatDate(asset.updatedAt)}</td>
-                      <td data-label="Actions" className="actions-cell">
+                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
                         <button
                           type="button"
-                          className="secondary-btn"
+                          className="btn btn-outline-secondary"
                           onClick={() => void handleDeleteAsset(String(asset.id))}
                         >
                           Delete
@@ -574,7 +599,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
         <div className="admin-split-header admin-section-gap">
           <h2 className="admin-section-title">Recent comments</h2>
           {activity.recentComments.length > 0 && (
-            <button type="button" className="secondary-btn" onClick={() => setShowComments((prev) => !prev)}>
+            <button type="button" className="btn btn-outline-secondary" onClick={() => setShowComments((prev) => !prev)}>
               {showComments ? "Hide" : "Show"}
             </button>
           )}
@@ -585,7 +610,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
             {activity.recentComments.length === 0 ? (
               <p>No comments yet.</p>
             ) : (
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Asset</th>
@@ -596,7 +621,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.recentComments.slice(0, 30).map((comment) => (
+                  {activity.recentComments.slice(0, 3).map((comment) => (
                     <tr key={comment.id}>
                       <td data-label="Asset">
                         <button
@@ -610,10 +635,10 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                       <td data-label="Comment">"{comment.message}"</td>
                       <td data-label="Author">{comment.author}</td>
                       <td data-label="When">{formatDate(comment.createdAt)}</td>
-                      <td data-label="Actions" className="actions-cell">
+                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
                         <button
                           type="button"
-                          className="secondary-btn"
+                          className="btn btn-outline-secondary"
                           onClick={() => void handleDeleteComment(String(comment.assetId), String(comment.id))}
                         >
                           Delete
@@ -628,10 +653,10 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
         )}
       </div>
 
-      <div className="panel admin-wide-panel admin-section-panel admin-organizations-section">
+      <div className="card panel admin-wide-panel admin-section-panel admin-organizations-section">
         <div className="admin-content">
           <h1>Organizations</h1>
-          <form onSubmit={(e) => void handleCreateOrganization(e)} className="admin-form admin-project-create-form">
+          <form onSubmit={(e) => void handleCreateOrganization(e)} className="vstack gap-3 admin-form admin-project-create-form">
             <label>
               Organization name
               <input
@@ -659,7 +684,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 </select>
               </label>
             )}
-            <button className="primary-btn" type="submit">
+            <button className="btn btn-primary" type="submit">
               Create organization
             </button>
           </form>
@@ -700,7 +725,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                     </span>
                   </div>
                   <p className="admin-muted admin-org-tile-description">{org.description || "No description yet."}</p>
-                  <Link className="primary-btn file-link-btn small admin-org-open-btn" to={`/admin/organizations/${org.id}`}>
+                  <Link className="btn btn-primary btn-sm file-link-btn admin-org-open-btn" to={`/admin/organizations/${org.id}`}>
                     Open
                   </Link>
                 </article>
@@ -710,10 +735,11 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
         </div>
       </div>
 
-      <div className="panel admin-wide-panel admin-section-panel admin-projects-section">
+      {false && (
+      <div className="card panel admin-wide-panel admin-section-panel admin-projects-section">
         <div className="admin-content">
           <h1>Projects</h1>
-          <form onSubmit={(e) => void handleCreateProject(e)} className="admin-form admin-project-create-form">
+          <form onSubmit={(e) => void handleCreateProject(e)} className="vstack gap-3 admin-form admin-project-create-form">
             <label>
               Organization
               <select
@@ -795,14 +821,14 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 </select>
               </label>
             )}
-            <button className="primary-btn" type="submit">
+            <button className="btn btn-primary" type="submit">
               Create project
             </button>
           </form>
           {projectError && <p role="alert" className="admin-error">{projectError}</p>}
 
           <div className="admin-scroll-table" style={{ marginTop: "1rem" }}>
-            <table className="admin-table compact">
+            <table className="table table-hover align-middle admin-table compact">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -830,14 +856,14 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                       <td data-label="Client">{p.clientName ?? "—"}</td>
                       <td data-label="Owner">{projectOwnerColumnLabel(p)}</td>
                       <td data-label="Assets">{p.assetCount ?? 0}</td>
-                      <td data-label="Actions" className="actions-cell">
-                        <button type="button" className="secondary-btn small" onClick={() => void openProjectDetail(p.id)}>
+                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void openProjectDetail(p.id)}>
                           Open
                         </button>
-                        <Link className="secondary-btn file-link-btn small" to={`/upload?projectId=${p.id}`}>
+                        <Link className="btn btn-outline-secondary btn-sm file-link-btn" to={`/upload?projectId=${p.id}`}>
                           Upload
                         </Link>
-                        <Link className="secondary-btn file-link-btn small" to={`/dashboard?projectId=${p.id}`}>
+                        <Link className="btn btn-outline-secondary btn-sm file-link-btn" to={`/dashboard?projectId=${p.id}`}>
                           Queue
                         </Link>
                       </td>
@@ -852,7 +878,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
             <div className="admin-project-detail">
               <div className="admin-split-header">
                 <h2>Project #{selectedProjectId}</h2>
-                <button type="button" className="secondary-btn" onClick={closeProjectDetail}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeProjectDetail}>
                   Close
                 </button>
               </div>
@@ -860,7 +886,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
               {detailError && <p role="alert" className="admin-error">{detailError}</p>}
               {!detailLoading && projectDetail && (
                 <>
-                  <div className="admin-form admin-project-edit-form">
+                  <div className="vstack gap-3 admin-form admin-project-edit-form">
                     <label>
                       Name
                       <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -916,16 +942,16 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                       Due date
                       <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
                     </label>
-                    <div className="admin-project-detail-actions">
+                    <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
                       <button
                         type="button"
-                        className="primary-btn"
+                        className="btn btn-primary"
                         disabled={savingProject}
                         onClick={() => void handleSaveProject()}
                       >
                         {savingProject ? "Saving…" : "Save changes"}
                       </button>
-                      <button type="button" className="secondary-btn danger-outline" onClick={() => void handleDeleteProject()}>
+                      <button type="button" className="btn btn-outline-danger" onClick={() => void handleDeleteProject()}>
                         Delete project
                       </button>
                     </div>
@@ -949,7 +975,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                     <p>No linked assets.</p>
                   ) : (
                     <div className="admin-scroll-table">
-                      <table className="admin-table compact">
+                      <table className="table table-hover align-middle admin-table compact">
                         <thead>
                           <tr>
                             <th>Title</th>
@@ -964,8 +990,8 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                               <td data-label="Title">{a.title}</td>
                               <td data-label="Status">{a.status}</td>
                               <td data-label="Owner">{a.owner}</td>
-                              <td data-label="Actions" className="actions-cell">
-                                <button type="button" className="secondary-btn small" onClick={() => navigate(`/assets/${a.id}`)}>
+                              <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
+                                <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/assets/${a.id}`)}>
                                   Open
                                 </button>
                               </td>
@@ -981,11 +1007,12 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
           )}
         </div>
       </div>
+      )}
 
-      <div className="panel admin-wide-panel admin-section-panel admin-users-section">
+      <div className="card panel admin-wide-panel admin-section-panel admin-users-section">
         <div className="admin-content">
           <h1>User Management</h1>
-          <form onSubmit={(e) => void handleCreateUser(e)} className="admin-form">
+          <form onSubmit={(e) => void handleCreateUser(e)} className="vstack gap-3 admin-form">
             <label>
               Display name (optional)
               <input
@@ -1029,7 +1056,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 autoComplete="new-password"
               />
             </label>
-            <button className="primary-btn" type="submit">
+            <button className="btn btn-primary" type="submit">
               Create User
             </button>
           </form>
@@ -1041,7 +1068,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
             <p>Loading users...</p>
           ) : (
             <div className="admin-users-table-wrap">
-              <table className="admin-table admin-user-table compact">
+              <table className="table table-hover align-middle admin-table admin-user-table compact">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -1066,13 +1093,13 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                           </td>
                           <td data-label="Email">{user.email}</td>
                           <td data-label="Role">{user.role}</td>
-                          <td data-label="Actions" className="admin-user-actions">
-                            <button type="button" className="secondary-btn small" onClick={() => openUserEdit(user)}>
+                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 admin-user-actions">
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => openUserEdit(user)}>
                               Edit
                             </button>
                             <button
                               type="button"
-                              className="secondary-btn small"
+                              className="btn btn-outline-secondary btn-sm"
                               disabled={!user.isActive || isSeedAdmin}
                               title={
                                 isSeedAdmin
@@ -1087,7 +1114,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                             </button>
                             <button
                               type="button"
-                              className="secondary-btn small"
+                              className="btn btn-outline-secondary btn-sm"
                               disabled={isSeedAdmin}
                               title={isSeedAdmin ? "Primary admin password reset is disabled here" : undefined}
                               onClick={() => openResetPasswordModal(user.id, user.email)}
@@ -1096,7 +1123,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                             </button>
                             <button
                               type="button"
-                              className="secondary-btn small"
+                              className="btn btn-outline-secondary btn-sm"
                               disabled={user.isActive}
                               title={user.isActive ? "User is active" : undefined}
                               onClick={() => void handleReactivate(user.id)}
@@ -1106,7 +1133,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                             {!isSeedAdmin ? (
                               <button
                                 type="button"
-                                className="secondary-btn small danger-outline"
+                                className="btn btn-outline-danger btn-sm"
                                 onClick={() => void handleRemoveUserAccess(user.id, user.email)}
                               >
                                 Remove
@@ -1136,7 +1163,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
             <h2 id="user-edit-title" className="admin-section-title" style={{ marginBottom: "0.75rem" }}>
               Edit user
             </h2>
-            <form onSubmit={(e) => void handleSaveUserEdit(e)} className="admin-form">
+            <form onSubmit={(e) => void handleSaveUserEdit(e)} className="vstack gap-3 admin-form">
               <label>
                 Email
                 <input
@@ -1185,11 +1212,11 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 />
               </label>
               {userEditError && <p role="alert" className="admin-error">{userEditError}</p>}
-              <div className="admin-project-detail-actions">
-                <button type="submit" className="primary-btn" disabled={userEditSaving}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="submit" className="btn btn-primary" disabled={userEditSaving}>
                   {userEditSaving ? "Saving…" : "Save"}
                 </button>
-                <button type="button" className="secondary-btn" onClick={closeUserEdit}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeUserEdit}>
                   Cancel
                 </button>
               </div>
@@ -1211,7 +1238,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
               Reset password
             </h2>
             <p className="admin-muted" style={{ marginTop: 0 }}>{resetUserEmail}</p>
-            <form onSubmit={(e) => void handleResetPasswordSubmit(e)} className="admin-form">
+            <form onSubmit={(e) => void handleResetPasswordSubmit(e)} className="vstack gap-3 admin-form">
               <label>
                 New password
                 <input
@@ -1235,11 +1262,11 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 />
               </label>
               {resetError && <p role="alert" className="admin-error">{resetError}</p>}
-              <div className="admin-project-detail-actions">
-                <button type="submit" className="primary-btn" disabled={resetSaving}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="submit" className="btn btn-primary" disabled={resetSaving}>
                   {resetSaving ? "Saving…" : "Reset password"}
                 </button>
-                <button type="button" className="secondary-btn" onClick={closeResetPasswordModal}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeResetPasswordModal}>
                   Cancel
                 </button>
               </div>
@@ -1250,3 +1277,6 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     </section>
   );
 }
+
+
+

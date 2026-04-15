@@ -4,6 +4,7 @@ import { deleteAsset, getAssets, patchAsset } from "../api/assets";
 import { getProjects, type Project } from "../api/projects";
 import { type Asset } from "../types/models";
 import { canAccessAdmin, type Role } from "../utils/permissions";
+import { statusLabel } from "../utils/format";
 
 export function AssetsPage({ role }: { role: Role }) {
   const navigate = useNavigate();
@@ -111,8 +112,8 @@ export function AssetsPage({ role }: { role: Role }) {
   };
 
   return (
-    <section className="page-grid">
-      <div className="panel">
+    <section className="page-grid assets-page">
+      <div className="card panel assets-filter-panel">
         <h1>Assets</h1>
         <div className="toolbar">
           <label>
@@ -136,25 +137,25 @@ export function AssetsPage({ role }: { role: Role }) {
               <option value="">All statuses</option>
               {availableStatuses.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {statusLabel(s)}
                 </option>
               ))}
             </select>
           </label>
         </div>
         <div className="admin-project-detail-actions assets-action-row">
-          <Link className="primary-btn file-link-btn" to={projectFilter ? `/upload?projectId=${projectFilter}` : "/upload"}>
+          <Link className="btn btn-primary file-link-btn" to={projectFilter ? `/upload?projectId=${projectFilter}` : "/upload"}>
             Add asset
           </Link>
         </div>
         {error && <p role="alert" className="admin-error">{error}</p>}
       </div>
 
-      <div className="panel">
+      <div className="card panel assets-list-panel">
         <h1>Current Assets</h1>
         {loading ? <p>Loading assets…</p> : null}
         <div className="admin-scroll-table">
-          <table className="admin-table compact">
+          <table className="table table-hover align-middle admin-table compact">
             <thead>
               <tr>
                 <th>Title</th>
@@ -174,18 +175,18 @@ export function AssetsPage({ role }: { role: Role }) {
                   <tr key={String(a.id)}>
                     <td data-label="Title">{a.name}</td>
                     <td data-label="Project">{a.projectName ?? "—"}</td>
-                    <td data-label="Status">{a.status}</td>
+                    <td data-label="Status">{statusLabel(a.status)}</td>
                     <td data-label="Owner">{a.owner}</td>
-                    <td data-label="Actions" className="admin-user-actions">
-                      <button type="button" className="secondary-btn small" onClick={() => navigate(`/assets/${a.id}`)}>
+                    <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 admin-user-actions">
+                      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => navigate(`/assets/${a.id}`)}>
                         Open
                       </button>
                       {canManage ? (
                         <>
-                          <button type="button" className="secondary-btn small" onClick={() => openEditModal(a)}>
+                          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => openEditModal(a)}>
                             Edit
                           </button>
-                          <button type="button" className="secondary-btn small danger-outline" onClick={() => void handleDelete(String(a.id))}>
+                          <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => void handleDelete(String(a.id))}>
                             Remove
                           </button>
                         </>
@@ -207,7 +208,7 @@ export function AssetsPage({ role }: { role: Role }) {
               Edit Asset
             </h2>
             <form
-              className="admin-form"
+              className="vstack gap-3 admin-form"
               onSubmit={(e) => {
                 e.preventDefault();
                 void handleSaveEdit();
@@ -221,11 +222,11 @@ export function AssetsPage({ role }: { role: Role }) {
                 Notes
                 <textarea rows={4} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
               </label>
-              <div className="admin-project-detail-actions">
-                <button type="submit" className="primary-btn" disabled={savingEdit || editTitle.trim() === ""}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="submit" className="btn btn-primary" disabled={savingEdit || editTitle.trim() === ""}>
                   {savingEdit ? "Saving..." : "Save changes"}
                 </button>
-                <button type="button" className="secondary-btn" onClick={closeEditModal}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeEditModal}>
                   Cancel
                 </button>
               </div>
@@ -236,3 +237,6 @@ export function AssetsPage({ role }: { role: Role }) {
     </section>
   );
 }
+
+
+

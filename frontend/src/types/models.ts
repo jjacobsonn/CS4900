@@ -1,5 +1,4 @@
 export type AssetStatus =
-  | "Draft"
   | "In Progress"
   | "In Review"
   | "Approved"

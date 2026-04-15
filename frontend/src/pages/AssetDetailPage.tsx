@@ -23,8 +23,23 @@ import type { AuthUser } from "../App";
 
 type Tab = "comments" | "versions";
 
-function supportsInlinePreview(mimeType?: string | null) {
-  if (!mimeType) return false;
+function isCsvOrSpreadsheet(asset: Pick<Asset, "fileName" | "mimeType">) {
+  const mimeType = (asset.mimeType || "").toLowerCase();
+  const fileName = (asset.fileName || "").toLowerCase();
+  return (
+    fileName.endsWith(".csv") ||
+    fileName.endsWith(".xls") ||
+    fileName.endsWith(".xlsx") ||
+    mimeType === "text/csv" ||
+    mimeType === "application/csv" ||
+    mimeType === "application/vnd.ms-excel" ||
+    mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+}
+
+function supportsInlinePreview(asset: Pick<Asset, "fileName" | "mimeType">) {
+  const mimeType = asset.mimeType || "";
+  if (!mimeType || isCsvOrSpreadsheet(asset)) return false;
   if (mimeType.startsWith("image/")) return true;
   if (mimeType === "application/pdf") return true;
   if (mimeType.startsWith("text/")) return true;
@@ -36,6 +51,14 @@ function supportsInlinePreview(mimeType?: string | null) {
 function renderAssetPreview(asset: Asset) {
   if (!asset.fileUrl) {
     return <div className="asset-preview empty">No file uploaded yet</div>;
+  }
+
+  if (isCsvOrSpreadsheet(asset)) {
+    return (
+      <div className="asset-preview empty">
+        Asset preview unavailable. Use Download file to view it locally.
+      </div>
+    );
   }
 
   if (asset.mimeType?.startsWith("image/")) {
@@ -78,7 +101,7 @@ function renderAssetPreview(asset: Asset) {
     );
   }
 
-  return <div className="asset-preview empty">Preview unavailable for this file</div>;
+  return <div className="asset-preview empty">Asset preview unavailable. Use Download file to view it locally.</div>;
 }
 
 export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null }) {
@@ -299,7 +322,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   }, [asset, currentUser]);
 
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
-  const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset?.mimeType));
+  const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset));
 
   const workflowButtons = useMemo(
     () => (asset ? getWorkflowStatusButtons(asset.backendStatus, currentUser?.role) : []),
@@ -356,15 +379,15 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     );
   }, [workflowButtons]);
 
-  if (loading) return <section className="panel"><p>Loading asset...</p></section>;
-  if (error || !asset) return <section className="panel"><p role="alert">{error || "Asset not found."}</p></section>;
+  if (loading) return <section className="card panel"><p>Loading asset...</p></section>;
+  if (error || !asset) return <section className="card panel"><p role="alert">{error || "Asset not found."}</p></section>;
 
   return (
     <>
       <section className="page-grid">
-        <div className="panel">
-          <button type="button" className="secondary-btn" onClick={() => navigate("/dashboard")}>
-            Back
+        <div className="card panel">
+          <button type="button" className="btn btn-outline-secondary asset-back-btn" onClick={() => navigate("/dashboard")} aria-label="Back to dashboard">
+            &larr;
           </button>
           <h1>{asset.name}</h1>
           <div
@@ -383,20 +406,20 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           >
             {renderAssetPreview(asset)}
           </div>
-          <div className="asset-viewer-actions">
+          <div className="d-flex flex-wrap align-items-center gap-2 asset-viewer-actions">
             {canEnlargePreview ? (
-              <button type="button" className="secondary-btn" onClick={() => setIsPreviewOpen(true)}>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setIsPreviewOpen(true)}>
                 Enlarge preview
               </button>
             ) : null}
             {canInlinePreview && asset.fileUrl ? (
-              <a className="secondary-btn file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
+              <a className="btn btn-outline-secondary file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
                 Open preview in new tab
               </a>
             ) : null}
             {asset.fileUrl ? (
-              <a className="secondary-btn file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
-                Open full file
+              <a className="btn btn-outline-secondary file-link-btn" href={asset.fileUrl} download={sanitizeFileName(asset.fileName)}>
+                Download file
               </a>
             ) : null}
           </div>
@@ -410,7 +433,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           {asset.fileUrl && asset.fileName ? (
             <p>
               Current file:{" "}
-              <a href={asset.fileUrl} target="_blank" rel="noreferrer">
+              <a href={asset.fileUrl} download={sanitizeFileName(asset.fileName)}>
                 {sanitizeFileName(asset.fileName)}
               </a>
             </p>
@@ -418,11 +441,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           {isAssetAdmin && (
             <>
               {!editAssetOpen ? (
-                <button type="button" className="secondary-btn" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
+                <button type="button" className="btn btn-outline-secondary" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
                   Edit asset
                 </button>
               ) : (
-                <div className="panel edit-asset-panel" style={{ marginTop: "0.75rem", padding: "0.75rem" }}>
+                <div className="card panel edit-asset-panel" style={{ marginTop: "0.75rem", padding: "0.75rem" }}>
                   <h3 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>Edit asset</h3>
                   <label>
                     Title
@@ -460,10 +483,10 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                     </label>
                   )}
                   <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                    <button type="button" className="primary-btn" onClick={() => void saveEditAsset()} disabled={savingAsset}>
+                    <button type="button" className="btn btn-primary" onClick={() => void saveEditAsset()} disabled={savingAsset}>
                       {savingAsset ? "Saving…" : "Save"}
                     </button>
-                    <button type="button" className="secondary-btn" onClick={() => { setEditAssetOpen(false); setReplaceMainFile(null); }}>
+                    <button type="button" className="btn btn-outline-secondary" onClick={() => { setEditAssetOpen(false); setReplaceMainFile(null); }}>
                       Cancel
                     </button>
                   </div>
@@ -477,7 +500,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
             Status: <StatusBadge status={asset.status} />
           </p>
           {workflowButtons.length > 0 ? (
-            <div className="row-actions asset-workflow-actions">
+            <div className="d-flex flex-wrap align-items-center gap-2 row-actions asset-workflow-actions">
               {workflowError ? (
                 <p role="alert" className="asset-workflow-error">
                   {workflowError}
@@ -501,7 +524,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                   </label>
                   <button
                     type="button"
-                    className="primary-btn"
+                    className="btn btn-primary"
                     disabled={workflowBusy || !selectedWorkflowStatus}
                     onClick={() => void applyWorkflowStatus(selectedWorkflowStatus)}
                   >
@@ -512,7 +535,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                 <>
                   <button
                     type="button"
-                    className="primary-btn"
+                    className="btn btn-primary"
                     disabled={workflowBusy}
                     onClick={() => {
                       const approve = workflowButtons.find((b) => b.statusKey.startsWith("approved_"));
@@ -523,7 +546,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                   </button>
                   <button
                     type="button"
-                    className="secondary-btn"
+                    className="btn btn-outline-secondary"
                     disabled={workflowBusy}
                     onClick={() => {
                       const req = workflowButtons.find((b) => b.statusKey.includes("changes_requested"));
@@ -538,7 +561,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                   <button
                     key={btn.statusKey}
                     type="button"
-                    className={btn.variant === "primary" ? "primary-btn" : "secondary-btn"}
+                    className={btn.variant === "primary" ? "btn btn-primary" : "btn btn-outline-secondary"}
                     disabled={workflowBusy}
                     onClick={() => void applyWorkflowStatus(btn.statusKey)}
                   >
@@ -549,18 +572,18 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
             </div>
           ) : null}
         </div>
-        <div className="panel">
-          <div className="toolbar tabs">
-            <button type="button" className={activeTab === "comments" ? "active" : ""} onClick={() => setActiveTab("comments")}>
+        <div className="card panel">
+          <div className="toolbar tabs nav nav-pills">
+            <button type="button" className={`nav-link ${activeTab === "comments" ? "active" : ""}`} onClick={() => setActiveTab("comments")}>
               Comments
             </button>
-            <button type="button" className={activeTab === "versions" ? "active" : ""} onClick={() => setActiveTab("versions")}>
+            <button type="button" className={`nav-link ${activeTab === "versions" ? "active" : ""}`} onClick={() => setActiveTab("versions")}>
               Versions
             </button>
           </div>
           {activeTab === "comments" && (
             <>
-              <form onSubmit={(e) => void submitComment(e)}>
+              <form className="asset-comment-form" onSubmit={(e) => void submitComment(e)}>
                 <label>
                   Add Comment
                   <textarea value={commentInput} onChange={(event) => setCommentInput(event.target.value)} />
@@ -570,7 +593,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                     {commentError}
                   </p>
                 ) : null}
-                <button type="submit" className="primary-btn" disabled={commentPosting}>
+                <button type="submit" className="btn btn-primary" disabled={commentPosting}>
                   {commentPosting ? "Posting…" : "Post Comment"}
                 </button>
               </form>
@@ -622,7 +645,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                       disabled={versionUploading}
                     />
                   </label>
-                  <button type="submit" className="primary-btn" disabled={!newVersionFile || versionUploading}>
+                  <button type="submit" className="btn btn-primary" disabled={!newVersionFile || versionUploading}>
                     {versionUploading ? "Uploading…" : "Upload new version"}
                   </button>
                 </form>
@@ -640,9 +663,9 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
           )}
         </div>
       </section>
-      <section className="panel" style={{ marginTop: "0.75rem" }}>
-        <h2 style={{ marginBottom: "0.35rem" }}>Activity Timeline</h2>
-        <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
+      <section className="card panel activity-panel">
+        <h2>Activity Timeline</h2>
+        <p className="dashboard-filter-note activity-summary">
           {versions.length} version{versions.length === 1 ? "" : "s"} · {comments.length} comment
           {comments.length === 1 ? "" : "s"} · {activityTimeline.length} total event
           {activityTimeline.length === 1 ? "" : "s"}
@@ -650,10 +673,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         {activityTimeline.length === 0 ? (
           <p>No timeline events yet.</p>
         ) : (
-          <ul className="version-audit" style={{ listStyle: "none", paddingLeft: 0, margin: 0 }}>
+          <ul className="activity-timeline">
             {activityTimeline.map((event) => (
-              <li key={event.id} style={{ marginBottom: "0.6rem" }}>
-                <strong>{event.title}</strong> - {event.detail}
+              <li key={event.id}>
+                <strong>{event.title}</strong>
+                <p>{event.detail}</p>
                 <div className="version-meta">
                   {new Date(event.at).toLocaleString()} {event.actor ? ` • ${event.actor}` : ""}
                 </div>
@@ -678,3 +702,6 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     </>
   );
 }
+
+
+

@@ -5,11 +5,22 @@ import { getProjects, type Project } from "../api/projects";
 import { Asset, AssetStatus } from "../types/models";
 import { AssetCard } from "../components/AssetCard";
 import { canAccessUpload, type Role } from "../utils/permissions";
+import { statusLabel } from "../utils/format";
 
-type Filter = "queue" | "all" | AssetStatus;
+type Filter = "reviewerQueue" | "designerQueue" | "all" | AssetStatus;
 
-function isQueueStatus(status: AssetStatus): boolean {
-  return status === "Draft" || status === "In Review";
+function isReviewerQueueStatus(status: AssetStatus): boolean {
+  return status === "In Review";
+}
+
+function isDesignerQueueStatus(status: AssetStatus): boolean {
+  return status === "Changes Requested" || status === "In Progress";
+}
+
+function defaultStatusFilter(role: Role): Filter {
+  if (role === "admin") return "all";
+  if (role === "designer") return "designerQueue";
+  return "reviewerQueue";
 }
 
 export function DashboardPage({ role }: { role: Role }) {
@@ -18,7 +29,7 @@ export function DashboardPage({ role }: { role: Role }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<Filter>(() => (role === "admin" ? "all" : "queue"));
+  const [statusFilter, setStatusFilter] = useState<Filter>(() => defaultStatusFilter(role));
   const [projectFilter, setProjectFilter] = useState(() => (searchParams.get("projectId") ?? "").trim());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,8 +59,10 @@ export function DashboardPage({ role }: { role: Role }) {
       const matchesStatus =
         statusFilter === "all"
           ? true
-          : statusFilter === "queue"
-            ? isQueueStatus(asset.status)
+          : statusFilter === "reviewerQueue"
+            ? isReviewerQueueStatus(asset.status)
+            : statusFilter === "designerQueue"
+              ? isDesignerQueueStatus(asset.status)
             : asset.status === statusFilter;
       const matchesProject =
         projectFilter === "" ||
@@ -64,11 +77,13 @@ export function DashboardPage({ role }: { role: Role }) {
       assets: assets.length,
       inReview: assets.filter((asset) => asset.status === "In Review").length,
       changesRequested: assets.filter((asset) => asset.status === "Changes Requested").length,
-      draft: assets.filter((asset) => asset.status === "Draft").length,
+      inProgress: assets.filter((asset) => asset.status === "In Progress").length,
       approved: assets.filter((asset) => asset.status === "Approved").length
     }),
     [assets, projects]
   );
+  const selectedProject = projects.find((project) => String(project.id) === projectFilter);
+  const overviewTitle = projectFilter ? "Project Overview" : "Dashboard Overview";
 
   const onProjectFilterChange = (value: string) => {
     setProjectFilter(value);
@@ -80,7 +95,7 @@ export function DashboardPage({ role }: { role: Role }) {
 
   return (
     <section className="page-grid dashboard-page">
-      <div className="panel dashboard-summary">
+      <div className="card panel dashboard-summary">
         <h1>Review Queue</h1>
         <div className="dashboard-summary-grid">
           <div className="dashboard-metric">
@@ -92,7 +107,7 @@ export function DashboardPage({ role }: { role: Role }) {
             <strong>{summary.assets}</strong>
           </div>
           <div className="dashboard-metric">
-            <span className="dashboard-metric-label">In Review</span>
+            <span className="dashboard-metric-label">Needs Review</span>
             <strong>{summary.inReview}</strong>
           </div>
           <div className="dashboard-metric">
@@ -100,8 +115,8 @@ export function DashboardPage({ role }: { role: Role }) {
             <strong>{summary.changesRequested}</strong>
           </div>
           <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Draft</span>
-            <strong>{summary.draft}</strong>
+            <span className="dashboard-metric-label">WIP</span>
+            <strong>{summary.inProgress}</strong>
           </div>
           <div className="dashboard-metric muted">
             <span className="dashboard-metric-label">Approved</span>
@@ -109,17 +124,17 @@ export function DashboardPage({ role }: { role: Role }) {
           </div>
         </div>
       </div>
-      <div className="panel dashboard-filters">
+      <div className="card panel dashboard-filters">
         <h1>Filters</h1>
         <div className="dashboard-filter-stack">
           <label className="dashboard-primary-filter">
             Queue Scope
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Filter)}>
-              <option value="queue">Needs review</option>
-              <option value="In Review">In Review</option>
-              <option value="In Progress">In Progress</option>
+              <option value="reviewerQueue">Reviewer queue</option>
+              <option value="designerQueue">Designer queue</option>
+              <option value="In Review">{statusLabel("In Review")}</option>
+              <option value="In Progress">{statusLabel("In Progress")}</option>
               <option value="Changes Requested">Changes Requested</option>
-              <option value="Draft">Draft</option>
               <option value="Approved">Approved</option>
               <option value="all">All Assets</option>
             </select>
@@ -151,32 +166,32 @@ export function DashboardPage({ role }: { role: Role }) {
           </label>
         </div>
       </div>
-      <div className="panel dashboard-results">
+      <div className="card panel dashboard-results">
         <div className="dashboard-results-header">
           <div>
-            <h1>Dashboard Overview</h1>
+            <h1>{overviewTitle}</h1>
             <p className="dashboard-filter-note">
               {filteredAssets.length} matching asset{filteredAssets.length === 1 ? "" : "s"}
             </p>
             {projectFilter ? (
               <p className="dashboard-filter-note">
-                Working in project #{projectFilter}.
+                Working in {selectedProject?.name ?? `project #${projectFilter}`}.
               </p>
             ) : null}
           </div>
           {projectFilter ? (
-            <div className="row-actions">
+            <div className="d-flex flex-wrap align-items-center gap-2 row-actions">
               {canUpload ? (
                 <button
                   type="button"
-                  className="secondary-btn"
+                  className="btn btn-outline-secondary"
                   onClick={() => navigate(`/upload?projectId=${projectFilter}`)}
                 >
                   Upload to this project
                 </button>
               ) : null}
               {isAdmin ? (
-                <button type="button" className="secondary-btn" onClick={() => navigate("/admin")}>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => navigate("/admin")}>
                   Manage projects
                 </button>
               ) : null}
@@ -193,7 +208,7 @@ export function DashboardPage({ role }: { role: Role }) {
                 <p>No projects available yet.</p>
               ) : (
                 <div className="admin-scroll-table">
-                  <table className="admin-table compact">
+                  <table className="table table-hover align-middle admin-table compact">
                     <thead>
                       <tr>
                         <th>Project</th>
@@ -208,14 +223,14 @@ export function DashboardPage({ role }: { role: Role }) {
                           <td data-label="Project">{project.name}</td>
                           <td data-label="Status">{project.status}</td>
                           <td data-label="Assets">{project.assetCount ?? 0}</td>
-                          <td data-label="Actions" className="actions-cell">
-                            <button type="button" className="secondary-btn small" onClick={() => onProjectFilterChange(String(project.id))}>
+                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
+                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => onProjectFilterChange(String(project.id))}>
                               View queue
                             </button>
                             {canUpload ? (
                               <button
                                 type="button"
-                                className="secondary-btn small"
+                                className="btn btn-outline-secondary btn-sm"
                                 onClick={() => navigate(`/upload?projectId=${project.id}`)}
                               >
                                 Upload
@@ -249,3 +264,6 @@ export function DashboardPage({ role }: { role: Role }) {
     </section>
   );
 }
+
+
+

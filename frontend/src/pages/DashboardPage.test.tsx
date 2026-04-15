@@ -19,7 +19,7 @@ test("DashboardPage renders assets and filters by status", async () => {
   const getAssetsMock = getAssets as jest.MockedFunction<typeof getAssets>;
   const getProjectsMock = getProjects as jest.MockedFunction<typeof getProjects>;
   getAssetsMock.mockResolvedValue([
-    { id: 1, name: "Asset A", owner: "X", status: "Draft", updatedAt: "", currentVersion: "v1" },
+    { id: 1, name: "Asset A", owner: "X", status: "In Progress", updatedAt: "", currentVersion: "v1" },
     { id: 2, name: "Asset B", owner: "Y", status: "In Review", updatedAt: "", currentVersion: "v1" },
     { id: 3, name: "Asset C", owner: "Z", status: "Approved", updatedAt: "", currentVersion: "v1" }
   ]);
@@ -32,10 +32,10 @@ test("DashboardPage renders assets and filters by status", async () => {
   );
 
   expect(await screen.findByText("Asset B")).toBeInTheDocument();
-  expect(screen.getByText("Asset A")).toBeInTheDocument();
+  expect(screen.queryByText("Asset A")).not.toBeInTheDocument();
   expect(screen.queryByText("Asset C")).not.toBeInTheDocument();
 
-  await userEvent.selectOptions(screen.getByLabelText("Queue Scope"), "Draft");
+  await userEvent.selectOptions(screen.getByLabelText("Queue Scope"), "In Progress");
   expect(screen.getByText("Asset A")).toBeInTheDocument();
   expect(screen.queryByText("Asset B")).not.toBeInTheDocument();
   expect(screen.queryByText("Asset C")).not.toBeInTheDocument();

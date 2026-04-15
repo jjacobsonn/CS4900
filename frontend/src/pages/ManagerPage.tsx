@@ -6,6 +6,7 @@ import { getProjects } from "../api/projects";
 import type { Asset, Organization, OrganizationMemberRow } from "../types/models";
 import type { Project } from "../api/projects";
 import { canAccessAdmin, type Role } from "../utils/permissions";
+import { statusLabel } from "../utils/format";
 
 type ManagerTab = "overview" | "projects" | "assets" | "team" | "activity";
 
@@ -70,7 +71,7 @@ export function ManagerPage({ role }: { role: Role }) {
   if (!canView) {
     return (
       <section className="page-grid">
-        <div className="panel">
+        <div className="card panel">
           <h1>Manager Workspace</h1>
           <p>You do not have permission to view this page.</p>
         </div>
@@ -80,39 +81,39 @@ export function ManagerPage({ role }: { role: Role }) {
 
   return (
     <section className="page-grid manager-page">
-      <div className="panel manager-panel">
-        <h1>Manager Workspace</h1>
-        <label>
-          Organization
-          <select value={selectedOrgId} onChange={(e) => setSelectedOrgId(e.target.value)}>
-            <option value="" disabled>
-              Select organization...
-            </option>
-            {organizations.map((org) => (
-              <option key={org.id} value={String(org.id)}>
-                {org.name}
+      <div className="card panel manager-panel">
+        <div className="manager-workspace-header">
+          <h1>Manager Workspace</h1>
+          <label>
+            Organization
+            <select value={selectedOrgId} onChange={(e) => setSelectedOrgId(e.target.value)}>
+              <option value="" disabled>
+                Select organization...
               </option>
-            ))}
-          </select>
-        </label>
+              {organizations.map((org) => (
+                <option key={org.id} value={String(org.id)}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {error && <p role="alert" className="admin-error">{error}</p>}
-      </div>
 
-      <div className="panel manager-panel">
-        <div className="tabs">
-          <button type="button" className={tab === "overview" ? "active" : ""} onClick={() => setTab("overview")}>
+        <div className="tabs nav nav-pills">
+          <button type="button" className={`nav-link ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}>
             Overview
           </button>
-          <button type="button" className={tab === "projects" ? "active" : ""} onClick={() => setTab("projects")}>
+          <button type="button" className={`nav-link ${tab === "projects" ? "active" : ""}`} onClick={() => setTab("projects")}>
             Projects
           </button>
-          <button type="button" className={tab === "assets" ? "active" : ""} onClick={() => setTab("assets")}>
+          <button type="button" className={`nav-link ${tab === "assets" ? "active" : ""}`} onClick={() => setTab("assets")}>
             Assets
           </button>
-          <button type="button" className={tab === "team" ? "active" : ""} onClick={() => setTab("team")}>
+          <button type="button" className={`nav-link ${tab === "team" ? "active" : ""}`} onClick={() => setTab("team")}>
             Team
           </button>
-          <button type="button" className={tab === "activity" ? "active" : ""} onClick={() => setTab("activity")}>
+          <button type="button" className={`nav-link ${tab === "activity" ? "active" : ""}`} onClick={() => setTab("activity")}>
             Activity
           </button>
         </div>
@@ -130,7 +131,7 @@ export function ManagerPage({ role }: { role: Role }) {
               <strong>{metrics.assets}</strong>
             </div>
             <div className="dashboard-metric">
-              <span className="dashboard-metric-label">In Review</span>
+              <span className="dashboard-metric-label">Needs Review</span>
               <strong>{metrics.inReview}</strong>
             </div>
             <div className="dashboard-metric">
@@ -142,13 +143,13 @@ export function ManagerPage({ role }: { role: Role }) {
 
         {!loading && tab === "projects" && (
           <div className="manager-tab-content">
-            <div className="admin-project-detail-actions">
-              <Link className="primary-btn file-link-btn" to={`/projects?organizationId=${selectedOrgId}`}>
+            <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+              <Link className="btn btn-primary file-link-btn" to={`/projects?organizationId=${selectedOrgId}`}>
                 Manage projects
               </Link>
             </div>
             <div className="admin-scroll-table">
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -178,13 +179,13 @@ export function ManagerPage({ role }: { role: Role }) {
 
         {!loading && tab === "assets" && (
           <div className="manager-tab-content">
-            <div className="admin-project-detail-actions">
-              <Link className="primary-btn file-link-btn" to="/assets">
+            <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+              <Link className="btn btn-primary file-link-btn" to="/assets">
                 Manage assets
               </Link>
             </div>
             <div className="admin-scroll-table">
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Title</th>
@@ -201,7 +202,7 @@ export function ManagerPage({ role }: { role: Role }) {
                     assets.map((a) => (
                       <tr key={String(a.id)}>
                         <td data-label="Title">{a.name}</td>
-                        <td data-label="Status">{a.status}</td>
+                        <td data-label="Status">{statusLabel(a.status)}</td>
                         <td data-label="Owner">{a.owner}</td>
                       </tr>
                     ))
@@ -214,13 +215,13 @@ export function ManagerPage({ role }: { role: Role }) {
 
         {!loading && tab === "team" && (
           <div className="manager-tab-content">
-            <div className="admin-project-detail-actions">
-              <Link className="primary-btn file-link-btn" to={`/admin/organizations/${selectedOrgId}`}>
+            <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+              <Link className="btn btn-primary file-link-btn" to={`/admin/organizations/${selectedOrgId}`}>
                 Manager
               </Link>
             </div>
             <div className="admin-scroll-table">
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -260,3 +261,6 @@ export function ManagerPage({ role }: { role: Role }) {
     </section>
   );
 }
+
+
+

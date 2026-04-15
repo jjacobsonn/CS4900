@@ -233,8 +233,8 @@ export function ProjectsPage({ role }: { role: Role }) {
   };
 
   return (
-    <section className="page-grid">
-      <div className="panel">
+    <section className="page-grid projects-page">
+      <div className="card panel projects-filter-panel">
         <h1>Projects</h1>
         <div className="toolbar">
           <label>
@@ -254,14 +254,14 @@ export function ProjectsPage({ role }: { role: Role }) {
           </label>
         </div>
         {canManage && (
-          <div className="admin-project-detail-actions" style={{ marginTop: "0.65rem" }}>
-            <button type="button" className="primary-btn" onClick={() => setShowCreate((v) => !v)}>
+          <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions projects-action-row">
+            <button type="button" className="btn btn-primary" onClick={() => setShowCreate((v) => !v)}>
               {showCreate ? "Cancel" : "Create project"}
             </button>
           </div>
         )}
         {showCreate && canManage && (
-          <form onSubmit={(e) => void handleCreate(e)} className="admin-form" style={{ marginTop: "0.75rem" }}>
+          <form onSubmit={(e) => void handleCreate(e)} className="vstack gap-3 admin-form projects-create-form">
             <label>
               Organization
               <select value={createOrgId} onChange={(e) => setCreateOrgId(e.target.value)} required>
@@ -306,7 +306,7 @@ export function ProjectsPage({ role }: { role: Role }) {
               Due date
               <input type="date" value={createDue} onChange={(e) => setCreateDue(e.target.value)} />
             </label>
-            <button className="primary-btn" type="submit">
+            <button className="btn btn-primary" type="submit">
               Create project
             </button>
           </form>
@@ -314,11 +314,11 @@ export function ProjectsPage({ role }: { role: Role }) {
         {error && <p role="alert" className="admin-error">{error}</p>}
       </div>
 
-      <div className="panel">
+      <div className="card panel projects-list-panel">
         <h1>Current Projects</h1>
         {loading ? <p>Loading projects…</p> : null}
         <div className="admin-scroll-table">
-          <table className="admin-table compact">
+          <table className="table table-hover align-middle admin-table compact">
             <thead>
               <tr>
                 <th>Name</th>
@@ -341,14 +341,14 @@ export function ProjectsPage({ role }: { role: Role }) {
                     <td data-label="Status">{p.status}</td>
                     <td data-label="Assets">{p.assetCount ?? 0}</td>
                     {canManage ? (
-                      <td data-label="Actions" className="admin-user-actions">
-                        <button type="button" className="secondary-btn small" onClick={() => startEdit(p)}>
+                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 admin-user-actions">
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => startEdit(p)}>
                           Edit
                         </button>
-                        <button type="button" className="secondary-btn small" onClick={() => void openTeamManager(p)}>
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => void openTeamManager(p)}>
                           Team
                         </button>
-                        <button type="button" className="secondary-btn small danger-outline" onClick={() => void handleDelete(p.id)}>
+                        <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => void handleDelete(p.id)}>
                           Remove
                         </button>
                       </td>
@@ -362,7 +362,7 @@ export function ProjectsPage({ role }: { role: Role }) {
         {editProjectId != null && canManage && (
           <div className="admin-project-detail" style={{ marginTop: "0.85rem" }}>
             <h2 className="admin-section-title">Edit project</h2>
-            <div className="admin-form">
+            <div className="vstack gap-3 admin-form">
               <label>
                 Name
                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -394,11 +394,11 @@ export function ProjectsPage({ role }: { role: Role }) {
                 Due date
                 <input type="date" value={editDue} onChange={(e) => setEditDue(e.target.value)} />
               </label>
-              <div className="admin-project-detail-actions">
-                <button type="button" className="primary-btn" onClick={() => void handleSaveEdit()}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="button" className="btn btn-primary" onClick={() => void handleSaveEdit()}>
                   Save changes
                 </button>
-                <button type="button" className="secondary-btn" onClick={() => setEditProjectId(null)}>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setEditProjectId(null)}>
                   Cancel
                 </button>
               </div>
@@ -409,7 +409,7 @@ export function ProjectsPage({ role }: { role: Role }) {
           <div className="admin-project-detail" style={{ marginTop: "0.85rem" }}>
             <h2 className="admin-section-title">Manage project team</h2>
             {teamLoading ? <p>Loading team...</p> : null}
-            <div className="admin-form" style={{ marginTop: "0.5rem" }}>
+            <div className="vstack gap-3 admin-form" style={{ marginTop: "0.5rem" }}>
               <label>
                 Add organization user
                 <select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)}>
@@ -421,17 +421,17 @@ export function ProjectsPage({ role }: { role: Role }) {
                   ))}
                 </select>
               </label>
-              <div className="admin-project-detail-actions">
-                <button type="button" className="primary-btn" onClick={() => void handleAddProjectMember()} disabled={!addMemberUserId}>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button type="button" className="btn btn-primary" onClick={() => void handleAddProjectMember()} disabled={!addMemberUserId}>
                   Add to project
                 </button>
-                <button type="button" className="secondary-btn" onClick={() => setManageTeamProjectId(null)}>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setManageTeamProjectId(null)}>
                   Close
                 </button>
               </div>
             </div>
             <div className="admin-scroll-table">
-              <table className="admin-table compact">
+              <table className="table table-hover align-middle admin-table compact">
                 <thead>
                   <tr>
                     <th>Name</th>
@@ -451,10 +451,10 @@ export function ProjectsPage({ role }: { role: Role }) {
                         <td data-label="Name">{member.displayName}</td>
                         <td data-label="Email">{member.email}</td>
                         <td data-label="Role">{member.role}</td>
-                        <td data-label="Actions" className="admin-user-actions">
+                        <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 admin-user-actions">
                           <button
                             type="button"
-                            className="secondary-btn small danger-outline"
+                            className="btn btn-outline-danger btn-sm"
                             onClick={() => void handleRemoveProjectMember(member.userId)}
                           >
                             Remove
@@ -472,3 +472,6 @@ export function ProjectsPage({ role }: { role: Role }) {
     </section>
   );
 }
+
+
+

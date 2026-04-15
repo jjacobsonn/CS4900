@@ -100,7 +100,7 @@ test("AssetDetailPage Request changes sends changes_requested_internal", async (
 
   getAssetMock.mockResolvedValue({
     id: 99,
-    name: "Draft Social",
+    name: "Social Concept",
     owner: "Designer",
     fileUrl: "/uploads/social.png",
     fileName: "social.png",
@@ -113,7 +113,7 @@ test("AssetDetailPage Request changes sends changes_requested_internal", async (
   });
   patchAssetStatusMock.mockResolvedValue({
     id: 99,
-    name: "Draft Social",
+    name: "Social Concept",
     owner: "Designer",
     fileUrl: "/uploads/social.png",
     fileName: "social.png",
@@ -134,7 +134,7 @@ test("AssetDetailPage Request changes sends changes_requested_internal", async (
     </MemoryRouter>
   );
 
-  expect(await screen.findByText("Draft Social")).toBeInTheDocument();
+  expect(await screen.findByText("Social Concept")).toBeInTheDocument();
   await userEvent.selectOptions(screen.getByLabelText("Review action"), "changes_requested_internal");
   await userEvent.click(screen.getByRole("button", { name: "Apply action" }));
   expect(patchAssetStatusMock).toHaveBeenCalledWith("99", "changes_requested_internal");

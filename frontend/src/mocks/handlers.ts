@@ -30,7 +30,7 @@ export const handlers = [
       title,
       description,
       owner: "Frontend User",
-      status: "Draft" as const,
+      status: "In Review" as const,
       current_version: "v1.0",
       created_at: now,
       updated_at: now,

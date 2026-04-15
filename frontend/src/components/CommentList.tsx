@@ -14,9 +14,9 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
   }
 
   return (
-    <ul className="comment-list">
+    <ul className="comment-list list-group mt-3">
       {comments.map((comment) => (
-        <li key={comment.id} className="comment-item">
+        <li key={comment.id} className="comment-item list-group-item">
           <div className="comment-meta">
             <strong>{comment.author}</strong>{" "}
             <span className="comment-date" title={comment.createdAt}>
@@ -25,7 +25,7 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
             {isAdmin && onDeleteComment && (
               <button
                 type="button"
-                className="secondary-btn small comment-delete-btn"
+                className="btn btn-outline-secondary btn-sm comment-delete-btn"
                 onClick={() => onDeleteComment(comment.id)}
                 disabled={deletingCommentId === comment.id}
                 aria-label={`Delete comment by ${comment.author}`}
@@ -40,3 +40,6 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
     </ul>
   );
 }
+
+
+

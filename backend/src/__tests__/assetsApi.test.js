@@ -24,6 +24,7 @@ jest.unstable_mockModule("../config/database.js", () => ({
 }));
 
 const { app } = await import("../server.js");
+const { updateAssetStatus } = await import("../services/assetService.js");
 
 function bearerAuth(role, sub = "7") {
   const token = jwt.sign({ sub: String(sub), role }, process.env.JWT_SECRET, { expiresIn: "1h" });
@@ -54,6 +55,7 @@ describe("Assets API", () => {
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ id: 2 }] })
       .mockResolvedValueOnce({ rows: [{ id: 101 }] })
       .mockResolvedValueOnce({ rows: [] })
@@ -63,7 +65,7 @@ describe("Assets API", () => {
             id: 101,
             title: "Landing Page Banner",
             description: "Sprint 1 demo asset",
-            status: "Draft",
+            status: "Ready for Internal Review",
             current_version: "v1.0",
             owner: "Unassigned",
             created_at: "2026-02-17T00:00:00.000Z",
@@ -87,7 +89,8 @@ describe("Assets API", () => {
         rows: [{ project_id: 1, created_by_user_id: 99, organization_id: 1 }]
       })
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
-      .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] });
+      .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] });
 
     const response = await request(app)
       .patch("/api/assets/101/status")
@@ -105,7 +108,7 @@ describe("Assets API", () => {
 
   test("GET /api/assets returns list with valid JWT", async () => {
     mockQuery.mockResolvedValueOnce({
-      rows: [{ id: 1, title: "Asset 1", description: null, status: "Draft" }]
+      rows: [{ id: 1, title: "Asset 1", description: null, status: "Ready for Internal Review" }]
     });
 
     const response = await request(app).get("/api/assets").set(bearerAuth("reviewer"));
@@ -136,7 +139,8 @@ describe("Assets API", () => {
         rows: [{ project_id: 1, created_by_user_id: 7, organization_id: 1 }]
       })
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
-      .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] });
+      .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] });
 
     const response = await request(app)
       .patch("/api/assets/1/status")
@@ -144,6 +148,66 @@ describe("Assets API", () => {
       .send({ status: "Approved" });
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Invalid status");
+  });
+
+  test("service rejects designer approval transitions", async () => {
+    const updated = await updateAssetStatus(1, "approved_internal", "designer");
+
+    expect(updated).toEqual({
+      invalidStatus: true,
+      reason: "Role cannot perform this status transition"
+    });
+    expect(mockQuery).not.toHaveBeenCalled();
+  });
+
+  test("service allows reviewer to approve ready internal review directly", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status_name: "Ready for Internal Review" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 3, status_name: "Approved (Internal)" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            title: "Asset 1",
+            description: null,
+            status: "Approved (Internal)",
+            current_version: "v1.0",
+            owner: "Designer User",
+            created_at: "2026-02-17T00:00:00.000Z",
+            updated_at: "2026-02-17T00:00:00.000Z"
+          }
+        ]
+      });
+
+    const updated = await updateAssetStatus(1, "approved_internal", "reviewer");
+
+    expect(updated.status).toBe("Approved (Internal)");
+  });
+
+  test("service allows designer to move requested changes back to in progress", async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ status_name: "Changes Requested (Internal)" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 2, status_name: "In Progress" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 1,
+            title: "Asset 1",
+            description: null,
+            status: "In Progress",
+            current_version: "v1.0",
+            owner: "Designer User",
+            created_at: "2026-02-17T00:00:00.000Z",
+            updated_at: "2026-02-17T00:00:00.000Z"
+          }
+        ]
+      });
+
+    const updated = await updateAssetStatus(1, "in_progress", "designer");
+
+    expect(updated.status).toBe("In Progress");
   });
 
   test("POST /api/assets/:id/comments returns 401 without token", async () => {
@@ -158,6 +222,7 @@ describe("Assets API", () => {
       })
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({
         rows: [
@@ -188,6 +253,7 @@ describe("Assets API", () => {
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ role: "REVIEWER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: 10 }] });
 
@@ -205,6 +271,7 @@ describe("Assets API", () => {
       .mockResolvedValueOnce({ rows: [{ organization_id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ role: "DESIGNER" }] })
       .mockResolvedValueOnce({ rows: [{ id: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [{ id: 2 }] })
       .mockResolvedValueOnce({ rows: [{ id: 102 }] })
       .mockResolvedValueOnce({ rows: [] })
@@ -214,7 +281,7 @@ describe("Assets API", () => {
             id: 102,
             title: "Spec Sheet",
             description: "Uploaded from UI",
-            status: "Draft",
+            status: "Ready for Internal Review",
             current_version: "v1.0",
             owner: "Designer User",
             original_file_name: "spec-sheet.pdf",
@@ -238,7 +305,7 @@ describe("Assets API", () => {
     expect(response.status).toBe(201);
     expect(response.body.file_name).toBe("spec-sheet.pdf");
     expect(mockQuery).toHaveBeenNthCalledWith(
-      6,
+      7,
       expect.stringContaining("INSERT INTO asset_versions"),
       expect.arrayContaining([
         102,

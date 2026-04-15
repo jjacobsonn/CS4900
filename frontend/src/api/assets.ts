@@ -140,7 +140,7 @@ export async function getAssetVersions(assetId: string): Promise<Version[]> {
     createdBy: row.created_by,
     label: row.label ?? undefined,
     notes: row.notes ?? undefined,
-    status: "Draft",
+    status: "In Review",
     fileUrl: row.file_url ?? null,
     fileName: row.original_file_name ?? null,
     mimeType: row.mime_type ?? null,

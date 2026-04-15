@@ -4,7 +4,7 @@ export interface MockAssetRow {
   id: number;
   title: string;
   description: string | null;
-  status: "Draft" | "In Review" | "Approved" | "Changes Requested";
+  status: "In Progress" | "In Review" | "Approved" | "Changes Requested";
   owner: string;
   current_version: string;
   created_at: string;
@@ -46,7 +46,7 @@ const initialAssets: MockAssetRow[] = [
     id: 2,
     title: "Instagram Carousel Set",
     description: "5-card promo carousel with CTA variants.",
-    status: "Draft",
+    status: "In Review",
     owner: "Designer User",
     current_version: "v1.3",
     created_at: "2026-02-05T09:30:00.000Z",

@@ -5,7 +5,7 @@ export function normalizeWorkflowDisplayStatus(status: string | undefined): Asse
   const raw = (status || "").trim();
   const value = raw.toLowerCase();
 
-  if (!value) return "Draft";
+  if (!value) return "In Review";
 
   if (value === "in progress") return "In Progress";
   if (value === "ready for internal review" || value === "in internal review") return "In Review";
@@ -16,10 +16,10 @@ export function normalizeWorkflowDisplayStatus(status: string | undefined): Asse
   if (value.includes("changes requested")) return "Changes Requested";
   if (value === "approved (internal)" || value === "approved (client)") return "Approved";
 
-  if (value === "draft") return "Draft";
+  if (value === "draft") return "In Review";
   if (value === "in review" || value === "pending_review" || value === "pending") return "In Review";
   if (value === "approved") return "Approved";
   if (value === "changes requested" || value === "changes_requested") return "Changes Requested";
 
-  return "Draft";
+  return "In Review";
 }

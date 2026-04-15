@@ -6,9 +6,13 @@
  */
 
 import express from 'express';
+import { attachAuth, requireAuth } from '../middleware/roleAuth.js';
 import { getAllUserRoles, getUserRoleByCode, getUserRoleById } from '../services/userRoleService.js';
 
 const router = express.Router();
+
+router.use(attachAuth);
+router.use(requireAuth);
 
 /**
  * GET /api/user-roles

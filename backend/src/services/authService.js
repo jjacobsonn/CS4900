@@ -1,11 +1,13 @@
 import { query } from "../config/database.js";
+import bcrypt from "bcrypt";
+import { resolveEffectiveJwtRole } from "./organizationService.js";
+
+const LEGACY_TEST_PASSWORD = "TestPass123!";
+const PLACEHOLDER_HASH = "$2b$10$example_hash_replace_in_production";
 
 /**
- * Simple email/password login for seeded test users.
- *
- * NOTE: Passwords in the database are placeholder hashes. For this capstone
- * pass we validate against the known test password only ("TestPass123!").
- * In a production system you MUST hash and verify with bcrypt/argon2.
+ * Email/password login with bcrypt verification.
+ * Legacy placeholder hashes still allow the known test password for compatibility.
  */
 export async function loginWithEmailPassword(email, password) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -19,6 +21,7 @@ export async function loginWithEmailPassword(email, password) {
     `SELECT u.id,
             LOWER(u.email) AS email,
             u.is_active,
+            u.password_hash,
             LOWER(r.role_code) AS role
      FROM users u
      JOIN user_roles r ON r.id = u.role_id
@@ -34,15 +37,22 @@ export async function loginWithEmailPassword(email, password) {
     throw error;
   }
 
-  // For this sprint, all seeded users share the same known test password.
-  // Replace this with real password hash verification when ready.
-  if (password !== "TestPass123!") {
+  let passwordValid = false;
+  if (row.password_hash && row.password_hash !== PLACEHOLDER_HASH) {
+    passwordValid = await bcrypt.compare(password, row.password_hash);
+  } else {
+    passwordValid = password === LEGACY_TEST_PASSWORD;
+  }
+
+  if (!passwordValid) {
     const error = new Error("Invalid email or password.");
     error.status = 401;
     throw error;
   }
 
-  const role = row.role === "admin" ? "admin" : row.role === "designer" ? "designer" : "reviewer";
+  const supportedRoles = new Set(["admin", "designer", "reviewer", "manager", "owner"]);
+  const globalRole = supportedRoles.has(row.role) ? row.role : "reviewer";
+  const role = await resolveEffectiveJwtRole(globalRole, row.id);
 
   return {
     id: String(row.id),

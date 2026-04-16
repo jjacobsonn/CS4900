@@ -152,4 +152,76 @@ Sprint 2 work made the app feel substantially more real. The biggest improvement
 
 ---
 
-**Last Updated:** March 12, 2026
+## Sprint 3 (April 15, 2026)
+
+**Tasks Completed:**
+- Continued frontend implementation and integration work for the Sprint 3 branch:
+  - Helped refine dashboard behavior around project filters and review queues
+  - Kept asset cards and asset detail views aligned with the latest backend asset/project fields
+  - Supported clearer workflow action buttons for review states instead of long instructional UI copy
+- Improved project-related frontend flows:
+  - Helped verify project-linked upload behavior from project rows and dashboard filters
+  - Reviewed how projects, linked assets, contributors, and queue links appear in the Admin/Projects experience
+  - Checked that project-specific navigation stayed understandable for demo use
+- Continued polishing upload and asset detail usability:
+  - Verified drag-and-drop/click upload behavior after backend and UI updates
+  - Checked that uploaded files still resolve through the local dev proxy
+  - Continued focusing on preview/open-file behavior so different asset types remain usable
+- Helped with role-based UI verification:
+  - Checked navigation and page access for admin, designer, reviewer, manager, and project owner roles
+  - Verified that restricted actions are hidden or blocked where appropriate
+  - Confirmed that the UI reflects backend permission changes instead of relying only on frontend assumptions
+- Supported Sprint 3 verification and review readiness:
+  - Reviewed the Sprint 3 verification guide and user-flow checklist
+  - Helped identify manual demo paths for admin setup, project ownership, upload, queue, review, and password reset
+  - Continued updating documentation expectations so sprint review materials match the implemented app
+
+**Challenges:**
+- Sprint 3 touched many connected frontend areas at the same time: dashboard filters, project screens, asset detail, upload, workflow actions, and role-based navigation
+- Keeping the UI simple while the backend workflow became more detailed required several rounds of review and polish, especially with a full overhaul
+- Project ownership and assignment behavior needed careful checking so users only see the work they should see
+- Documentation and implementation continued to drift quickly as the branch changed, so review prep required extra attention
+
+**Accomplishments:**
+- Helped move the frontend from a mostly asset-centered MVP toward a project-centered workflow
+- Improved demo readiness by making common user paths easier to explain and verify
+- Helped confirm that role-specific navigation and workflow actions behave consistently across the app
+- Kept frontend polish focused on practical review scenarios instead of adding unnecessary screens
+- Supported the Sprint 3 sign-off process with manual user-flow verification and documentation review
+
+**Next Steps:**
+- Run through the full Sprint 3 verification guide before review
+- Add or expand frontend tests for password validation, reset errors, project filters, and role-specific visibility
+- Continue polishing project/team assignment flows for manager, designer, and reviewer users
+- Keep the schedule, project follow-up, and personal journals updated so they match the current Sprint 3 implementation
+
+**Reflections:**
+Sprint 3 was less about creating isolated screens and more about making the application work like a connected product. The frontend now has to respect projects, roles, workflow status, uploads, comments, and admin controls all at once. The biggest lesson was that small UI decisions, like what buttons appear for each workflow state or which role can see a page, have a large impact on whether the app feels reliable during a demo.
+
+---
+
+## Sprint 3 - Individual Tasks
+
+### Completed Tasks
+- [x] Dashboard review queue and project-filter verification
+- [x] Project-linked upload flow review
+- [x] Asset detail and workflow action UI checks
+- [x] Admin/Projects frontend layout and usability review
+- [x] Role-based navigation and access verification
+- [x] Upload/dropzone behavior verification
+- [x] Sprint 3 user-flow and verification guide review
+- [x] Manual demo-path preparation for review
+- [x] Documentation alignment support for Sprint 3
+
+---
+
+## Notes & Observations
+
+- Project filters and project-linked uploads are important for explaining the app as a real workflow tool instead of just an asset list
+- Role-based UI work needs backend enforcement behind it; frontend-only hiding is not enough for permissions
+- The dashboard, upload page, and asset detail page are still the most important demo surfaces because they show the full asset lifecycle
+- Sprint 3 documentation should clearly separate what has been implemented from what remains as polish, testing, or future hardening
+
+---
+
+**Last Updated:** April 15, 2026

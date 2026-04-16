@@ -34,7 +34,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
           <span>Vellum</span>
         </div>
         <p className="login-hint">
-          Seed accounts: admin@vellum.test, designer@vellum.test, reviewer@vellum.test
+          Seed password: TestPass123!. Try Acme users at @vellum.test or Raccoon City users at @raccooncity.example.
         </p>
         <label>
           Email
@@ -42,7 +42,7 @@ export function LoginPage({ onLogin }: { onLogin: (token: string, user: AuthUser
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="admin@vellum.test (or designer/reviewer/manager/client reviewer)"
+            placeholder="admin@vellum.test or chris.redfield@raccooncity.example"
           />
         </label>
         <label>

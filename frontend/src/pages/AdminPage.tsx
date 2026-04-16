@@ -1,9 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAdminActivity, getAdminOverview } from "../api/admin";
-import { deleteAsset } from "../api/assets";
-import { deleteComment } from "../api/comments";
-import type { AdminActivity } from "../api/admin";
+import { getAdminOverview } from "../api/admin";
 import { getClients, type Client } from "../api/clients";
 import {
   createOrganization,
@@ -22,7 +19,6 @@ import { createUser, getUsers, removeUser, updateUser, updateUserActive } from "
 import { AdminOverview, Organization, UserAccount } from "../types/models";
 import { Role } from "../utils/permissions";
 import type { AuthUser } from "../App";
-import { statusLabel } from "../utils/format";
 
 const defaultOverview: AdminOverview = {
   pendingReview: 0,
@@ -30,32 +26,15 @@ const defaultOverview: AdminOverview = {
   approved: 0
 };
 
-const defaultActivity: AdminActivity = { recentAssets: [], recentComments: [] };
-
 function isMissingOrganizationsTable(message: string): boolean {
   const m = message.toLowerCase();
   return m.includes("organizations") && m.includes("does not exist");
-}
-
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  } catch {
-    return iso;
-  }
 }
 
 export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | null }) {
   const navigate = useNavigate();
   const [overview, setOverview] = useState<AdminOverview>(defaultOverview);
   const [users, setUsers] = useState<UserAccount[]>([]);
-  const [activity, setActivity] = useState<AdminActivity>(defaultActivity);
   const [loading, setLoading] = useState(true);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [createUserError, setCreateUserError] = useState<string | null>(null);
@@ -75,13 +54,13 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSaving, setResetSaving] = useState(false);
+  const [teamCreateOpen, setTeamCreateOpen] = useState(false);
+  const [userCreateOpen, setUserCreateOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<Role>("designer");
   const [createPassword, setCreatePassword] = useState("");
   const [createPasswordConfirm, setCreatePasswordConfirm] = useState("");
-  const [showAssets, setShowAssets] = useState(true);
-  const [showComments, setShowComments] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [projectName, setProjectName] = useState("");
@@ -99,6 +78,11 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
   const [orgFormOwnerUserId, setOrgFormOwnerUserId] = useState("");
   const [orgSearch, setOrgSearch] = useState("");
   const [orgSort, setOrgSort] = useState<"name_asc" | "name_desc" | "newest" | "oldest" | "active_first">("active_first");
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<Role | "all">("all");
+  const [userStatusFilter, setUserStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [mobileAdminSection, setMobileAdminSection] = useState<"teams" | "users">("teams");
+  const [mobileSnapshotOpen, setMobileSnapshotOpen] = useState(false);
   const [newProjectOrganizationId, setNewProjectOrganizationId] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [projectDetail, setProjectDetail] = useState<ProjectDetail | null>(null);
@@ -119,26 +103,24 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     setCreateUserError(null);
     setOrgError(null);
     try {
-      const [overviewData, usersData, activityData, projectsData, clientsData, orgsData] = await Promise.all([
+      const [overviewData, usersData, projectsData, clientsData, orgsData] = await Promise.all([
         getAdminOverview().catch(() => defaultOverview),
         getUsers().catch((err: Error) => {
           setUsersError(err.message || "Could not load users");
           return [];
         }),
-        getAdminActivity().catch(() => defaultActivity),
         getProjects().catch(() => [] as Project[]),
         getClients().catch(() => [] as Client[]),
         getOrganizations().catch((err: Error) => {
           const msg = err.message || "";
           if (!isMissingOrganizationsTable(msg)) {
-            setOrgError(msg || "Could not load organizations.");
+            setOrgError(msg || "Could not load teams.");
           }
           return [] as Organization[];
         })
       ]);
       setOverview(overviewData);
       setUsers(usersData);
-      setActivity(activityData);
       setProjects(Array.isArray(projectsData) ? projectsData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setOrganizations(Array.isArray(orgsData) ? orgsData : []);
@@ -182,10 +164,29 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     return sorted;
   }, [organizations, orgSearch, orgSort]);
 
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    return users.filter((user) => {
+      const matchesSearch =
+        q === "" ||
+        user.email.toLowerCase().includes(q) ||
+        String(user.displayName || "")
+          .toLowerCase()
+          .includes(q);
+      const matchesRole = userRoleFilter === "all" || user.role === userRoleFilter;
+      const matchesStatus =
+        userStatusFilter === "all" ||
+        (userStatusFilter === "active" && user.isActive) ||
+        (userStatusFilter === "inactive" && !user.isActive);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, userSearch, userRoleFilter, userStatusFilter]);
+
   const handleCreateUser = async (event: FormEvent) => {
     event.preventDefault();
     setCreateUserError(null);
     if (!email.trim()) return;
+    if (!displayName.trim()) return;
     if (createPassword.trim() !== "" || createPasswordConfirm.trim() !== "") {
       if (createPassword !== createPasswordConfirm) {
         setCreateUserError("Password confirmation does not match.");
@@ -210,6 +211,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
       setCreatePassword("");
       setCreatePasswordConfirm("");
       await load();
+      setUserCreateOpen(false);
     } catch (err) {
       setCreateUserError(err instanceof Error ? err.message : "Could not create user.");
     }
@@ -336,20 +338,6 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     }
   };
 
-  const handleDeleteAsset = async (id: string) => {
-    const ok = window.confirm("Delete this asset and all its comments/versions?");
-    if (!ok) return;
-    await deleteAsset(id);
-    await load();
-  };
-
-  const handleDeleteComment = async (assetId: string, commentId: string) => {
-    const ok = window.confirm("Delete this comment?");
-    if (!ok) return;
-    await deleteComment(assetId, commentId);
-    await load();
-  };
-
   const handleCreateOrganization = async (event: FormEvent) => {
     event.preventDefault();
     setOrgError(null);
@@ -368,9 +356,10 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
       setOrgFormDescription("");
       setOrgFormOwnerUserId("");
       await load();
+      setTeamCreateOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      setOrgError(isMissingOrganizationsTable(msg) ? "Could not create organization." : msg || "Could not create organization.");
+      setOrgError(isMissingOrganizationsTable(msg) ? "Could not create team." : msg || "Could not create team.");
     }
   };
 
@@ -380,7 +369,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     if (!projectName.trim()) return;
     const orgId = Number(newProjectOrganizationId);
     if (!Number.isFinite(orgId)) {
-      setProjectError("Select an organization for this project.");
+      setProjectError("Select a team for this project.");
       return;
     }
     try {
@@ -495,26 +484,30 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
 
   return (
     <section className="page-grid admin-page">
-      <div className="card panel admin-overview-panel">
-        <div>
-          <p className="admin-console-kicker">Operations</p>
-          <h1>Admin Console</h1>
-          <p className="admin-muted admin-console-intro">
-            Manage organizations, projects, users, and review activity from one workspace.
-          </p>
-        </div>
+      <div className="admin-mobile-snapshot-toggle">
+        <button
+          type="button"
+          className="btn btn-outline-secondary"
+          onClick={() => setMobileSnapshotOpen((open) => !open)}
+          aria-expanded={mobileSnapshotOpen}
+          aria-controls="admin-console-snapshot"
+        >
+          {mobileSnapshotOpen ? "Hide Summary" : "Show Summary"}
+        </button>
+      </div>
+      <div
+        id="admin-console-snapshot"
+        className={`card panel admin-overview-panel${mobileSnapshotOpen ? " mobile-open" : ""}`}
+      >
+        <h1>Admin Console Summary</h1>
         <div className="admin-stat-grid">
           <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Needs Review</span>
-            <strong>{overview.pendingReview}</strong>
+            <span className="dashboard-metric-label">Teams</span>
+            <strong>{organizations.length}</strong>
           </div>
           <div className="dashboard-metric">
-            <span className="dashboard-metric-label">Changes</span>
-            <strong>{overview.changesRequested}</strong>
-          </div>
-          <div className="dashboard-metric muted">
-            <span className="dashboard-metric-label">Approved</span>
-            <strong>{overview.approved}</strong>
+            <span className="dashboard-metric-label">Projects</span>
+            <strong>{projects.length}</strong>
           </div>
           <div className="dashboard-metric">
             <span className="dashboard-metric-label">Users</span>
@@ -527,172 +520,45 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
         </div>
       </div>
 
-      <div className="card panel admin-desktop-only admin-aside-panel">
-        <h1>Snapshot</h1>
-        <ul className="overview-list list-group">
-          <li className="list-group-item">Organizations: {organizations.length}</li>
-          <li className="list-group-item">Projects: {projects.length}</li>
-          <li className="list-group-item">Clients: {clients.length}</li>
-          <li className="list-group-item">Recent assets: {Math.min(activity.recentAssets.length, 5)}</li>
-        </ul>
+      <div className="admin-mobile-section-tabs nav nav-pills" role="tablist" aria-label="Admin sections">
+        <button
+          type="button"
+          className={`nav-link${mobileAdminSection === "teams" ? " active" : ""}`}
+          onClick={() => setMobileAdminSection("teams")}
+          aria-selected={mobileAdminSection === "teams"}
+        >
+          Teams
+        </button>
+        <button
+          type="button"
+          className={`nav-link${mobileAdminSection === "users" ? " active" : ""}`}
+          onClick={() => setMobileAdminSection("users")}
+          aria-selected={mobileAdminSection === "users"}
+        >
+          Users
+        </button>
       </div>
 
-      <div className="card panel admin-activity-panel">
-        <h1>Recent Activity</h1>
-
-        <div className="admin-split-header">
-          <h2 className="admin-section-title">Recent assets</h2>
-          {activity.recentAssets.length > 0 && (
-            <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAssets((prev) => !prev)}>
-              {showAssets ? "Hide" : "Show"}
-            </button>
-          )}
-        </div>
-
-        {showAssets && (
-          <div className="admin-scroll-table">
-            {activity.recentAssets.length === 0 ? (
-              <p>No assets yet.</p>
-            ) : (
-              <table className="table table-hover align-middle admin-table compact">
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Owner</th>
-                    <th>Updated</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.recentAssets.slice(0, 5).map((asset) => (
-                    <tr key={asset.id}>
-                      <td data-label="Title">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/assets/${asset.id}`)}
-                          className="admin-link-button"
-                        >
-                          {asset.title}
-                        </button>
-                      </td>
-                      <td data-label="Status">{statusLabel(asset.status)}</td>
-                      <td data-label="Owner">{asset.owner}</td>
-                      <td data-label="Updated">{formatDate(asset.updatedAt)}</td>
-                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => void handleDeleteAsset(String(asset.id))}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-
-        <div className="admin-split-header admin-section-gap">
-          <h2 className="admin-section-title">Recent comments</h2>
-          {activity.recentComments.length > 0 && (
-            <button type="button" className="btn btn-outline-secondary" onClick={() => setShowComments((prev) => !prev)}>
-              {showComments ? "Hide" : "Show"}
-            </button>
-          )}
-        </div>
-
-        {showComments && (
-          <div className="admin-scroll-table">
-            {activity.recentComments.length === 0 ? (
-              <p>No comments yet.</p>
-            ) : (
-              <table className="table table-hover align-middle admin-table compact">
-                <thead>
-                  <tr>
-                    <th>Asset</th>
-                    <th>Comment</th>
-                    <th>Author</th>
-                    <th>When</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.recentComments.slice(0, 3).map((comment) => (
-                    <tr key={comment.id}>
-                      <td data-label="Asset">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/assets/${comment.assetId}`)}
-                          className="admin-link-button"
-                        >
-                          {comment.assetTitle}
-                        </button>
-                      </td>
-                      <td data-label="Comment">"{comment.message}"</td>
-                      <td data-label="Author">{comment.author}</td>
-                      <td data-label="When">{formatDate(comment.createdAt)}</td>
-                      <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
-                        <button
-                          type="button"
-                          className="btn btn-outline-secondary"
-                          onClick={() => void handleDeleteComment(String(comment.assetId), String(comment.id))}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="card panel admin-wide-panel admin-section-panel admin-organizations-section">
+      <div className={`card panel admin-wide-panel admin-section-panel admin-organizations-section${mobileAdminSection === "teams" ? " mobile-active" : ""}`}>
         <div className="admin-content">
-          <h1>Organizations</h1>
-          <form onSubmit={(e) => void handleCreateOrganization(e)} className="vstack gap-3 admin-form admin-project-create-form">
-            <label>
-              Organization name
-              <input
-                type="text"
-                value={orgFormName}
-                onChange={(e) => setOrgFormName(e.target.value)}
-                placeholder="Acme Creative"
-                required
-              />
-            </label>
-            <label>
-              Description
-              <textarea value={orgFormDescription} onChange={(e) => setOrgFormDescription(e.target.value)} rows={2} />
-            </label>
-            {users.length > 0 && (
-              <label>
-                Initial owner (optional)
-                <select value={orgFormOwnerUserId} onChange={(e) => setOrgFormOwnerUserId(e.target.value)}>
-                  <option value="">You ({currentUser?.email ?? "signed-in admin"})</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.displayName || u.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <button className="btn btn-primary" type="submit">
-              Create organization
+          <div className="admin-section-header">
+            <h1>Team Management</h1>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setOrgError(null);
+                setTeamCreateOpen(true);
+              }}
+            >
+              Create Team
             </button>
-          </form>
+          </div>
           {orgError && <p role="alert" className="admin-error">{orgError}</p>}
 
           <div className="admin-org-toolbar">
             <label>
-              Search organizations
+              Search teams
               <input
                 type="text"
                 value={orgSearch}
@@ -714,7 +580,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
 
           <div className="admin-org-cards admin-org-tile-grid">
             {filteredOrganizations.length === 0 ? (
-              <p>No organizations yet.</p>
+              <p>No teams yet.</p>
             ) : (
               filteredOrganizations.map((org) => (
                 <article key={org.id} className="admin-org-card admin-org-tile">
@@ -741,14 +607,14 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
           <h1>Projects</h1>
           <form onSubmit={(e) => void handleCreateProject(e)} className="vstack gap-3 admin-form admin-project-create-form">
             <label>
-              Organization
+              Team
               <select
                 value={newProjectOrganizationId}
                 onChange={(event) => setNewProjectOrganizationId(event.target.value)}
                 required
               >
                 <option value="" disabled>
-                  Select organization
+                  Select team
                 </option>
                 {organizations.map((o) => (
                   <option key={o.id} value={String(o.id)}>
@@ -833,7 +699,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                 <tr>
                   <th>ID</th>
                   <th>Name</th>
-                  <th>Organization</th>
+                  <th>Team</th>
                   <th>Status</th>
                   <th>Client</th>
                   <th>Owner</th>
@@ -851,7 +717,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                     <tr key={p.id} className={selectedProjectId === p.id ? "admin-row-selected" : undefined}>
                       <td data-label="ID">{p.id}</td>
                       <td data-label="Name">{p.name}</td>
-                      <td data-label="Organization">{p.organizationName ?? "—"}</td>
+                      <td data-label="Team">{p.organizationName ?? "—"}</td>
                       <td data-label="Status">{p.status}</td>
                       <td data-label="Client">{p.clientName ?? "—"}</td>
                       <td data-label="Owner">{projectOwnerColumnLabel(p)}</td>
@@ -892,7 +758,7 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                       <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </label>
                     <label>
-                      Organization
+                      Team
                       <input type="text" value={projectDetail.organizationName ?? "—"} disabled />
                     </label>
                     <label>
@@ -1009,26 +875,36 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
       </div>
       )}
 
-      <div className="card panel admin-wide-panel admin-section-panel admin-users-section">
+      <div className={`card panel admin-wide-panel admin-section-panel admin-users-section${mobileAdminSection === "users" ? " mobile-active" : ""}`}>
         <div className="admin-content">
-          <h1>User Management</h1>
-          <form onSubmit={(e) => void handleCreateUser(e)} className="vstack gap-3 admin-form">
+          <div className="admin-section-header">
+            <h1>User Management</h1>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setCreateUserError(null);
+                setUserCreateOpen(true);
+              }}
+            >
+              Create User
+            </button>
+          </div>
+          {usersError && <p role="alert" className="admin-error">{usersError}</p>}
+          <div className="admin-user-toolbar">
             <label>
-              Display name (optional)
+              Search users
               <input
                 type="text"
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="e.g. Jane or jane.doe"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search by name or email"
               />
             </label>
             <label>
-              User Email
-              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-            </label>
-            <label>
               Role
-              <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
+              <select value={userRoleFilter} onChange={(e) => setUserRoleFilter(e.target.value as Role | "all")}>
+                <option value="all">All roles</option>
                 <option value="designer">designer</option>
                 <option value="reviewer">reviewer</option>
                 <option value="manager">manager</option>
@@ -1037,33 +913,14 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
               </select>
             </label>
             <label>
-              Set password (optional)
-              <input
-                type="password"
-                value={createPassword}
-                onChange={(event) => setCreatePassword(event.target.value)}
-                placeholder="At least 4 characters"
-                autoComplete="new-password"
-              />
+              Status
+              <select value={userStatusFilter} onChange={(e) => setUserStatusFilter(e.target.value as typeof userStatusFilter)}>
+                <option value="all">All users</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </label>
-            <label>
-              Confirm password
-              <input
-                type="password"
-                value={createPasswordConfirm}
-                onChange={(event) => setCreatePasswordConfirm(event.target.value)}
-                placeholder="Re-enter password"
-                autoComplete="new-password"
-              />
-            </label>
-            <button className="btn btn-primary" type="submit">
-              Create User
-            </button>
-          </form>
-          {createUserError && <p role="alert" className="admin-error">{createUserError}</p>}
-
-          <h2>Users</h2>
-          {usersError && <p role="alert" className="admin-error">{usersError}</p>}
+          </div>
           {loading ? (
             <p>Loading users...</p>
           ) : (
@@ -1078,18 +935,20 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                   </tr>
                 </thead>
                 <tbody>
-                  {users.length === 0 ? (
+                  {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={4}>No users yet. Create one above.</td>
+                      <td colSpan={4}>{users.length === 0 ? "No users yet. Create one above." : "No users match those filters."}</td>
                     </tr>
                   ) : (
-                    users.map((user) => {
+                    filteredUsers.map((user) => {
                       const isSeedAdmin = user.email.toLowerCase() === "admin@vellum.test";
                       return (
                         <tr key={user.id}>
                           <td data-label="Name">
-                            {user.displayName || "—"}
-                            {!user.isActive ? <span className="admin-muted"> · inactive</span> : null}
+                            <span className="admin-user-name-cell">
+                              <span>{user.displayName || "—"}</span>
+                              {!user.isActive ? <span className="admin-status-pill inactive">Inactive</span> : null}
+                            </span>
                           </td>
                           <td data-label="Email">{user.email}</td>
                           <td data-label="Role">{user.role}</td>
@@ -1100,17 +959,15 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                             <button
                               type="button"
                               className="btn btn-outline-secondary btn-sm"
-                              disabled={!user.isActive || isSeedAdmin}
+                              disabled={isSeedAdmin}
                               title={
                                 isSeedAdmin
                                   ? "Primary admin cannot be deactivated"
-                                  : !user.isActive
-                                    ? "Already inactive"
-                                    : undefined
+                                  : undefined
                               }
-                              onClick={() => void handleDeactivate(user.id)}
+                              onClick={() => void (user.isActive ? handleDeactivate(user.id) : handleReactivate(user.id))}
                             >
-                              Deactivate
+                              {user.isActive ? "Deactivate" : "Reactivate"}
                             </button>
                             <button
                               type="button"
@@ -1120,15 +977,6 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
                               onClick={() => openResetPasswordModal(user.id, user.email)}
                             >
                               Reset password
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-outline-secondary btn-sm"
-                              disabled={user.isActive}
-                              title={user.isActive ? "User is active" : undefined}
-                              onClick={() => void handleReactivate(user.id)}
-                            >
-                              Reactivate
                             </button>
                             {!isSeedAdmin ? (
                               <button
@@ -1150,6 +998,131 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
           )}
         </div>
       </div>
+
+      {teamCreateOpen && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setTeamCreateOpen(false);
+          }}
+        >
+          <div className="admin-modal" role="dialog" aria-labelledby="team-create-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="team-create-title" className="admin-section-title" style={{ marginBottom: "0.75rem" }}>
+              Create team
+            </h2>
+            <form onSubmit={(e) => void handleCreateOrganization(e)} className="vstack gap-3 admin-form">
+              <label>
+                Team name
+                <input
+                  type="text"
+                  value={orgFormName}
+                  onChange={(e) => setOrgFormName(e.target.value)}
+                  placeholder="Acme Creative"
+                  required
+                />
+              </label>
+              <label>
+                Description
+                <textarea value={orgFormDescription} onChange={(e) => setOrgFormDescription(e.target.value)} rows={2} />
+              </label>
+              {users.length > 0 && (
+                <label>
+                  Initial owner (optional)
+                  <select value={orgFormOwnerUserId} onChange={(e) => setOrgFormOwnerUserId(e.target.value)}>
+                    <option value="">You ({currentUser?.email ?? "signed-in admin"})</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.displayName || u.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {orgError && <p role="alert" className="admin-error">{orgError}</p>}
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button className="btn btn-primary" type="submit">
+                  Create Team
+                </button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setTeamCreateOpen(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {userCreateOpen && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setUserCreateOpen(false);
+          }}
+        >
+          <div className="admin-modal" role="dialog" aria-labelledby="user-create-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="user-create-title" className="admin-section-title" style={{ marginBottom: "0.75rem" }}>
+              Create user
+            </h2>
+            <form onSubmit={(e) => void handleCreateUser(e)} className="vstack gap-3 admin-form">
+              <label>
+                Display name
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="e.g. Jane or jane.doe"
+                  required
+                />
+              </label>
+              <label>
+                User Email
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+              </label>
+              <label>
+                Role
+                <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
+                  <option value="designer">designer</option>
+                  <option value="reviewer">reviewer</option>
+                  <option value="manager">manager</option>
+                  <option value="owner">owner</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+              <label>
+                Set password (optional)
+                <input
+                  type="password"
+                  value={createPassword}
+                  onChange={(event) => setCreatePassword(event.target.value)}
+                  placeholder="At least 4 characters"
+                  autoComplete="new-password"
+                />
+              </label>
+              <label>
+                Confirm password
+                <input
+                  type="password"
+                  value={createPasswordConfirm}
+                  onChange={(event) => setCreatePasswordConfirm(event.target.value)}
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                />
+              </label>
+              {createUserError && <p role="alert" className="admin-error">{createUserError}</p>}
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button className="btn btn-primary" type="submit">
+                  Create User
+                </button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setUserCreateOpen(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {userEditOpen && userEditId != null && (
         <div
@@ -1277,6 +1250,3 @@ export function AdminPage({ currentUser = null }: { currentUser?: AuthUser | nul
     </section>
   );
 }
-
-
-

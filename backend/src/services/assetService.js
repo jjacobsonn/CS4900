@@ -32,6 +32,36 @@ function mapAssetRow(row) {
   };
 }
 
+async function recordAssetActivity(assetId, eventType, payload = {}) {
+  try {
+    await query(
+      `INSERT INTO asset_activity (
+         asset_id,
+         event_type,
+         from_status,
+         to_status,
+         asset_version_id,
+         actor_user_id,
+         detail
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        assetId,
+        eventType,
+        payload.fromStatus ?? null,
+        payload.toStatus ?? null,
+        payload.assetVersionId ?? null,
+        payload.actorUserId ?? null,
+        payload.detail ?? null
+      ]
+    );
+  } catch (error) {
+    if (!String(error?.message || "").includes("asset_activity")) {
+      throw error;
+    }
+  }
+}
+
 const LIST_ASSETS_FROM = `
      FROM assets a
      JOIN asset_status_lookup s ON s.id = a.status_id
@@ -388,6 +418,15 @@ export async function setAssetOwner(assetId, userId) {
  * @returns {Promise<Object|null>} Newly created version row
  */
 export async function createAssetVersion(assetId, payload) {
+  const currentStatus = await query(
+    `SELECT s.status_name
+     FROM assets a
+     JOIN asset_status_lookup s ON s.id = a.status_id
+     WHERE a.id = $1`,
+    [assetId]
+  );
+  const currentStatusName = currentStatus.rows[0]?.status_name ?? null;
+
   // Determine next version number
   const max = await query(
     "SELECT COALESCE(MAX(version_number), 0) AS max_version FROM asset_versions WHERE asset_id = $1",
@@ -441,7 +480,20 @@ export async function createAssetVersion(assetId, payload) {
        WHERE id = $4`,
       [statusId, `v${nextVersion}.0`, row.id, assetId]
     );
+    if (currentStatusName && currentStatusName !== "In Review") {
+      await recordAssetActivity(assetId, "status_changed", {
+        fromStatus: currentStatusName,
+        toStatus: "In Review",
+        actorUserId: payload.createdByUserId ?? null
+      });
+    }
   }
+
+  await recordAssetActivity(assetId, "version_uploaded", {
+    assetVersionId: row.id,
+    actorUserId: payload.createdByUserId ?? null,
+    detail: `${nextVersion}${payload.label ? ` (${payload.label})` : ""}`
+  });
 
   return {
     ...row,
@@ -508,7 +560,7 @@ const STATUS_KEY_ROLES = {
  * @returns {Promise<Object|null|{invalidStatus: boolean, reason?: string}>}
  *          Updated asset, null if not found, or invalidStatus marker
  */
-export async function updateAssetStatus(assetId, statusKey, actorRole = null) {
+export async function updateAssetStatus(assetId, statusKey, actorRole = null, actorUserId = null) {
   const canonicalName = INTERNAL_STATUS_MAP[statusKey];
   if (!canonicalName) {
     return { invalidStatus: true, reason: "Unknown internal status key" };
@@ -560,6 +612,12 @@ export async function updateAssetStatus(assetId, statusKey, actorRole = null) {
   if (!refreshed) {
     return null;
   }
+
+  await recordAssetActivity(assetId, "status_changed", {
+    fromStatus: currentStatusName,
+    toStatus: canonicalName,
+    actorUserId
+  });
 
   return refreshed;
 }
@@ -706,4 +764,31 @@ export async function listVersionAudit(assetId) {
     [assetId]
   );
   return result.rows;
+}
+
+export async function listAssetActivity(assetId) {
+  try {
+    const result = await query(
+      `SELECT aa.id,
+              aa.asset_id,
+              aa.event_type,
+              aa.from_status,
+              aa.to_status,
+              aa.asset_version_id,
+              aa.detail,
+              aa.created_at,
+              COALESCE(u.display_name, u.email, 'System') AS actor
+       FROM asset_activity aa
+       LEFT JOIN users u ON u.id = aa.actor_user_id
+       WHERE aa.asset_id = $1
+       ORDER BY aa.created_at DESC`,
+      [assetId]
+    );
+    return result.rows;
+  } catch (error) {
+    if (String(error?.message || "").includes("asset_activity")) {
+      return [];
+    }
+    throw error;
+  }
 }

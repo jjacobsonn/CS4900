@@ -13,9 +13,13 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
     return <p>No comments yet.</p>;
   }
 
+  const sortedComments = [...comments].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <ul className="comment-list list-group mt-3">
-      {comments.map((comment) => (
+      {sortedComments.map((comment) => (
         <li key={comment.id} className="comment-item list-group-item">
           <div className="comment-meta">
             <strong>{comment.author}</strong>{" "}
@@ -40,6 +44,5 @@ export function CommentList({ comments, isAdmin, onDeleteComment, deletingCommen
     </ul>
   );
 }
-
 
 

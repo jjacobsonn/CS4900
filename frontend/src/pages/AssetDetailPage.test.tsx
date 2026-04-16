@@ -5,15 +5,15 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { jest } from "@jest/globals";
 import { AssetDetailPage } from "./AssetDetailPage";
 import type { AuthUser } from "../App";
-import { getAsset, getAssetVersions, patchAssetStatus, createAssetVersionApi, updateAssetOwner } from "../api/assets";
+import { getAsset, getAssetActivity, getAssetVersions, patchAssetStatus, createAssetVersionApi } from "../api/assets";
 import { addComment, getComments } from "../api/comments";
 
 jest.mock("../api/assets", () => ({
   getAsset: jest.fn(),
+  getAssetActivity: jest.fn(),
   getAssetVersions: jest.fn(),
   patchAssetStatus: jest.fn(),
-  createAssetVersionApi: jest.fn(),
-  updateAssetOwner: jest.fn()
+  createAssetVersionApi: jest.fn()
 }));
 
 jest.mock("../api/comments", () => ({
@@ -26,9 +26,11 @@ test("AssetDetailPage loads asset, updates status, and posts comment", async () 
   const patchAssetStatusMock = patchAssetStatus as jest.MockedFunction<typeof patchAssetStatus>;
   const getCommentsMock = getComments as jest.MockedFunction<typeof getComments>;
   const addCommentMock = addComment as jest.MockedFunction<typeof addComment>;
+  const getAssetActivityMock = getAssetActivity as jest.MockedFunction<typeof getAssetActivity>;
 
   const getAssetVersionsMock = getAssetVersions as jest.MockedFunction<typeof getAssetVersions>;
   getAssetVersionsMock.mockResolvedValue([]);
+  getAssetActivityMock.mockResolvedValue([]);
 
   getAssetMock.mockResolvedValue({
     id: 42,
@@ -94,8 +96,10 @@ test("AssetDetailPage Request changes sends changes_requested_internal", async (
   const getAssetMock = getAsset as jest.MockedFunction<typeof getAsset>;
   const patchAssetStatusMock = patchAssetStatus as jest.MockedFunction<typeof patchAssetStatus>;
   const getCommentsMock = getComments as jest.MockedFunction<typeof getComments>;
+  const getAssetActivityMock = getAssetActivity as jest.MockedFunction<typeof getAssetActivity>;
   const getAssetVersionsMock = getAssetVersions as jest.MockedFunction<typeof getAssetVersions>;
   getAssetVersionsMock.mockResolvedValue([]);
+  getAssetActivityMock.mockResolvedValue([]);
   getCommentsMock.mockResolvedValue([]);
 
   getAssetMock.mockResolvedValue({

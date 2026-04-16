@@ -3,21 +3,13 @@ const TOKEN_KEY = "vellum_token";
 const ROLE_KEY = "vellum_role";
 const USER_KEY = "vellum_user";
 
+declare const __VELLUM_API_BASE_URL__: string | undefined;
+
 // Resolve API base URL for both Vite runtime and Jest tests.
 function resolveApiBaseUrl(): string {
-  const testEnvBase = (globalThis as any).import?.meta?.env?.VITE_API_BASE_URL as string | undefined;
-  if (testEnvBase) {
-    return testEnvBase;
-  }
-
-  // Keep eval-based access so Jest does not fail parsing import.meta at load time.
-  try {
-    // @ts-ignore - import.meta is available at runtime in Vite builds.
-    const viteEnv = eval("import.meta.env");
-    return viteEnv.VITE_API_BASE_URL || DEFAULT_BASE_URL;
-  } catch {
-    return DEFAULT_BASE_URL;
-  }
+  return typeof __VELLUM_API_BASE_URL__ !== "undefined" && __VELLUM_API_BASE_URL__
+    ? __VELLUM_API_BASE_URL__
+    : DEFAULT_BASE_URL;
 }
 
 function buildUrl(path: string): string {

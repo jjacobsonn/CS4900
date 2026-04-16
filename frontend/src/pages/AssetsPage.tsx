@@ -144,7 +144,7 @@ export function AssetsPage({ role }: { role: Role }) {
           </label>
         </div>
         <div className="admin-project-detail-actions assets-action-row">
-          <Link className="btn btn-primary file-link-btn" to={projectFilter ? `/upload?projectId=${projectFilter}` : "/upload"}>
+          <Link className="btn btn-primary file-link-btn assets-add-trigger" to={projectFilter ? `/upload?projectId=${projectFilter}` : "/upload"}>
             Add asset
           </Link>
         </div>
@@ -184,7 +184,7 @@ export function AssetsPage({ role }: { role: Role }) {
                       {canManage ? (
                         <>
                           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => openEditModal(a)}>
-                            Edit
+                            Edit Info
                           </button>
                           <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => void handleDelete(String(a.id))}>
                             Remove
@@ -237,6 +237,3 @@ export function AssetsPage({ role }: { role: Role }) {
     </section>
   );
 }
-
-
-

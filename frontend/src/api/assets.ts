@@ -177,17 +177,21 @@ export async function createAssetVersionApi(
   };
 }
 
-export interface VersionAuditEntry {
+export interface AssetActivityEntry {
   id: number;
-  performed_by: string;
-  action: string;
-  details?: string | null;
-  performed_at: string;
+  asset_id: number;
+  event_type: "status_changed" | "version_uploaded" | string;
+  from_status?: string | null;
+  to_status?: string | null;
+  asset_version_id?: number | null;
+  detail?: string | null;
+  created_at: string;
+  actor?: string | null;
 }
 
-export async function getVersionAudit(assetId: string): Promise<VersionAuditEntry[]> {
+export async function getAssetActivity(assetId: string): Promise<AssetActivityEntry[]> {
   try {
-    const data = await apiClient.get<VersionAuditEntry[]>(`/assets/${assetId}/version-audit`);
+    const data = await apiClient.get<AssetActivityEntry[]>(`/assets/${assetId}/activity`);
     return Array.isArray(data) ? data : [];
   } catch {
     return [];

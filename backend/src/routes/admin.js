@@ -10,13 +10,12 @@ const router = express.Router();
 
 router.use(attachAuth);
 router.use(requireAuth);
-router.use(requireRole(["admin"]));
 
 /**
  * GET /api/admin/overview
  * Returns asset counts by status for the admin dashboard.
  */
-router.get("/overview", async (_req, res, next) => {
+router.get("/overview", requireRole(["admin"]), async (_req, res, next) => {
   try {
     const overview = await getOverview();
     res.json(overview);
@@ -29,9 +28,10 @@ router.get("/overview", async (_req, res, next) => {
  * GET /api/admin/activity
  * Returns recent assets and recent comments for admin visibility.
  */
-router.get("/activity", async (_req, res, next) => {
+router.get("/activity", requireRole(["manager", "admin", "owner"]), async (req, res, next) => {
   try {
-    const activity = await getActivity();
+    const organizationId = req.query.organizationId != null ? Number(req.query.organizationId) : null;
+    const activity = await getActivity(Number.isFinite(organizationId) ? organizationId : null);
     res.json(activity);
   } catch (error) {
     next(error);

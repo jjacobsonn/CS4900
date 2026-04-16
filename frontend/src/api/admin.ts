@@ -27,6 +27,11 @@ export interface AdminActivity {
   recentComments: AdminCommentItem[];
 }
 
-export function getAdminActivity(): Promise<AdminActivity> {
-  return apiClient.get<AdminActivity>("/admin/activity");
+export function getAdminActivity(filter?: { organizationId?: number }): Promise<AdminActivity> {
+  const params = new URLSearchParams();
+  if (filter?.organizationId != null && Number.isFinite(filter.organizationId)) {
+    params.set("organizationId", String(filter.organizationId));
+  }
+  const query = params.toString();
+  return apiClient.get<AdminActivity>(`/admin/activity${query ? `?${query}` : ""}`);
 }

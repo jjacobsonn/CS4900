@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { getAdminActivity, type AdminActivity } from "../api/admin";
 import { getAssets } from "../api/assets";
+import { deleteComment } from "../api/comments";
 import { getOrganizationMembers, getOrganizations } from "../api/organizations";
 import { getProjects } from "../api/projects";
 import type { Asset, Organization, OrganizationMemberRow } from "../types/models";
@@ -9,14 +11,35 @@ import { canAccessAdmin, type Role } from "../utils/permissions";
 import { statusLabel } from "../utils/format";
 
 type ManagerTab = "overview" | "projects" | "assets" | "team" | "activity";
+const defaultActivity: AdminActivity = { recentAssets: [], recentComments: [] };
+const activityVisibleLimit = 5;
+
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export function ManagerPage({ role }: { role: Role }) {
+  const navigate = useNavigate();
+  const isMobileInitial = typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [members, setMembers] = useState<OrganizationMemberRow[]>([]);
-  const [tab, setTab] = useState<ManagerTab>("overview");
+  const [activity, setActivity] = useState<AdminActivity>(defaultActivity);
+  const [showAssets, setShowAssets] = useState(!isMobileInitial);
+  const [showComments, setShowComments] = useState(!isMobileInitial);
+  const [tab, setTab] = useState<ManagerTab>("activity");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +56,7 @@ export function ManagerPage({ role }: { role: Role }) {
         setOrganizations(rows);
         if (rows.length > 0) setSelectedOrgId(String(rows[0].id));
       })
-      .catch((err: Error) => setError(err.message || "Could not load organizations."))
+      .catch((err: Error) => setError(err.message || "Could not load teams."))
       .finally(() => setLoading(false));
   }, [canView]);
 
@@ -44,12 +67,14 @@ export function ManagerPage({ role }: { role: Role }) {
     Promise.all([
       getProjects({ organizationId: orgIdNum }),
       getAssets(),
-      getOrganizationMembers(orgIdNum)
+      getOrganizationMembers(orgIdNum),
+      getAdminActivity({ organizationId: orgIdNum }).catch(() => defaultActivity)
     ])
-      .then(([projectRows, assetRows, memberRows]) => {
+      .then(([projectRows, assetRows, memberRows, activityRows]) => {
         setProjects(projectRows);
         setAssets(assetRows.filter((a) => Number(a.organizationId) === orgIdNum));
         setMembers(memberRows);
+        setActivity(activityRows);
       })
       .catch((err: Error) => setError(err.message || "Could not load manager workspace data."))
       .finally(() => setLoading(false));
@@ -68,6 +93,37 @@ export function ManagerPage({ role }: { role: Role }) {
     };
   }, [projects, assets]);
 
+  const recentAssets = useMemo<AdminActivity["recentAssets"]>(() => {
+    if (activity.recentAssets.length > 0) {
+      return activity.recentAssets.slice(0, activityVisibleLimit);
+    }
+
+    return [...assets]
+      .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+      .slice(0, activityVisibleLimit)
+      .map((asset) => ({
+        id: Number(asset.id),
+        title: asset.name,
+        status: asset.backendStatus ?? asset.status,
+        owner: asset.owner,
+        updatedAt: asset.updatedAt
+      }));
+  }, [activity.recentAssets, assets]);
+
+  const recentComments = useMemo(
+    () => activity.recentComments.slice(0, activityVisibleLimit),
+    [activity.recentComments]
+  );
+
+  const handleDeleteComment = async (assetId: string, commentId: string) => {
+    const ok = window.confirm("Delete this comment?");
+    if (!ok) return;
+    await deleteComment(assetId, commentId);
+    if (hasSelectedOrg) {
+      setActivity(await getAdminActivity({ organizationId: orgIdNum }).catch(() => defaultActivity));
+    }
+  };
+
   if (!canView) {
     return (
       <section className="page-grid">
@@ -85,10 +141,10 @@ export function ManagerPage({ role }: { role: Role }) {
         <div className="manager-workspace-header">
           <h1>Manager Workspace</h1>
           <label>
-            Organization
+            Team
             <select value={selectedOrgId} onChange={(e) => setSelectedOrgId(e.target.value)}>
               <option value="" disabled>
-                Select organization...
+                Select team...
               </option>
               {organizations.map((org) => (
                 <option key={org.id} value={String(org.id)}>
@@ -100,7 +156,7 @@ export function ManagerPage({ role }: { role: Role }) {
         </div>
         {error && <p role="alert" className="admin-error">{error}</p>}
 
-        <div className="tabs nav nav-pills">
+        <div className="tabs nav nav-pills manager-subnav">
           <button type="button" className={`nav-link ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}>
             Overview
           </button>
@@ -111,10 +167,10 @@ export function ManagerPage({ role }: { role: Role }) {
             Assets
           </button>
           <button type="button" className={`nav-link ${tab === "team" ? "active" : ""}`} onClick={() => setTab("team")}>
-            Team
+            Team Members
           </button>
           <button type="button" className={`nav-link ${tab === "activity" ? "active" : ""}`} onClick={() => setTab("activity")}>
-            Activity
+            Recent Activity
           </button>
         </div>
 
@@ -145,7 +201,7 @@ export function ManagerPage({ role }: { role: Role }) {
           <div className="manager-tab-content">
             <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
               <Link className="btn btn-primary file-link-btn" to={`/projects?organizationId=${selectedOrgId}`}>
-                Manage projects
+                Manage Projects
               </Link>
             </div>
             <div className="admin-scroll-table">
@@ -181,7 +237,7 @@ export function ManagerPage({ role }: { role: Role }) {
           <div className="manager-tab-content">
             <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
               <Link className="btn btn-primary file-link-btn" to="/assets">
-                Manage assets
+                Manage Assets
               </Link>
             </div>
             <div className="admin-scroll-table">
@@ -217,7 +273,7 @@ export function ManagerPage({ role }: { role: Role }) {
           <div className="manager-tab-content">
             <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
               <Link className="btn btn-primary file-link-btn" to={`/admin/organizations/${selectedOrgId}`}>
-                Manager
+                Manage Team
               </Link>
             </div>
             <div className="admin-scroll-table">
@@ -250,17 +306,113 @@ export function ManagerPage({ role }: { role: Role }) {
         )}
 
         {!loading && tab === "activity" && (
-          <div className="admin-callout">
-            <strong>Progress snapshot</strong>
-            <p>{metrics.inReview} assets currently in review.</p>
-            <p>{metrics.blocked} assets blocked by change requests.</p>
-            <p>{metrics.done} assets approved.</p>
+          <div className="manager-tab-content">
+            <div className="admin-split-header">
+              <h2 className="admin-section-title">Recent comments</h2>
+              {recentComments.length > 0 && (
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowComments((prev) => !prev)}>
+                  {showComments ? "Hide" : "Show"}
+                </button>
+              )}
+            </div>
+
+            {showComments && (
+              <div className="admin-scroll-table">
+                {recentComments.length === 0 ? (
+                  <p>No comments yet.</p>
+                ) : (
+                  <table className="table table-hover align-middle admin-table compact manager-activity-table">
+                    <thead>
+                      <tr>
+                        <th>Asset</th>
+                        <th>Comment</th>
+                        <th>Author</th>
+                        <th>When</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentComments.map((comment) => (
+                        <tr key={comment.id}>
+                          <td data-label="Asset">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/assets/${comment.assetId}`)}
+                              className="admin-link-button"
+                            >
+                              {comment.assetTitle}
+                            </button>
+                          </td>
+                          <td data-label="Comment" className="manager-activity-comment-cell">
+                            <span className="manager-activity-comment">"{comment.message}"</span>
+                          </td>
+                          <td data-label="Author">{comment.author}</td>
+                          <td data-label="When">{formatDate(comment.createdAt)}</td>
+                          <td data-label="Actions" className="manager-activity-actions-cell">
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger btn-sm manager-activity-delete"
+                              onClick={() => void handleDeleteComment(String(comment.assetId), String(comment.id))}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+
+            <div className="admin-split-header admin-section-gap">
+              <h2 className="admin-section-title">Recent assets</h2>
+              {recentAssets.length > 0 && (
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowAssets((prev) => !prev)}>
+                  {showAssets ? "Hide" : "Show"}
+                </button>
+              )}
+            </div>
+
+            {showAssets && (
+              <div className="admin-scroll-table">
+                {recentAssets.length === 0 ? (
+                  <p>No assets yet.</p>
+                ) : (
+                  <table className="table table-hover align-middle admin-table compact">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Owner</th>
+                        <th>Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentAssets.map((asset) => (
+                        <tr key={asset.id}>
+                          <td data-label="Title">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/assets/${asset.id}`)}
+                              className="admin-link-button"
+                            >
+                              {asset.title}
+                            </button>
+                          </td>
+                          <td data-label="Status">{statusLabel(asset.status)}</td>
+                          <td data-label="Owner">{asset.owner}</td>
+                          <td data-label="Updated">{formatDate(asset.updatedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
     </section>
   );
 }
-
-
-

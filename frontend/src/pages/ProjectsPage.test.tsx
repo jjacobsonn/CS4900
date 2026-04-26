@@ -99,7 +99,7 @@ test("ProjectsPage manager team view hides admin and owner assignment targets", 
   expect(await screen.findByText("Reviewer")).toBeInTheDocument();
   expect(screen.queryByText("Admin")).not.toBeInTheDocument();
 
-  const addUserSelect = screen.getByLabelText("Add organization user");
+  const addUserSelect = screen.getByLabelText("Add team user");
   expect(within(addUserSelect).queryByText("Owner (owner)")).not.toBeInTheDocument();
   expect(within(addUserSelect).getByText("Designer (designer)")).toBeInTheDocument();
 

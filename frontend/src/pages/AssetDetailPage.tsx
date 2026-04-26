@@ -4,16 +4,14 @@ import {
   createAssetVersionApi,
   deleteAssetVersion,
   getAsset,
+  getAssetActivity,
   getAssetVersions,
-  getVersionAudit,
-  patchAsset,
   patchAssetStatus,
-  patchAssetVersion,
-  updateAssetOwner
+  patchAssetVersion
 } from "../api/assets";
+import type { AssetActivityEntry } from "../api/assets";
 import { addComment, deleteComment, getComments } from "../api/comments";
-import { Asset, Comment, UserAccount, Version } from "../types/models";
-import { getUsers } from "../api/users";
+import { Asset, Comment, Version } from "../types/models";
 import { CommentList } from "../components/CommentList";
 import { StatusBadge } from "../components/StatusBadge";
 import { sanitizeFileName } from "../utils/format";
@@ -22,6 +20,14 @@ import { VersionList } from "../components/VersionList";
 import type { AuthUser } from "../App";
 
 type Tab = "comments" | "versions";
+
+function timelineStatusClass(status: string | undefined) {
+  return String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 function isCsvOrSpreadsheet(asset: Pick<Asset, "fileName" | "mimeType">) {
   const mimeType = (asset.mimeType || "").toLowerCase();
@@ -115,19 +121,12 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
+  const [activityEvents, setActivityEvents] = useState<AssetActivityEntry[]>([]);
   const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
   const [newVersionLabel, setNewVersionLabel] = useState("");
   const [newVersionNotes, setNewVersionNotes] = useState("");
   const [versionUploading, setVersionUploading] = useState(false);
   const [versionFormKey, setVersionFormKey] = useState(0);
-  const [auditEntries, setAuditEntries] = useState<Array<{ id: number; asset_id: number; asset_version_id: number | null; action: string; performed_at: string; details: string | null; performed_by: string }>>([]);
-  const [ownerCandidates, setOwnerCandidates] = useState<UserAccount[]>([]);
-  const [ownerSelectId, setOwnerSelectId] = useState<string | "">("");
-  const [editAssetOpen, setEditAssetOpen] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editNotes, setEditNotes] = useState("");
-  const [replaceMainFile, setReplaceMainFile] = useState<File | null>(null);
-  const [savingAsset, setSavingAsset] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [workflowBusy, setWorkflowBusy] = useState(false);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
@@ -138,13 +137,11 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const loadData = async () => {
     if (!id) return;
     const assetData = await getAsset(id);
-    const isAdminForAsset = currentUser?.role === "admin";
 
-    const [commentRows, versionRows, usersData, auditData] = await Promise.all([
+    const [commentRows, versionRows, activityRows] = await Promise.all([
       getComments(id),
       getAssetVersions(id),
-      isAdminForAsset ? getUsers() : Promise.resolve(null),
-      isAdminForAsset ? getVersionAudit(id) : Promise.resolve([])
+      getAssetActivity(id)
     ]);
     setAsset(assetData);
     setComments(
@@ -162,21 +159,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         status: assetData.status
       }))
     );
-    if (isAdminForAsset && usersData != null && Array.isArray(usersData)) {
-      setOwnerCandidates(usersData as UserAccount[]);
-      const currentOwner = (usersData as UserAccount[]).find(
-        (u) => u.email === assetData.owner || u.displayName === assetData.owner
-      );
-      setOwnerSelectId(currentOwner?.id ?? "");
-    } else {
-      setOwnerCandidates([]);
-      setOwnerSelectId("");
-    }
-    if (isAdminForAsset && Array.isArray(auditData)) {
-      setAuditEntries(auditData);
-    } else {
-      setAuditEntries([]);
-    }
+    setActivityEvents(activityRows);
   };
 
   useEffect(() => {
@@ -269,42 +252,6 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     await deleteAssetVersion(id, versionId, currentUser.id);
   };
 
-  const saveOwner = async () => {
-    if (!asset || !id) return;
-    const nextOwnerId = ownerSelectId || null;
-    const updated = await updateAssetOwner(id, nextOwnerId);
-    setAsset(updated);
-  };
-
-  const openEditAsset = () => {
-    if (asset) {
-      setEditTitle(asset.name);
-      setEditNotes(asset.notes ?? "");
-      setReplaceMainFile(null);
-      setEditAssetOpen(true);
-    }
-  };
-
-  const saveEditAsset = async () => {
-    if (!asset || !id) return;
-    setSavingAsset(true);
-    try {
-      await patchAsset(id, { title: editTitle.trim(), description: editNotes || undefined });
-      const nextOwnerId = ownerSelectId || null;
-      await updateAssetOwner(id, nextOwnerId);
-      if (replaceMainFile && asset.currentVersionId) {
-        await patchAssetVersion(id, String(asset.currentVersionId), {
-          file: replaceMainFile,
-          performedByUserId: currentUser?.id
-        });
-      }
-      await loadData();
-      setEditAssetOpen(false);
-    } finally {
-      setSavingAsset(false);
-    }
-  };
-
   const handleDeleteComment = async (commentId: string) => {
     if (!id) return;
     setDeletingCommentId(commentId);
@@ -320,6 +267,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     if (!asset || !currentUser) return false;
     return currentUser.role === "admin";
   }, [asset, currentUser]);
+  const canDeleteComments = currentUser?.role === "admin" || currentUser?.role === "manager";
 
   const canEnlargePreview = Boolean(asset?.fileUrl && asset?.mimeType?.startsWith("image/"));
   const canInlinePreview = Boolean(asset?.fileUrl && supportsInlinePreview(asset));
@@ -332,8 +280,39 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
   const activityTimeline = useMemo(() => {
     if (!asset) return [];
 
-    const versionEntries = versions.map((version) => ({
+    const activityVersionIds = new Set(
+      activityEvents
+        .filter((event) => event.event_type === "version_uploaded" && event.asset_version_id != null)
+        .map((event) => String(event.asset_version_id))
+    );
+
+    const persistedEntries = activityEvents.map((event) => {
+      if (event.event_type === "status_changed") {
+        return {
+          id: `activity-${event.id}`,
+          markerClass: `status ${timelineStatusClass(event.to_status || "")}`,
+          at: event.created_at,
+          title: "Status changed",
+          detail: event.from_status ? `${event.from_status} to ${event.to_status}` : `${event.to_status || "Unknown"}`,
+          actor: event.actor ?? "System"
+        };
+      }
+
+      return {
+        id: `activity-${event.id}`,
+        markerClass: "version",
+        at: event.created_at,
+        title: "Version uploaded",
+        detail: event.detail || "New version",
+        actor: event.actor ?? "Unknown"
+      };
+    });
+
+    const versionEntries = versions
+      .filter((version) => !activityVersionIds.has(String(version.id)))
+      .map((version) => ({
       id: `version-${version.id}`,
+      markerClass: "version",
       at: version.createdAt,
       title: "Version uploaded",
       detail: `${version.versionNumber}${version.label ? ` (${version.label})` : ""}`,
@@ -342,32 +321,32 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
 
     const commentEntries = comments.map((comment) => ({
       id: `comment-${comment.id}`,
+      markerClass: "comment",
       at: comment.createdAt,
       title: "Comment added",
       detail: comment.message,
       actor: comment.author
     }));
 
-    const auditEntriesTimeline = auditEntries.map((entry) => ({
-      id: `audit-${entry.id}`,
-      at: entry.performed_at,
-      title: entry.action === "deleted" ? "Version deleted" : "Version metadata updated",
-      detail: entry.details ?? "No details provided",
-      actor: entry.performed_by
-    }));
-
+    const hasStatusHistory = activityEvents.some((event) => event.event_type === "status_changed");
     const statusEntry = {
       id: `status-current-${asset.id}`,
+      markerClass: `status ${timelineStatusClass(asset.backendStatus || asset.status)}`,
       at: asset.updatedAt,
       title: "Status snapshot",
       detail: `${asset.backendStatus || asset.status}`,
       actor: "System"
     };
 
-    return [...versionEntries, ...commentEntries, ...auditEntriesTimeline, statusEntry].sort(
+    return [
+      ...persistedEntries,
+      ...versionEntries,
+      ...commentEntries,
+      ...(hasStatusHistory ? [] : [statusEntry])
+    ].sort(
       (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
     );
-  }, [asset, versions, comments, auditEntries]);
+  }, [asset, versions, comments, activityEvents]);
 
   useEffect(() => {
     if (workflowButtons.length === 0) {
@@ -413,7 +392,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </button>
             ) : null}
             {canInlinePreview && asset.fileUrl ? (
-              <a className="btn btn-outline-secondary file-link-btn" href={asset.fileUrl} target="_blank" rel="noreferrer">
+              <a className="btn btn-outline-secondary file-link-btn asset-open-preview-link" href={asset.fileUrl} target="_blank" rel="noreferrer">
                 Open preview in new tab
               </a>
             ) : null}
@@ -438,62 +417,6 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </a>
             </p>
           ) : null}
-          {isAssetAdmin && (
-            <>
-              {!editAssetOpen ? (
-                <button type="button" className="btn btn-outline-secondary" style={{ marginTop: "0.5rem" }} onClick={openEditAsset}>
-                  Edit asset
-                </button>
-              ) : (
-                <div className="card panel edit-asset-panel" style={{ marginTop: "0.75rem", padding: "0.75rem" }}>
-                  <h3 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>Edit asset</h3>
-                  <label>
-                    Title
-                    <input
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Description / notes
-                    <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
-                  </label>
-                  <label>
-                    Owner
-                    <select
-                      value={ownerSelectId}
-                      onChange={(e) => setOwnerSelectId(e.target.value)}
-                    >
-                      <option value="">Unassigned</option>
-                      {ownerCandidates.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.displayName || u.email}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {asset.currentVersionId && (
-                    <label>
-                      Replace preview file (optional)
-                      <input
-                        type="file"
-                        onChange={(e) => setReplaceMainFile(e.target.files?.[0] ?? null)}
-                      />
-                    </label>
-                  )}
-                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-                    <button type="button" className="btn btn-primary" onClick={() => void saveEditAsset()} disabled={savingAsset}>
-                      {savingAsset ? "Saving…" : "Save"}
-                    </button>
-                    <button type="button" className="btn btn-outline-secondary" onClick={() => { setEditAssetOpen(false); setReplaceMainFile(null); }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
           <p>Current version: {asset.currentVersion}</p>
           {asset.notes ? <p>Notes: {asset.notes}</p> : null}
           <p>
@@ -599,8 +522,8 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
               </form>
               <CommentList
                 comments={comments}
-                isAdmin={isAssetAdmin}
-                onDeleteComment={isAssetAdmin ? handleDeleteComment : undefined}
+                isAdmin={canDeleteComments}
+                onDeleteComment={canDeleteComments ? handleDeleteComment : undefined}
                 deletingCommentId={deletingCommentId}
               />
             </>
@@ -654,7 +577,6 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
                 versions={versions}
                 currentVersionId={asset.currentVersionId}
                 isAdmin={isAssetAdmin}
-                auditEntries={auditEntries}
                 onEditVersion={isAssetAdmin ? handleEditVersion : undefined}
                 onDeleteVersion={isAssetAdmin ? handleDeleteVersion : undefined}
                 onRefresh={loadData}
@@ -664,7 +586,10 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         </div>
       </section>
       <section className="card panel activity-panel">
-        <h2>Activity Timeline</h2>
+        <div className="activity-panel-header">
+          <h2>Activity Timeline</h2>
+          <span className="status-badge">{activityTimeline.length} event{activityTimeline.length === 1 ? "" : "s"}</span>
+        </div>
         <p className="dashboard-filter-note activity-summary">
           {versions.length} version{versions.length === 1 ? "" : "s"} · {comments.length} comment
           {comments.length === 1 ? "" : "s"} · {activityTimeline.length} total event
@@ -675,7 +600,7 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
         ) : (
           <ul className="activity-timeline">
             {activityTimeline.map((event) => (
-              <li key={event.id}>
+              <li key={event.id} className={`activity-event-${event.markerClass}`}>
                 <strong>{event.title}</strong>
                 <p>{event.detail}</p>
                 <div className="version-meta">
@@ -702,6 +627,3 @@ export function AssetDetailPage({ currentUser }: { currentUser: AuthUser | null 
     </>
   );
 }
-
-
-

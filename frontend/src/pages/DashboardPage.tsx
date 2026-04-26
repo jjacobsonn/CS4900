@@ -31,6 +31,8 @@ export function DashboardPage({ role }: { role: Role }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<Filter>(() => defaultStatusFilter(role));
   const [projectFilter, setProjectFilter] = useState(() => (searchParams.get("projectId") ?? "").trim());
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const canUpload = canAccessUpload(role);
@@ -95,7 +97,21 @@ export function DashboardPage({ role }: { role: Role }) {
 
   return (
     <section className="page-grid dashboard-page">
-      <div className="card panel dashboard-summary">
+      <div className="dashboard-mobile-summary-toggle">
+        <button
+          type="button"
+          className="btn btn-outline-secondary"
+          onClick={() => setMobileSummaryOpen((open) => !open)}
+          aria-expanded={mobileSummaryOpen}
+          aria-controls="dashboard-summary"
+        >
+          {mobileSummaryOpen ? "Hide Summary" : "Summary"}
+        </button>
+      </div>
+      <div
+        id="dashboard-summary"
+        className={`card panel dashboard-summary${mobileSummaryOpen ? " mobile-open" : ""}`}
+      >
         <h1>Review Queue</h1>
         <div className="dashboard-summary-grid">
           <div className="dashboard-metric">
@@ -124,7 +140,21 @@ export function DashboardPage({ role }: { role: Role }) {
           </div>
         </div>
       </div>
-      <div className="card panel dashboard-filters">
+      <div className="dashboard-mobile-filter-toggle">
+        <button
+          type="button"
+          className="btn btn-outline-secondary"
+          onClick={() => setMobileFiltersOpen((open) => !open)}
+          aria-expanded={mobileFiltersOpen}
+          aria-controls="dashboard-filters"
+        >
+          {mobileFiltersOpen ? "Hide Filters" : "Filters"}
+        </button>
+      </div>
+      <div
+        id="dashboard-filters"
+        className={`card panel dashboard-filters${mobileFiltersOpen ? " mobile-open" : ""}`}
+      >
         <h1>Filters</h1>
         <div className="dashboard-filter-stack">
           <label className="dashboard-primary-filter">
@@ -201,69 +231,21 @@ export function DashboardPage({ role }: { role: Role }) {
         {loading && <p>Loading assets...</p>}
         {error && <p role="alert">{error}</p>}
         {!loading && !error && (
-          <>
-            <div className="admin-callout">
-              <strong>Project Snapshot</strong>
-              {projects.length === 0 ? (
-                <p>No projects available yet.</p>
-              ) : (
-                <div className="admin-scroll-table">
-                  <table className="table table-hover align-middle admin-table compact">
-                    <thead>
-                      <tr>
-                        <th>Project</th>
-                        <th>Status</th>
-                        <th>Assets</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projects.slice(0, 8).map((project) => (
-                        <tr key={project.id}>
-                          <td data-label="Project">{project.name}</td>
-                          <td data-label="Status">{project.status}</td>
-                          <td data-label="Assets">{project.assetCount ?? 0}</td>
-                          <td data-label="Actions" className="d-flex flex-wrap align-items-center gap-2 actions-cell">
-                            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => onProjectFilterChange(String(project.id))}>
-                              View queue
-                            </button>
-                            {canUpload ? (
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary btn-sm"
-                                onClick={() => navigate(`/upload?projectId=${project.id}`)}
-                              >
-                                Upload
-                              </button>
-                            ) : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+          <div className="admin-callout">
+            <strong>Asset Queue</strong>
+            <div className="asset-grid">
+              {filteredAssets.map((asset) => (
+                <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
+              ))}
+              {filteredAssets.length === 0 && (
+                <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
+                  No assets found for current filters.
+                </p>
               )}
             </div>
-
-            <div className="admin-callout">
-              <strong>Asset Queue</strong>
-              <div className="asset-grid">
-                {filteredAssets.map((asset) => (
-                  <AssetCard key={String(asset.id)} asset={asset} onOpen={(aid) => navigate(`/assets/${aid}`)} />
-                ))}
-                {filteredAssets.length === 0 && (
-                  <p className="dashboard-filter-note" style={{ marginTop: 0 }}>
-                    No assets found for current filters.
-                  </p>
-                )}
-              </div>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </section>
   );
 }
-
-
-

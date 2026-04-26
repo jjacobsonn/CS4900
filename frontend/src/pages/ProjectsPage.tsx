@@ -111,6 +111,7 @@ export function ProjectsPage({ role }: { role: Role }) {
   };
 
   const startEdit = (project: Project) => {
+    setManageTeamProjectId(null);
     setEditProjectId(project.id);
     setEditName(project.name);
     setEditDescription(project.description ?? "");
@@ -152,9 +153,10 @@ export function ProjectsPage({ role }: { role: Role }) {
     if (!canManage) return;
     const orgId = Number(project.organizationId);
     if (!Number.isFinite(orgId)) {
-      setError("Project is missing organization mapping.");
+      setError("Project is missing team mapping.");
       return;
     }
+    setEditProjectId(null);
     setManageTeamProjectId(project.id);
     setTeamLoading(true);
     setError(null);
@@ -232,6 +234,9 @@ export function ProjectsPage({ role }: { role: Role }) {
     }
   };
 
+  const editingProject = projects.find((project) => project.id === editProjectId);
+  const teamProject = projects.find((project) => project.id === manageTeamProjectId);
+
   return (
     <section className="page-grid projects-page">
       <div className="card panel projects-filter-panel">
@@ -242,9 +247,9 @@ export function ProjectsPage({ role }: { role: Role }) {
             <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search projects" />
           </label>
           <label>
-            Organization
+            Team
             <select value={organizationFilter} onChange={(e) => onOrgFilterChange(e.target.value)}>
-              <option value="">All organizations</option>
+              <option value="">All teams</option>
               {organizations.map((o) => (
                 <option key={o.id} value={String(o.id)}>
                   {o.name}
@@ -255,61 +260,18 @@ export function ProjectsPage({ role }: { role: Role }) {
         </div>
         {canManage && (
           <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions projects-action-row">
-            <button type="button" className="btn btn-primary" onClick={() => setShowCreate((v) => !v)}>
-              {showCreate ? "Cancel" : "Create project"}
-            </button>
-          </div>
-        )}
-        {showCreate && canManage && (
-          <form onSubmit={(e) => void handleCreate(e)} className="vstack gap-3 admin-form projects-create-form">
-            <label>
-              Organization
-              <select value={createOrgId} onChange={(e) => setCreateOrgId(e.target.value)} required>
-                <option value="" disabled>
-                  Select organization
-                </option>
-                {organizations.map((o) => (
-                  <option key={o.id} value={String(o.id)}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Name
-              <input type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} required />
-            </label>
-            <label>
-              Description
-              <textarea rows={2} value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} />
-            </label>
-            <label>
-              Status
-              <select value={createStatus} onChange={(e) => setCreateStatus(e.target.value)}>
-                <option value="Active">Active</option>
-                <option value="On hold">On hold</option>
-                <option value="Archived">Archived</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </label>
-            <label>
-              Priority
-              <select value={createPriority} onChange={(e) => setCreatePriority(e.target.value)}>
-                <option value="">None</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
-            </label>
-            <label>
-              Due date
-              <input type="date" value={createDue} onChange={(e) => setCreateDue(e.target.value)} />
-            </label>
-            <button className="btn btn-primary" type="submit">
+            <button
+              type="button"
+              className="btn btn-primary projects-create-trigger"
+              onClick={() => {
+                setEditProjectId(null);
+                setManageTeamProjectId(null);
+                setShowCreate(true);
+              }}
+            >
               Create project
             </button>
-          </form>
+          </div>
         )}
         {error && <p role="alert" className="admin-error">{error}</p>}
       </div>
@@ -322,7 +284,7 @@ export function ProjectsPage({ role }: { role: Role }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Organization</th>
+                <th>Team</th>
                 <th>Status</th>
                 <th>Assets</th>
                 {canManage ? <th>Actions</th> : null}
@@ -337,7 +299,7 @@ export function ProjectsPage({ role }: { role: Role }) {
                 filtered.map((p) => (
                   <tr key={p.id}>
                     <td data-label="Name">{p.name}</td>
-                    <td data-label="Organization">{p.organizationName ?? "—"}</td>
+                    <td data-label="Team">{p.organizationName ?? "—"}</td>
                     <td data-label="Status">{p.status}</td>
                     <td data-label="Assets">{p.assetCount ?? 0}</td>
                     {canManage ? (
@@ -359,10 +321,97 @@ export function ProjectsPage({ role }: { role: Role }) {
             </tbody>
           </table>
         </div>
-        {editProjectId != null && canManage && (
-          <div className="admin-project-detail" style={{ marginTop: "0.85rem" }}>
-            <h2 className="admin-section-title">Edit project</h2>
-            <div className="vstack gap-3 admin-form">
+      </div>
+
+      {showCreate && canManage && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreate(false);
+          }}
+        >
+          <div className="admin-modal" role="dialog" aria-labelledby="project-create-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="project-create-title" className="admin-section-title" style={{ marginBottom: "0.8rem" }}>
+              Create project
+            </h2>
+            <form onSubmit={(e) => void handleCreate(e)} className="vstack gap-3 admin-form">
+              <label>
+                Team
+                <select value={createOrgId} onChange={(e) => setCreateOrgId(e.target.value)} required>
+                  <option value="" disabled>
+                    Select team
+                  </option>
+                  {organizations.map((o) => (
+                    <option key={o.id} value={String(o.id)}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Name
+                <input type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} required />
+              </label>
+              <label>
+                Description
+                <textarea rows={2} value={createDescription} onChange={(e) => setCreateDescription(e.target.value)} />
+              </label>
+              <label>
+                Status
+                <select value={createStatus} onChange={(e) => setCreateStatus(e.target.value)}>
+                  <option value="Active">Active</option>
+                  <option value="On hold">On hold</option>
+                  <option value="Archived">Archived</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </label>
+              <label>
+                Priority
+                <select value={createPriority} onChange={(e) => setCreatePriority(e.target.value)}>
+                  <option value="">None</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Urgent">Urgent</option>
+                </select>
+              </label>
+              <label>
+                Due date
+                <input type="date" value={createDue} onChange={(e) => setCreateDue(e.target.value)} />
+              </label>
+              <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
+                <button className="btn btn-primary" type="submit">
+                  Create project
+                </button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowCreate(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editProjectId != null && canManage && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditProjectId(null);
+          }}
+        >
+          <div className="admin-modal" role="dialog" aria-labelledby="project-edit-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="project-edit-title" className="admin-section-title" style={{ marginBottom: "0.8rem" }}>
+              Edit {editingProject?.name ?? "project"}
+            </h2>
+            <form
+              className="vstack gap-3 admin-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleSaveEdit();
+              }}
+            >
               <label>
                 Name
                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -395,23 +444,34 @@ export function ProjectsPage({ role }: { role: Role }) {
                 <input type="date" value={editDue} onChange={(e) => setEditDue(e.target.value)} />
               </label>
               <div className="d-flex flex-wrap align-items-center gap-2 admin-project-detail-actions">
-                <button type="button" className="btn btn-primary" onClick={() => void handleSaveEdit()}>
+                <button type="submit" className="btn btn-primary">
                   Save changes
                 </button>
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setEditProjectId(null)}>
                   Cancel
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-        )}
-        {manageTeamProjectId != null && canManage && (
-          <div className="admin-project-detail" style={{ marginTop: "0.85rem" }}>
-            <h2 className="admin-section-title">Manage project team</h2>
+        </div>
+      )}
+
+      {manageTeamProjectId != null && canManage && (
+        <div
+          className="admin-modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setManageTeamProjectId(null);
+          }}
+        >
+          <div className="admin-modal admin-modal-wide" role="dialog" aria-labelledby="project-team-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="project-team-title" className="admin-section-title" style={{ marginBottom: "0.8rem" }}>
+              Manage {teamProject?.name ?? "project"} team
+            </h2>
             {teamLoading ? <p>Loading team...</p> : null}
             <div className="vstack gap-3 admin-form" style={{ marginTop: "0.5rem" }}>
               <label>
-                Add organization user
+                Add team user
                 <select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)}>
                   <option value="">Select user…</option>
                   {eligibleMembers.map((u) => (
@@ -467,11 +527,8 @@ export function ProjectsPage({ role }: { role: Role }) {
               </table>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }
-
-
-

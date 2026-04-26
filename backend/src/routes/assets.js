@@ -22,6 +22,7 @@ import {
   deleteAssetCommentById,
   deleteAssetVersionById,
   getAssetById,
+  listAssetActivity,
   listAssetComments,
   listAssetsForUser,
   listAssetVersions,
@@ -311,6 +312,21 @@ router.get("/:assetId/versions", async (req, res, next) => {
     await ensureAssetView(req, assetId);
     const versions = await listAssetVersions(assetId);
     return res.json(versions);
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ error: error.message });
+    return next(error);
+  }
+});
+
+router.get("/:assetId/activity", async (req, res, next) => {
+  try {
+    const assetId = Number(req.params.assetId);
+    if (!Number.isFinite(assetId)) {
+      return res.status(400).json({ error: "Invalid asset id" });
+    }
+    await ensureAssetView(req, assetId);
+    const activity = await listAssetActivity(assetId);
+    return res.json(activity);
   } catch (error) {
     if (error.status) return res.status(error.status).json({ error: error.message });
     return next(error);

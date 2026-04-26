@@ -33,7 +33,11 @@ const ACTIVITY_LIMIT = 20;
  * Get recent activity for admin: last updated assets and last comments.
  * Gives admin visibility into "all important data" without scanning everything.
  */
-export async function getActivity() {
+export async function getActivity(organizationId = null) {
+  const scoped = organizationId != null && Number.isFinite(Number(organizationId));
+  const assetWhere = scoped ? "WHERE p.organization_id = $2" : "";
+  const commentWhere = scoped ? "WHERE p.organization_id = $2" : "";
+  const params = scoped ? [ACTIVITY_LIMIT, Number(organizationId)] : [ACTIVITY_LIMIT];
   const [assetsResult, commentsResult] = await Promise.all([
     query(
       `SELECT a.id, a.title, a.updated_at, s.status_name AS status,
@@ -41,9 +45,11 @@ export async function getActivity() {
        FROM assets a
        JOIN asset_status_lookup s ON s.id = a.status_id
        LEFT JOIN users u ON u.id = a.created_by_user_id
+       LEFT JOIN projects p ON p.id = a.project_id
+       ${assetWhere}
        ORDER BY a.updated_at DESC
        LIMIT $1`,
-      [ACTIVITY_LIMIT]
+      params
     ),
     query(
       `SELECT c.id, c.asset_id, c.message, c.created_at,
@@ -52,9 +58,11 @@ export async function getActivity() {
        FROM asset_comments c
        LEFT JOIN users u ON u.id = c.author_user_id
        JOIN assets a ON a.id = c.asset_id
+       LEFT JOIN projects p ON p.id = a.project_id
+       ${commentWhere}
        ORDER BY c.created_at DESC
        LIMIT $1`,
-      [ACTIVITY_LIMIT]
+      params
     )
   ]);
 

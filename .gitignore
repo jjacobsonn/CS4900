@@ -106,6 +106,7 @@ temp-uploads/
 backend/uploads/
 backend/logs/
 backend/.env
+backend/render-paste.env
 
 # Frontend specific
 frontend/dist/

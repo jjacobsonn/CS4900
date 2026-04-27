@@ -15,30 +15,56 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
- * Create a new PostgreSQL connection pool
- * 
- * The pool manages multiple database connections and automatically handles:
- * - Connection creation and destruction
- * - Connection reuse for better performance
- * - Error handling and connection recovery
- * 
- * Configuration is loaded from environment variables:
- * - DB_HOST: Database server hostname (default: localhost)
- * - DB_PORT: Database server port (default: 5432)
- * - DB_NAME: Database name (vellum)
- * - DB_USER: Database username
- * - DB_PASSWORD: Database password
+ * Build pool options for local dev (`DB_*`) or hosted Postgres (single URL).
+ *
+ * Render-style: set `DATABASE_URL` to the Internal or External Postgres URL and
+ * you do not need to split host/user/password manually.
+ *
+ * Optional: `DB_SSL=true` forces TLS with relaxed cert checks (some cloud DBs).
  */
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'vellum',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
-});
+function buildPoolOptions() {
+  const connectionString = (
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_INTERNAL_URL ||
+    ''
+  ).trim();
+
+  const base = {
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000
+  };
+
+  if (connectionString) {
+    const opts = { ...base, connectionString };
+    let hostForSsl = '';
+    try {
+      const u = new URL(connectionString.replace(/^postgres(ql)?:/i, 'http:'));
+      hostForSsl = u.hostname || '';
+    } catch {
+      hostForSsl = '';
+    }
+    const wantsSsl =
+      process.env.DB_SSL === 'true' ||
+      /(^|\.)render\.com$/i.test(hostForSsl) ||
+      /sslmode=require/i.test(connectionString);
+    if (wantsSsl) {
+      opts.ssl = { rejectUnauthorized: false };
+    }
+    return opts;
+  }
+
+  return {
+    ...base,
+    host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME || 'vellum',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD
+  };
+}
+
+const pool = new Pool(buildPoolOptions());
 
 /**
  * Test database connection

@@ -129,6 +129,7 @@ This screenshot shows:
 - **[Testing Plan (Whitebox)](tests/testing-plan-whitebox.md)** - Unit and integration testing strategy
 - **[User Acceptance Test Plan](assets/docs/sprint-1/user-acceptance-test-plan.md)** - UAT scenarios and acceptance criteria
 - **[Verification guide (Sprint 3)](assets/docs/sprint-3/VERIFICATION-GUIDE.md)** - Automated tests, `db:deploy`, role matrix, and real-world manual scenarios
+- **[Vercel hosting runbook](assets/docs/deployment/vercel-hosting-runbook.md)** - Frontend deploy + hosted backend + semester data snapshot/import workflow
 
 ### Project Management
 

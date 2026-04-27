@@ -16,6 +16,7 @@
     "db:snapshot:export": "node scripts/db-snapshot-export.mjs",
     "db:snapshot:import": "node scripts/db-snapshot-import.mjs",
     "db:snapshot:ship": "node scripts/db-snapshot-ship.mjs",
+    "db:render:sync": "node scripts/render-sync-to-hosted.mjs",
     "migrate": "npm run db:deploy",
     "init-db": "npm run db:setup",
     "dev": "concurrently \"npm run dev -w backend\" \"npm run dev -w frontend\"",

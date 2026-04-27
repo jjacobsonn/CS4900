@@ -21,7 +21,7 @@
 - [About](#about)
 - [Key Features](#key-features)
 - [Screenshots](#screenshots)
-- [Documentation](#documentation)
+- [Documentation](#documentation) (includes [presentations](#presentations))
 - [Tech Stack](#tech-stack)
 - [Hosted deployment (Spring 2026)](#hosted-deployment-spring-2026)
 - [Getting Started](#getting-started)
@@ -119,6 +119,10 @@ This screenshot shows:
 - **[Use Cases](assets/docs/sprint-1/use-cases.md)** - Key user scenarios and workflows
 - **[Figma Wireframes](assets/docs/sprint-1/figma-wireframe.md)** - UI/UX design mockups
 - **[Sequence Diagrams](assets/docs/sprint-1/sequence-diagrams.md)** - System interaction flows
+
+### Presentations
+
+- **[Vellum Slides (PDF)](assets/Vellum%20Slides.pdf)** — Capstone deck built in **PointSlides** (exported to PDF for sharing and version control in this repo).
 
 ### Technical Specifications
 

@@ -23,6 +23,7 @@
 - [Screenshots](#screenshots)
 - [Documentation](#documentation)
 - [Tech Stack](#tech-stack)
+- [Hosted deployment (Spring 2026)](#hosted-deployment-spring-2026)
 - [Getting Started](#getting-started)
 - [Project Team](#project-team)
 - [License](#license)
@@ -161,6 +162,40 @@ This screenshot shows:
 - Role-Based Access Control (RBAC)
 - Secure token-based authentication
 - Three-tier permission system
+
+---
+
+## Hosted deployment (Spring 2026)
+
+Public demo (no secrets in this section):
+
+| Service | URL |
+|---------|-----|
+| **Web app (Vercel)** | [https://cs-4900-frontend.vercel.app/](https://cs-4900-frontend.vercel.app/) |
+| **API (Render)** | [https://vellum-backend-unc1.onrender.com/](https://vellum-backend-unc1.onrender.com/) |
+| **API health** | [https://vellum-backend-unc1.onrender.com/api/health](https://vellum-backend-unc1.onrender.com/api/health) |
+
+### How we host it
+
+- **Frontend:** [Vercel](https://vercel.com) — GitHub repo `jjacobsonn/CS4900`, **Root Directory** `frontend`, framework **Vite**, build `npm run build`, output `dist`. Production env: **`VITE_API_BASE_URL`** points at the Render API base (must end with `/api` so the SPA calls the correct origin).
+- **Backend:** [Render](https://render.com) **Web Service** (Node), **Root Directory** `backend`, start `npm run start`. Uses **`DATABASE_URL`** (Render Postgres **Internal** connection string) plus **`JWT_SECRET`** and **`NODE_ENV=production`**. The backend also supports split **`DB_*`** variables; see `backend/src/config/database.js` and `backend/.env.example`.
+- **Database:** Render **managed PostgreSQL** in the same region as the web service. The API uses the **Internal** URL on Render; syncing from a developer laptop uses the **External** hostname (see runbook).
+
+### Syncing local semester data to the hosted database (CLI)
+
+From the repo root, with Postgres client tools (`pg_dump`, `pg_restore`, `psql`) installed:
+
+1. Copy `backend/.env.render.sync.example` to **`backend/.env.render.sync`** (file is **gitignored** — never commit it).
+2. Fill **`TARGET_DB_*`** using values from Render Postgres → **Connect → External** (host should include `.oregon-postgres.render.com` for this deployment). Set **`TARGET_DB_SSLMODE=require`**.
+3. Run **`npm run db:render:sync`** — exports your local DB (from `backend/.env`), restores into Render, then runs **`npm run db:deploy`** against the hosted DB.
+
+Optional: [Render CLI](https://render.com/docs/cli) (`render login`, `render psql …`) for ad hoc SQL checks. Full checklist: **[Vercel hosting runbook](assets/docs/deployment/vercel-hosting-runbook.md)**.
+
+### Security (read this)
+
+- **Never commit** `backend/.env`, **`backend/.env.render.sync`**, database passwords, or raw **`DATABASE_URL`** strings into Git. They belong only in Render / Vercel dashboards or local gitignored files.
+- **Rotate** the Postgres password in Render if it was ever pasted into chat, a ticket, or a screenshot; then update **`DATABASE_URL`** on the web service and your local **`backend/.env.render.sync`**.
+- **`JWT_SECRET`** on Render must stay stable for existing login tokens; generate a new long random value for production and do not reuse dev secrets in shared channels.
 
 ---
 
@@ -336,11 +371,18 @@ Frontend GUI will be available at: **http://localhost:5173** (Vite default port)
 
 ### Default URLs
 
+**Local development**
+
 - **Backend API:** http://localhost:3000/api
 - **Backend Health Check:** http://localhost:3000/api/health
 - **User Roles API:** http://localhost:3000/api/user-roles
 - **Uploaded Files:** http://localhost:3000/uploads/<stored-file-name>
 - **Frontend GUI:** http://localhost:5173 (Vite dev server)
+
+**Hosted production (Spring 2026)** — see [Hosted deployment](#hosted-deployment-spring-2026) for setup details.
+
+- **Web app:** https://cs-4900-frontend.vercel.app/
+- **API:** https://vellum-backend-unc1.onrender.com/api
 
 ### Current App Notes
 

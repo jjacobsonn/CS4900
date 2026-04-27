@@ -107,6 +107,7 @@ backend/uploads/
 backend/logs/
 backend/.env
 backend/render-paste.env
+backend/.env.render.sync
 
 # Frontend specific
 frontend/dist/
